@@ -5,6 +5,7 @@
     <ProjectReference Include="..\EmbeddingShift.Adaptive\EmbeddingShift.Adaptive.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Simulation\EmbeddingShift.Simulation.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Ingest\EmbeddingShift.Ingest.csproj" />
+    <ProjectReference Include="..\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

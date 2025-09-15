@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EmbeddingShift.Core\EmbeddingShift.Core.csproj" />
+    <ProjectReference Include="..\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
