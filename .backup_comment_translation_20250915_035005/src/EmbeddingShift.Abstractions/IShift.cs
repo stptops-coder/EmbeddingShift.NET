@@ -3,8 +3,8 @@
 public interface IShift
 {
     /// <summary>
-    /// Applies the shift to an input embedding vector.
-    /// Expects Length = EmbeddingDimensions.DIM.
+    /// Wendet den Shift auf einen Eingabe-Embedding-Vektor an.
+    /// Erwartet Länge = EmbeddingDimensions.DIM.
     /// </summary>
     float[] Apply(ReadOnlySpan<float> input);
 }

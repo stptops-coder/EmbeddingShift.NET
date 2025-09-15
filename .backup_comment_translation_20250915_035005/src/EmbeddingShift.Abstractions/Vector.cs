@@ -2,7 +2,7 @@
 
 namespace EmbeddingShift.Abstractions;
 
-/// <summary>Small utility methods for 1536 D-Embeddings.</summary>
+/// <summary>Small utility methods for 1536D-Embeddings.</summary>
 public static class Vec
 {
     public static float[] Add(ReadOnlySpan<float> a, ReadOnlySpan<float> b)

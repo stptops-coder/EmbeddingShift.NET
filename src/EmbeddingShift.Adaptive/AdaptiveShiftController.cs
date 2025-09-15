@@ -1,5 +1,5 @@
 ﻿namespace EmbeddingShift.Adaptive;
-using EmbeddingShift.Core.Shifts;
+using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Core.Generators;
 
