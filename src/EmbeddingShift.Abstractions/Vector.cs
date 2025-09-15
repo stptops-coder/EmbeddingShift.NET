@@ -1,8 +1,8 @@
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace EmbeddingShift.Abstractions;
 
-/// <summary>Kleine Utility-Methoden für 1536D-Embeddings.</summary>
+/// <summary>Small\ utility\ methods für 1536D-Embeddings.</summary>
 public static class Vec
 {
     public static float[] Add(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
@@ -51,3 +51,4 @@ public static class Vec
 
     public static float Norm2(ReadOnlySpan<float> a) => MathF.Sqrt(Dot(a, a));
 }
+

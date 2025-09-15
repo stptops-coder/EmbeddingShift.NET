@@ -1,4 +1,4 @@
-using EmbeddingShift.Abstractions;
+﻿using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core;
 using Xunit;
 
@@ -12,7 +12,7 @@ public class AdditiveShiftTests
         var x = new float[EmbeddingDimensions.DIM];
         var b = new float[EmbeddingDimensions.DIM];
 
-        // Probe: setze zwei Stellen, Rest 0
+        // sanity\ check: set\ two\ positions, the\ rest 0
         x[0] = 1f; x[10] = 2f;
         b[0] = 0.5f; b[10] = -1f;
 
@@ -24,3 +24,4 @@ public class AdditiveShiftTests
         Assert.Equal(EmbeddingDimensions.DIM, y.Length);
     }
 }
+

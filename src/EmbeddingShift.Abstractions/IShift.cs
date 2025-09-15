@@ -1,10 +1,11 @@
-namespace EmbeddingShift.Abstractions;
+﻿namespace EmbeddingShift.Abstractions;
 
 public interface IShift
 {
     /// <summary>
-    /// Wendet den Shift auf einen Eingabe-Embedding-Vektor an.
+    /// Applies\ the\ shift\ to\ an\ input\ embedding\ vector\.
     /// Erwartet Länge = EmbeddingDimensions.DIM.
     /// </summary>
     float[] Apply(ReadOnlySpan<float> input);
 }
+
