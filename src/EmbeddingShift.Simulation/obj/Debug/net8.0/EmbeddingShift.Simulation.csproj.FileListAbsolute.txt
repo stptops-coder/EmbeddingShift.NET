@@ -1,0 +1,15 @@
+C:\pg\RakeX\src\EmbeddingShift.Simulation\bin\Debug\net8.0\EmbeddingShift.Simulation.deps.json
+C:\pg\RakeX\src\EmbeddingShift.Simulation\bin\Debug\net8.0\EmbeddingShift.Simulation.dll
+C:\pg\RakeX\src\EmbeddingShift.Simulation\bin\Debug\net8.0\EmbeddingShift.Simulation.pdb
+C:\pg\RakeX\src\EmbeddingShift.Simulation\bin\Debug\net8.0\EmbeddingShift.Core.dll
+C:\pg\RakeX\src\EmbeddingShift.Simulation\bin\Debug\net8.0\EmbeddingShift.Core.pdb
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\EmbeddingShift.Simulation.csproj.AssemblyReference.cache
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\EmbeddingShift.Simulation.GeneratedMSBuildEditorConfig.editorconfig
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\EmbeddingShift.Simulation.AssemblyInfoInputs.cache
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\EmbeddingShift.Simulation.AssemblyInfo.cs
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\EmbeddingShift.Simulation.csproj.CoreCompileInputs.cache
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\Embeddin.851DFC6A.Up2Date
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\EmbeddingShift.Simulation.dll
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\refint\EmbeddingShift.Simulation.dll
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\EmbeddingShift.Simulation.pdb
+C:\pg\RakeX\src\EmbeddingShift.Simulation\obj\Debug\net8.0\ref\EmbeddingShift.Simulation.dll

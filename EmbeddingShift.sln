@@ -1,0 +1,63 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0D11074D-E2CA-4206-AD2E-36F5F39D06D4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Core", "src\EmbeddingShift.Core\EmbeddingShift.Core.csproj", "{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Adaptive", "src\EmbeddingShift.Adaptive\EmbeddingShift.Adaptive.csproj", "{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Simulation", "src\EmbeddingShift.Simulation\EmbeddingShift.Simulation.csproj", "{FB9FED09-D59B-486B-9C1F-593033D521EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Ingest", "src\EmbeddingShift.Ingest\EmbeddingShift.Ingest.csproj", "{AD143546-84E7-4864-9329-B5B154152493}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Tests", "src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj", "{6144AB23-2B90-44F0-BE99-A0E4583CE0EA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Console", "src\EmbeddingShift.Console\EmbeddingShift.Console.csproj", "{2448E8AE-F78A-42C9-AF91-95D0D9E53C48}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB9FED09-D59B-486B-9C1F-593033D521EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB9FED09-D59B-486B-9C1F-593033D521EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB9FED09-D59B-486B-9C1F-593033D521EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB9FED09-D59B-486B-9C1F-593033D521EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AD143546-84E7-4864-9329-B5B154152493}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD143546-84E7-4864-9329-B5B154152493}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD143546-84E7-4864-9329-B5B154152493}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD143546-84E7-4864-9329-B5B154152493}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6144AB23-2B90-44F0-BE99-A0E4583CE0EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6144AB23-2B90-44F0-BE99-A0E4583CE0EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6144AB23-2B90-44F0-BE99-A0E4583CE0EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6144AB23-2B90-44F0-BE99-A0E4583CE0EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2448E8AE-F78A-42C9-AF91-95D0D9E53C48}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2448E8AE-F78A-42C9-AF91-95D0D9E53C48}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2448E8AE-F78A-42C9-AF91-95D0D9E53C48}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2448E8AE-F78A-42C9-AF91-95D0D9E53C48}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D51EAFD2-B291-4FC1-86F1-A49266DB34A2} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{FB9FED09-D59B-486B-9C1F-593033D521EA} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{AD143546-84E7-4864-9329-B5B154152493} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{6144AB23-2B90-44F0-BE99-A0E4583CE0EA} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{2448E8AE-F78A-42C9-AF91-95D0D9E53C48} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+	EndGlobalSection
+EndGlobal
+

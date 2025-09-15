@@ -1,0 +1,15 @@
+C:\pg\RakeX\src\AI.Adaptive\bin\Debug\net8.0\AI.Adaptive.deps.json
+C:\pg\RakeX\src\AI.Adaptive\bin\Debug\net8.0\AI.Adaptive.dll
+C:\pg\RakeX\src\AI.Adaptive\bin\Debug\net8.0\AI.Adaptive.pdb
+C:\pg\RakeX\src\AI.Adaptive\bin\Debug\net8.0\AI.Core.dll
+C:\pg\RakeX\src\AI.Adaptive\bin\Debug\net8.0\AI.Core.pdb
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adaptive.csproj.AssemblyReference.cache
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adaptive.GeneratedMSBuildEditorConfig.editorconfig
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adaptive.AssemblyInfoInputs.cache
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adaptive.AssemblyInfo.cs
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adaptive.csproj.CoreCompileInputs.cache
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adapt.42F4A487.Up2Date
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adaptive.dll
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\refint\AI.Adaptive.dll
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\AI.Adaptive.pdb
+C:\pg\RakeX\src\AI.Adaptive\obj\Debug\net8.0\ref\AI.Adaptive.dll

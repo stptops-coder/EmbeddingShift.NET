@@ -1,0 +1,15 @@
+C:\pg\RakeX\src\EmbeddingShift.Ingest\bin\Debug\net8.0\EmbeddingShift.Ingest.deps.json
+C:\pg\RakeX\src\EmbeddingShift.Ingest\bin\Debug\net8.0\EmbeddingShift.Ingest.dll
+C:\pg\RakeX\src\EmbeddingShift.Ingest\bin\Debug\net8.0\EmbeddingShift.Ingest.pdb
+C:\pg\RakeX\src\EmbeddingShift.Ingest\bin\Debug\net8.0\EmbeddingShift.Core.dll
+C:\pg\RakeX\src\EmbeddingShift.Ingest\bin\Debug\net8.0\EmbeddingShift.Core.pdb
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\EmbeddingShift.Ingest.csproj.AssemblyReference.cache
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\EmbeddingShift.Ingest.GeneratedMSBuildEditorConfig.editorconfig
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\EmbeddingShift.Ingest.AssemblyInfoInputs.cache
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\EmbeddingShift.Ingest.AssemblyInfo.cs
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\EmbeddingShift.Ingest.csproj.CoreCompileInputs.cache
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\Embeddin.B37A16C3.Up2Date
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\EmbeddingShift.Ingest.dll
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\refint\EmbeddingShift.Ingest.dll
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\EmbeddingShift.Ingest.pdb
+C:\pg\RakeX\src\EmbeddingShift.Ingest\obj\Debug\net8.0\ref\EmbeddingShift.Ingest.dll

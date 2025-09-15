@@ -1,0 +1,90 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "EmbeddingShift.Console/1.0.0": {
+        "dependencies": {
+          "EmbeddingShift.Adaptive": "1.0.0",
+          "EmbeddingShift.Core": "1.0.0",
+          "EmbeddingShift.Ingest": "1.0.0",
+          "EmbeddingShift.Simulation": "1.0.0"
+        },
+        "runtime": {
+          "EmbeddingShift.Console.dll": {}
+        }
+      },
+      "EmbeddingShift.Adaptive/1.0.0": {
+        "dependencies": {
+          "EmbeddingShift.Core": "1.0.0"
+        },
+        "runtime": {
+          "EmbeddingShift.Adaptive.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "EmbeddingShift.Core/1.0.0": {
+        "runtime": {
+          "EmbeddingShift.Core.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "EmbeddingShift.Ingest/1.0.0": {
+        "dependencies": {
+          "EmbeddingShift.Core": "1.0.0"
+        },
+        "runtime": {
+          "EmbeddingShift.Ingest.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "EmbeddingShift.Simulation/1.0.0": {
+        "dependencies": {
+          "EmbeddingShift.Core": "1.0.0"
+        },
+        "runtime": {
+          "EmbeddingShift.Simulation.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "EmbeddingShift.Console/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "EmbeddingShift.Adaptive/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "EmbeddingShift.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "EmbeddingShift.Ingest/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "EmbeddingShift.Simulation/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
