@@ -1,6 +1,6 @@
 ﻿using EmbeddingShift.Abstractions;
 
-namespace EmbeddingShift.Core;
+namespace EmbeddingShift.Core.Shifts;
 
 ///\ <summary>Adds a bias vector to the embedding.</summary>
 public sealed class AdditiveShift : IShift

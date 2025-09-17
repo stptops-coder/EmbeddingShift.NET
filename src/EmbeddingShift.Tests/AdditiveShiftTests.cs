@@ -1,5 +1,5 @@
 ﻿using EmbeddingShift.Abstractions;
-using EmbeddingShift.Core;
+using EmbeddingShift.Core.Shifts;
 using Xunit;
 
 namespace EmbeddingShift.Tests;
