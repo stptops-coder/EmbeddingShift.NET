@@ -1,6 +1,4 @@
-﻿using EmbeddingShift.Abstractions;
-
-namespace EmbeddingShift.Core.Abstractions;
+﻿namespace EmbeddingShift.Abstractions;
 
 public sealed record EvaluationResult(
     string ShiftName,

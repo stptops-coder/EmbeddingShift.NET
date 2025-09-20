@@ -1,14 +1,12 @@
 ﻿using EmbeddingShift.Abstractions;
+using System;
+using System.Collections.Generic;
 
-namespace EmbeddingShift.Core.Abstractions;
-
-public interface IShiftGenerator
+namespace EmbeddingShift.Abstractions
 {
-    /// <summary>
-    /// Erzeugt 0..n neue Shifts aus Query/Referenzen (z.B. Delta-Vektor, gewichtete Achsen, …).
-    /// </summary>
-    IEnumerable<IShift> Generate(
-        ReadOnlySpan<float> query,
-        IReadOnlyList<ReadOnlyMemory<float>> referenceEmbeddings
-    );
+    public interface IShiftGenerator
+    {
+        IEnumerable<IShift> Generate(
+            IReadOnlyList<(ReadOnlyMemory<float> Query, ReadOnlyMemory<float> Answer)> pairs);
+    }
 }
