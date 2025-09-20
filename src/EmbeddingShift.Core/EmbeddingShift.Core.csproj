@@ -4,10 +4,6 @@
     <ProjectReference Include="..\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Generators\" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
