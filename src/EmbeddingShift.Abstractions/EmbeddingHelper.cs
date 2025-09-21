@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace EmbeddingShift.Core;
+namespace EmbeddingShift.Abstractions;
 
 public static class EmbeddingHelper
 {
@@ -13,19 +13,13 @@ public static class EmbeddingHelper
         return (float)sum;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static float L2Norm(ReadOnlySpan<float> v)
-    {
-        double sum = 0;
-        for (int i = 0; i < v.Length; i++) sum += (double)v[i] * v[i];
-        return (float)Math.Sqrt(sum);
-    }
+
 
     /// <summary>Cosine Similarity in [-1,1]. Gibt 0 zurück, wenn ein Vektor Nullnorm hat.</summary>
     public static float CosineSimilarity(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {
         if (a.Length != b.Length) throw new ArgumentException("Vector length mismatch.");
-        var denom = (double)L2Norm(a) * L2Norm(b);
+        var denom = (double)VectorOps.L2Norm(a) * VectorOps.L2Norm(b);
         if (denom == 0) return 0f;
         return Dot(a, b) / (float)denom;
     }
@@ -33,7 +27,7 @@ public static class EmbeddingHelper
     /// <summary>Normalisiert auf L2-Norm 1 (in-place). Tut nichts bei Nullvektor.</summary>
     public static void NormalizeInPlace(Span<float> v)
     {
-        var norm = L2Norm(v);
+        var norm = VectorOps.L2Norm(v);
         if (norm == 0f) return;
         var inv = 1f / norm;
         for (int i = 0; i < v.Length; i++) v[i] *= inv;

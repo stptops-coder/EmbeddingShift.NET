@@ -49,6 +49,7 @@ public static class Vec
         return sum;
     }
 
-    public static float Norm2(ReadOnlySpan<float> a) => MathF.Sqrt(Dot(a, a));
+    [Obsolete("Use VectorOps.L2Norm instead")]
+    public static float Norm2(ReadOnlySpan<float> a) => VectorOps.L2Norm(a);
 }
 
