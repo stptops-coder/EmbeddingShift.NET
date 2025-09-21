@@ -5,27 +5,26 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0D11074D-E2CA-4206-AD2E-36F5F39D06D4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Core", "src\EmbeddingShift.Core\EmbeddingShift.Core.csproj", "{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Core", "src\EmbeddingShift.Core\EmbeddingShift.Core.csproj", "{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Adaptive", "src\EmbeddingShift.Adaptive\EmbeddingShift.Adaptive.csproj", "{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Adaptive", "src\EmbeddingShift.Adaptive\EmbeddingShift.Adaptive.csproj", "{68D8A6EE-F1DA-4C6F-B2F6-ECE70BACD086}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Simulation", "src\EmbeddingShift.Simulation\EmbeddingShift.Simulation.csproj", "{FB9FED09-D59B-486B-9C1F-593033D521EA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Simulation", "src\EmbeddingShift.Simulation\EmbeddingShift.Simulation.csproj", "{FB9FED09-D59B-486B-9C1F-593033D521EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Ingest", "src\EmbeddingShift.Ingest\EmbeddingShift.Ingest.csproj", "{AD143546-84E7-4864-9329-B5B154152493}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Ingest", "src\EmbeddingShift.Ingest\EmbeddingShift.Ingest.csproj", "{AD143546-84E7-4864-9329-B5B154152493}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Tests", "src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj", "{6144AB23-2B90-44F0-BE99-A0E4583CE0EA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Tests", "src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj", "{6144AB23-2B90-44F0-BE99-A0E4583CE0EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Console", "src\EmbeddingShift.Console\EmbeddingShift.Console.csproj", "{2448E8AE-F78A-42C9-AF91-95D0D9E53C48}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Console", "src\EmbeddingShift.Console\EmbeddingShift.Console.csproj", "{2448E8AE-F78A-42C9-AF91-95D0D9E53C48}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Abstractions", "src\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj", "{5A6E7E20-23AD-4896-BDFE-548BCE32EB9F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Abstractions", "src\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj", "{5A6E7E20-23AD-4896-BDFE-548BCE32EB9F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.ConsoleEval", "EmbeddingShift.ConsoleEval\EmbeddingShift.ConsoleEval.csproj", "{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{D51EAFD2-B291-4FC1-86F1-A49266DB34A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -56,6 +55,13 @@ Global
 		{5A6E7E20-23AD-4896-BDFE-548BCE32EB9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A6E7E20-23AD-4896-BDFE-548BCE32EB9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A6E7E20-23AD-4896-BDFE-548BCE32EB9F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{D51EAFD2-B291-4FC1-86F1-A49266DB34A2} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
@@ -65,5 +71,6 @@ Global
 		{6144AB23-2B90-44F0-BE99-A0E4583CE0EA} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 		{2448E8AE-F78A-42C9-AF91-95D0D9E53C48} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 		{5A6E7E20-23AD-4896-BDFE-548BCE32EB9F} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 	EndGlobalSection
 EndGlobal
