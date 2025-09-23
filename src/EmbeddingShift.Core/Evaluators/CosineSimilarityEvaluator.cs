@@ -1,11 +1,20 @@
 ﻿using EmbeddingShift.Abstractions;
+using EmbeddingShift.Core;
 
 namespace EmbeddingShift.Core.Evaluators
 {
     /// <summary>
-    /// Evaluates a shift by calculating the cosine similarity between
-    /// (Shift(query)) and the reference embeddings.
-    /// The returned EvaluationResult.Score: the higher, the better.
+    /// PURPOSE:
+    ///   Baseline alignment metric. Computes the mean cosine similarity between
+    ///   Shift(query) and all reference embeddings; higher is better.
+    ///
+    /// WHEN TO USE:
+    ///   - Default choice for quick, robust evaluation during development.
+    ///   - When you don't have explicit “correct answer” labels or graded relevance.
+    ///
+    /// SCORE:
+    ///   - Double in [-1, 1]. We typically see [0..1] for embedding spaces;
+    ///     higher means better alignment after the shift.
     /// </summary>
     public sealed class CosineSimilarityEvaluator : IShiftEvaluator
     {
@@ -17,8 +26,7 @@ namespace EmbeddingShift.Core.Evaluators
             if (referenceEmbeddings == null || referenceEmbeddings.Count == 0)
                 return new EvaluationResult(ShiftName(shift), double.NaN, "No references");
 
-            // Apply the shift
-            var shifted = shift.Apply(query);                  // IShift.Apply(ReadOnlySpan<float>) -> float[]
+            var shifted = shift.Apply(query);
             var shiftedSpan = new ReadOnlySpan<float>(shifted);
 
             double sum = 0.0;
