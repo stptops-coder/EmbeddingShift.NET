@@ -15,7 +15,13 @@ namespace EmbeddingShift.Adaptive.Evaluators
     /// SCORE:
     ///   - Double, can be negative/positive. Larger positive values mean
     ///     stronger separation between the best and the second-best candidate.
+    /// 
+    /// NOTE:
+    ///   DCG (Discounted Cumulative Gain) rewards relevant results more if they
+    ///   appear early in the ranking; later hits are discounted by log2.
+    ///   nDCG normalizes this against the ideal ranking for comparability.
     /// </summary>
+
     public sealed class MarginEvaluator : IShiftEvaluator
     {
         public EvaluationResult Evaluate(
