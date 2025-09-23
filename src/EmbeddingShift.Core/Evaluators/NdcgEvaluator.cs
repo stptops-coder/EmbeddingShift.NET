@@ -15,6 +15,11 @@ namespace EmbeddingShift.Adaptive.Evaluators
     /// SCORE:
     ///   - Double in [0,1]. 1.0 means the ranking is ideal for the given K
     ///     and the set of relevant items.
+    ///     
+    /// NOTE:
+    ///   DCG (Discounted Cumulative Gain) rewards relevant results more if they
+    ///   appear early in the ranking; later hits are discounted by log2.
+    ///   nDCG normalizes this against the ideal ranking for comparability.
     /// </summary>
     public sealed class NdcgEvaluator : IShiftEvaluator
     {
