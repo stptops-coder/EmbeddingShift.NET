@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Abstractions
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.ConsoleEval", "EmbeddingShift.ConsoleEval\EmbeddingShift.ConsoleEval.csproj", "{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EmbeddingShift.Preprocessing", "src\EmbeddingShift.Preprocessing\EmbeddingShift.Preprocessing.csproj", "{1CCD79A7-6675-4288-8082-2D5B4F37BD90}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,10 @@ Global
 		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CCD79A7-6675-4288-8082-2D5B4F37BD90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CCD79A7-6675-4288-8082-2D5B4F37BD90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CCD79A7-6675-4288-8082-2D5B4F37BD90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CCD79A7-6675-4288-8082-2D5B4F37BD90}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -72,5 +78,6 @@ Global
 		{2448E8AE-F78A-42C9-AF91-95D0D9E53C48} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 		{5A6E7E20-23AD-4896-BDFE-548BCE32EB9F} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 		{7BD958A0-9E88-4EC0-9EC1-F96146FF05A0} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{1CCD79A7-6675-4288-8082-2D5B4F37BD90} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 	EndGlobalSection
 EndGlobal
