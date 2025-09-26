@@ -1,56 +1,85 @@
 ﻿using EmbeddingShift.Abstractions;
-using EmbeddingShift.Core.Generators;
-using EmbeddingShift.Adaptive;
+using EmbeddingShift.ConsoleEval;
+using EmbeddingShift.Core.Evaluators;
+using EmbeddingShift.Workflows;
 
-internal class Program
+// Composition Root (einfach gehalten)
+IRunLogger logger = new ConsoleRunLogger();
+var runner = EvaluationRunner.WithDefaults(logger);
+
+// Demo-Ingest-Komponenten (für „ingest“)
+IIngestor ingestor = new MinimalTxtIngestor();
+IEmbeddingProvider provider = new SimEmbeddingProvider();
+
+// Dummy-VectorStore für die Demo (persistiert nicht – nur Kabeltest)
+IVectorStore store = new NoopStore();
+
+var ingestWf = new IngestWorkflow(ingestor, provider, store);
+var evalWf = new EvaluationWorkflow(runner);
+
+// --- CLI ---
+if (args.Length == 0)
 {
-    private const int DIM = EmbeddingDimensions.DIM;
+    PrintHelp();
+    return;
+}
 
-    private static void Main(string[] args)
-    {
-        Console.WriteLine("=== Shift Evaluation Demo (1536-dim) ===");
+switch (args[0].ToLowerInvariant())
+{
+    case "ingest":
+        // usage: ingest <path> <dataset>
+        if (args.Length < 3) { PrintHelp(); return; }
+        await ingestWf.RunAsync(args[1], args[2]);
+        Console.WriteLine("Ingest finished.");
+        break;
 
-        // --- Dummy data: Query + Answer embeddings ---
-        var rnd = new Random();
+    case "eval":
+        // usage: eval <dataset>
+        // Für Demo bauen wir Queries/References künstlich
+        var q1 = await provider.GetEmbeddingAsync("query one");
+        var q2 = await provider.GetEmbeddingAsync("query two");
+        var r1 = await provider.GetEmbeddingAsync("answer one");
+        var r2 = await provider.GetEmbeddingAsync("answer two");
+        var queries = new List<ReadOnlyMemory<float>> { q1, q2 };
+        var refs = new List<ReadOnlyMemory<float>> { r1, r2 };
 
-        float[] query = RandomVector(rnd);
-        float[] answer1 = RandomVector(rnd);
-        float[] answer2 = RandomVector(rnd);
+        // Kein echter Shift → Identität via NullShift
+        IShift shift = new NullShift();
 
-        var pairs = new List<(ReadOnlyMemory<float>, ReadOnlyMemory<float>)>
-        {
-            (query, answer1),
-            (query, answer2)
-        };
+        evalWf.Run(shift, queries, refs, args.Length >= 2 ? args[1] : "DemoDataset");
+        break;
 
-        // --- Use CompositeShiftGenerator (Additive + Multiplicative) ---
-        var generator = CompositeShiftGenerator.Create()
-            .Add(new DeltaShiftGenerator(), new MultiplicativeShiftGenerator())
-            .WithDistinct()
-            .WithLimit(20)
-            .Build();
+    default:
+        PrintHelp();
+        break;
+}
 
-        // --- Run evaluation ---
-        var service = new ShiftEvaluationService(generator);
-        var report = service.Evaluate(pairs);
+static void PrintHelp()
+{
+    Console.WriteLine("RakeX CLI (einfach)");
+    Console.WriteLine("  ingest <path> <dataset>   - TXT-Zeilen ingestieren (Demo)");
+    Console.WriteLine("  eval   <dataset>          - Evaluierung mit Sim-Embeddings (Demo)");
+}
 
-        // --- Print results ---
-        foreach (var result in report.Results)
-        {
-            Console.WriteLine($"Evaluator : {result.Evaluator}");
-            Console.WriteLine($"  Score   : {result.Score:F4}");
-            Console.WriteLine($"  BestShift: {result.BestShift?.GetType().Name ?? "none"}");
-            Console.WriteLine();
-        }
+// --- Hilfsobjekte für die Demo ---
+sealed class NoopStore : IVectorStore
+{
+    public Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
+        => Task.CompletedTask;
+    public Task<float[]> LoadEmbeddingAsync(Guid id)
+        => Task.FromResult(Array.Empty<float>());
+    public Task SaveShiftAsync(Guid id, string type, string parametersJson)
+        => Task.CompletedTask;
+    public Task<IEnumerable<(Guid id, string type, string parametersJson)>> LoadShiftsAsync()
+        => Task.FromResult<IEnumerable<(Guid, string, string)>>(Array.Empty<(Guid, string, string)>());
+    public Task SaveRunAsync(Guid runId, string kind, string dataset, DateTime startedAt, DateTime completedAt, string resultsPath)
+        => Task.CompletedTask;
+}
 
-        Console.WriteLine("Done.");
-    }
+// NullShift = Identität
+sealed class NullShift : IShift
+{
+    public string Name => "NullShift";
 
-    private static float[] RandomVector(Random rnd)
-    {
-        var vec = new float[DIM];
-        for (int i = 0; i < DIM; i++)
-            vec[i] = (float)(rnd.NextDouble() * 2.0 - 1.0); // Werte in [-1, 1]
-        return vec;
-    }
+    public ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input) => input.ToArray();
 }
