@@ -6,6 +6,8 @@ namespace EmbeddingShift.Core.Shifts
     {
         private readonly float[] _factors;
 
+        public string Name => "MultiplicativeShift";
+
         // Optional: zentrale Limits
         private const float MinFactor = 0.25f; // small clamp up
         private const float MaxFactor = 4.0f;  // large clamp down
@@ -44,7 +46,7 @@ namespace EmbeddingShift.Core.Shifts
             }
         }
 
-        public float[] Apply(ReadOnlySpan<float> input)
+        public ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input)
         {
             if (input.Length != _factors.Length)
                 throw new ArgumentException("Input length does not match factors length.", nameof(input));

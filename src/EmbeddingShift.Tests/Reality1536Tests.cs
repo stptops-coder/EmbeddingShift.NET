@@ -15,43 +15,37 @@ namespace EmbeddingShift.Tests
             const int D = 1536;
             var rnd = new Random(42);
 
-            // Query strictly positive, so pure multiplication can preserve direction
             var query = new float[D];
             for (int i = 0; i < D; i++)
-                query[i] = 0.5f + (float)rnd.NextDouble() * 0.5f; // [0.5,1.0]
+                query[i] = 0.5f + (float)rnd.NextDouble() * 0.5f;
 
-            // Scale per dimension chosen to be safely within clamp bounds
             var scale = new float[D];
             for (int i = 0; i < D; i++)
-                scale[i] = 0.5f + (float)rnd.NextDouble() * 1.5f; // [0.5,2.0] ⊂ [0.25,4.0]
+                scale[i] = 0.5f + (float)rnd.NextDouble() * 1.5f;
 
-            // Target is exactly the scaled dimensions
             var target = new float[D];
             for (int i = 0; i < D; i++)
                 target[i] = query[i] * scale[i];
 
-            // Baseline similarity (before shift)
             var qN = Normalize(query);
             var tN = Normalize(target);
             var baseToTarget = EmbeddingHelper.CosineSimilarity(qN, tN);
 
-            // Shift factors exactly = scale → Apply(query) == target (up to rounding)
             var shift = new MultiplicativeShift(scale);
+
+            // shift.Apply liefert jetzt ReadOnlyMemory<float>
             var qShifted = shift.Apply(query);
-            var qShiftedN = Normalize(qShifted);
+
+            // Zugriff als Span
+            var qShiftedN = Normalize(qShifted.Span);
 
             var postToTarget = EmbeddingHelper.CosineSimilarity(qShiftedN, tN);
 
-            // Baseline is already very high for scaled vectors; realistic improvement ~0.04–0.07
-            (postToTarget - baseToTarget).Should().BeGreaterThan(0.03f,
-                $"base={baseToTarget:F6}, post={postToTarget:F6}");
-            postToTarget.Should().BeGreaterThan(0.999f); // numerically ~1.0
-            float.IsNaN(postToTarget).Should().BeFalse();
-
-            // Diagnostics (will show up in test output window if run with Debug enabled)
-            System.Diagnostics.Debug.WriteLine(
-                $"base={baseToTarget:F6}, post={postToTarget:F6}, delta={(postToTarget - baseToTarget):F6}");
+            postToTarget.Should().BeGreaterThan(0.03f);
+            (postToTarget - baseToTarget).Should().BeGreaterThan(0.03f);
+            postToTarget.Should().BeApproximately(1.0f, 1e-5f);
         }
+
 
         private static float[] Normalize(ReadOnlySpan<float> v)
         {

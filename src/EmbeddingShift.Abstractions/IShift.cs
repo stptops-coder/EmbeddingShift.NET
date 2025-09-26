@@ -6,6 +6,8 @@ public interface IShift
     /// Applies the shift to an input embedding vector.
     /// Expects Length = EmbeddingDimensions.DIM.
     /// </summary>
-    float[] Apply(ReadOnlySpan<float> input);
+    ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input);
+    string Name { get; }
+
 }
 

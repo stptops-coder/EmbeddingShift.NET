@@ -27,7 +27,7 @@ namespace EmbeddingShift.Core.Evaluators
                 return new EvaluationResult(ShiftName(shift), double.NaN, "No references");
 
             var shifted = shift.Apply(query);
-            var shiftedSpan = new ReadOnlySpan<float>(shifted);
+            var shiftedSpan = shifted.Span;
 
             double sum = 0.0;
             double max = double.NegativeInfinity;

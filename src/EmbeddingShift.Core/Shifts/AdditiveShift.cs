@@ -6,6 +6,8 @@ namespace EmbeddingShift.Core.Shifts;
 public sealed class AdditiveShift : IShift
 {
     private readonly float[] _bias; // Länge = DIM
+    public string Name => "AdditiveShift";
+
 
     public AdditiveShift(ReadOnlySpan<float> bias)
     {
@@ -14,7 +16,7 @@ public sealed class AdditiveShift : IShift
         _bias = bias.ToArray(); // defensive\ copy
     }
 
-    public float[] Apply(ReadOnlySpan<float> input)
+    public ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input)
     {
         if (input.Length != EmbeddingDimensions.DIM)
             throw new ArgumentException($"Input must have length {EmbeddingDimensions.DIM}.", nameof(input));

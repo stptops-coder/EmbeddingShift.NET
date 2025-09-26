@@ -29,8 +29,8 @@ namespace EmbeddingShift.Core.Evaluators
 
             Span<float> q = stackalloc float[query.Length];
             query.CopyTo(q);
-            var shifted = shift.Apply(q);
-            var shiftedSpan = new ReadOnlySpan<float>(shifted);
+            var shifted = shift.Apply(query);
+            var shiftedSpan = shifted.Span;
 
             var scores = new List<double>(referenceEmbeddings.Count);
             foreach (var r in referenceEmbeddings)

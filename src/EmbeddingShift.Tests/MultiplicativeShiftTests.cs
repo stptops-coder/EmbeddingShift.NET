@@ -13,7 +13,7 @@ namespace EmbeddingShift.Tests
             var v = new float[] { 1f, 2f, -3f };
             var s = new MultiplicativeShift(new[] { 2f, 0.5f, 1f });
 
-            var outV = s.Apply(v);
+            var outV = s.Apply(v).ToArray();
             outV.Should().BeEquivalentTo(new[] { 2f, 1f, -3f });
             BeFinite(outV);
         }
@@ -24,7 +24,7 @@ namespace EmbeddingShift.Tests
             var v = new float[] { 1f, 1f, 1f };
             var s = new MultiplicativeShift(new[] { 100f, 0.01f, 0f }, clampAndGuard: true); // clamp + guard→1
 
-            var outV = s.Apply(v);
+            var outV = s.Apply(v).ToArray();
             outV.Should().BeEquivalentTo(new[] { 4f, 0.25f, 1f });
             BeFinite(outV);
         }
@@ -35,8 +35,8 @@ namespace EmbeddingShift.Tests
             var v = new float[] { 0.3f, -0.4f, 0.5f };
             var s = new MultiplicativeShift(new[] { 1f, 1f, 1f });
 
-            var a = s.Apply(v);
-            var b = s.Apply(a);
+            var a = s.Apply(v).ToArray();
+            var b = s.Apply(a).ToArray();
             ApproxEqual(a, v);
             ApproxEqual(b, v);
         }
@@ -46,7 +46,7 @@ namespace EmbeddingShift.Tests
         {
             var v = new float[] { 1e-12f, -1e-12f, 0f };
             var s = new MultiplicativeShift(new[] { 1e-12f, 1e-12f, 1e-12f }); // guarded → ~1
-            var outV = s.Apply(v);
+            var outV = s.Apply(v).ToArray();
             BeFinite(outV);
         }
 
