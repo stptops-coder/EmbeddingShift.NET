@@ -1,7 +1,7 @@
 ﻿using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core;
 
-namespace EmbeddingShift.Adaptive.Evaluators
+namespace EmbeddingShift.Core.Evaluators
 {
     /// <summary>
     /// PURPOSE:

@@ -4,8 +4,14 @@ using EmbeddingShift.Core.Evaluators;
 namespace EmbeddingShift.Adaptive
 {
     /// <summary>
-    /// Runs one or more evaluators on a set of shift candidates.
-    /// Default: CosineSimilarityEvaluator.
+    /// Adaptive-level evaluation:
+    /// Runs one or more evaluators on shifts proposed by a generator,
+    /// selecting the best candidate shift for *this adaptive step*.
+    /// 
+    /// NOTE:
+    /// This service is focused on *local decision making* in Adaptive.
+    /// For *global benchmarking and logging* across datasets,
+    /// see EvaluationRunner in the Evaluation namespace.
     /// </summary>
     public sealed class ShiftEvaluationService
     {
@@ -25,6 +31,9 @@ namespace EmbeddingShift.Adaptive
 
         /// <summary>
         /// Evaluate shifts proposed by the generator against query/answer pairs.
+        /// Returns only the *best shift per evaluator*.
+        /// 
+        /// This is "local" evaluation used inside Adaptive loops.
         /// </summary>
         public EvaluationReport Evaluate(
             IReadOnlyList<(ReadOnlyMemory<float> Query, ReadOnlyMemory<float> Answer)> pairs)
@@ -66,7 +75,7 @@ namespace EmbeddingShift.Adaptive
     }
 
     /// <summary>
-    /// Aggregated results of all evaluators.
+    /// Aggregated results of all evaluators (local best-shift selection).
     /// </summary>
     public sealed class EvaluationReport
     {
@@ -79,7 +88,7 @@ namespace EmbeddingShift.Adaptive
     }
 
     /// <summary>
-    /// Result of a single evaluator run (best score + shift).
+    /// Result of a single evaluator run (best score + chosen shift).
     /// </summary>
     public sealed class EvaluatorResult
     {

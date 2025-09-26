@@ -1,7 +1,7 @@
 ﻿using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core;
 
-namespace EmbeddingShift.Adaptive.Evaluators
+namespace EmbeddingShift.Core.Evaluators
 {
     /// <summary>
     /// PURPOSE:
@@ -41,7 +41,7 @@ namespace EmbeddingShift.Adaptive.Evaluators
             scores.Sort((a, b) => b.s.CompareTo(a.s)); // desc
             int rank = scores.FindIndex(t => t.idx == _relevantIndex);
             double mrr = rank >= 0 ? 1.0 / (rank + 1) : 0.0;
-            return new EvaluationResult(nameof(MrrEvaluator), mrr, $"rank={(rank >= 0 ? (rank + 1) : -1)}");
+            return new EvaluationResult(nameof(MrrEvaluator), mrr, $"rank={(rank >= 0 ? rank + 1 : -1)}");
         }
     }
 }
