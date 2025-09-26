@@ -3,15 +3,15 @@ using EmbeddingShift.ConsoleEval;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Workflows;
 
-// Composition Root (einfach gehalten)
+// Composition Root (kept simple)
 IRunLogger logger = new ConsoleRunLogger();
 var runner = EvaluationRunner.WithDefaults(logger);
 
-// Demo-Ingest-Komponenten (für „ingest“)
+// Demo ingest components
 IIngestor ingestor = new MinimalTxtIngestor();
 IEmbeddingProvider provider = new SimEmbeddingProvider();
 
-// Dummy-VectorStore für die Demo (persistiert nicht – nur Kabeltest)
+// Dummy vector store for demo (does not persist – only wiring test)
 IVectorStore store = new NoopStore();
 
 var ingestWf = new IngestWorkflow(ingestor, provider, store);
@@ -35,7 +35,7 @@ switch (args[0].ToLowerInvariant())
 
     case "eval":
         // usage: eval <dataset>
-        // Für Demo bauen wir Queries/References künstlich
+        // For demo we build queries/references artificially
         var q1 = await provider.GetEmbeddingAsync("query one");
         var q2 = await provider.GetEmbeddingAsync("query two");
         var r1 = await provider.GetEmbeddingAsync("answer one");
@@ -43,7 +43,7 @@ switch (args[0].ToLowerInvariant())
         var queries = new List<ReadOnlyMemory<float>> { q1, q2 };
         var refs = new List<ReadOnlyMemory<float>> { r1, r2 };
 
-        // Kein echter Shift → Identität via NullShift
+        // No real shift → identity via NullShift
         IShift shift = new NullShift();
 
         evalWf.Run(shift, queries, refs, args.Length >= 2 ? args[1] : "DemoDataset");
@@ -56,12 +56,12 @@ switch (args[0].ToLowerInvariant())
 
 static void PrintHelp()
 {
-    Console.WriteLine("RakeX CLI (einfach)");
-    Console.WriteLine("  ingest <path> <dataset>   - TXT-Zeilen ingestieren (Demo)");
-    Console.WriteLine("  eval   <dataset>          - Evaluierung mit Sim-Embeddings (Demo)");
+    Console.WriteLine("RakeX CLI (simple)");
+    Console.WriteLine("  ingest <path> <dataset>   - ingest TXT lines (demo)");
+    Console.WriteLine("  eval   <dataset>          - evaluate with simulated embeddings (demo)");
 }
 
-// --- Hilfsobjekte für die Demo ---
+// --- Helper objects for the demo ---
 sealed class NoopStore : IVectorStore
 {
     public Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
@@ -76,7 +76,7 @@ sealed class NoopStore : IVectorStore
         => Task.CompletedTask;
 }
 
-// NullShift = Identität
+// NullShift = identity
 sealed class NullShift : IShift
 {
     public string Name => "NullShift";
