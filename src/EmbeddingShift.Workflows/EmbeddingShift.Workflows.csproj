@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj" />
+    <ProjectReference Include="..\EmbeddingShift.Adaptive\EmbeddingShift.Adaptive.csproj" />
+    <ProjectReference Include="..\EmbeddingShift.Core\EmbeddingShift.Core.csproj" />
+  </ItemGroup>
+
+</Project>
