@@ -27,16 +27,37 @@ namespace EmbeddingShift.Core.Persistence
 
         public async Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
         {
-            // ensure a subfolder per space/dataset
-            var spaceName = string.IsNullOrWhiteSpace(space) ? "default" : space.Trim();
-            var spaceDir = Path.Combine(_root, "embeddings", spaceName);
+            // Keep the logical space as-is (e.g., "DemoDataset:queries") in JSON,
+            // but map it to a filesystem-safe subpath for directories.
+            var logicalSpace = string.IsNullOrWhiteSpace(space) ? "default" : space.Trim();
+            var spaceSubPath = SpaceToPath(logicalSpace); // e.g., "DemoDataset\queries"
+
+            var spaceDir = Path.Combine(_root, "embeddings", spaceSubPath);
             Directory.CreateDirectory(spaceDir);
 
-            var rec = new EmbeddingRec(id, spaceName, provider, dimensions, vector);
+            var rec = new EmbeddingRec(id, logicalSpace, provider, dimensions, vector);
             var path = Path.Combine(spaceDir, $"{id:N}.json");
             await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
         }
 
+        // --- add these helpers inside the FileStore class ---
+        private static string SpaceToPath(string space)
+        {
+            // Split on common logical separators and build nested folders.
+            var parts = space.Split(new[] { ':', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+                             .Select(SanitizePathPart);
+            return Path.Combine(parts.ToArray());
+        }
+
+        private static string SanitizePathPart(string name)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            var chars = name.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+                if (invalid.Contains(chars[i])) chars[i] = '_';
+            var sanitized = new string(chars).Trim();
+            return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized;
+        }
         public async Task<float[]> LoadEmbeddingAsync(Guid id)
         {
             // search in all space folders

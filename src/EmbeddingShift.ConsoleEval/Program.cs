@@ -63,25 +63,54 @@ switch (args[0].ToLowerInvariant())
                 refs = new() { r1, r2 };
                 Console.WriteLine("Eval mode: simulated embeddings (--sim).");
             }
+
             else
             {
                 // --- load persisted embeddings for this dataset from FileStore/data ---
                 var dataRoot = Path.Combine(AppContext.BaseDirectory, "data", "embeddings");
-                refs = Helpers.LoadVectorsBySpace(dataRoot, dataset);
-                if (refs.Count == 0)
+                queries = Helpers.LoadVectorsBySpace(dataRoot, dataset + ":queries");
+                refs = Helpers.LoadVectorsBySpace(dataRoot, dataset + ":refs");
+
+                if (queries.Count == 0 || refs.Count == 0)
                 {
-                    Console.WriteLine($"No persisted embeddings found for dataset '{dataset}'.");
+                    Console.WriteLine($"No persisted embeddings found for dataset '{dataset}' (queries={queries.Count}, refs={refs.Count}).");
                     return;
                 }
 
-                // For demo: use the same set as queries.
-                queries = refs.ToList();
-                Console.WriteLine($"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} items.");
+                Console.WriteLine($"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} queries vs {refs.Count} refs.");
             }
 
             // No real shift yet → identity via NullShift
             IShift shift = new NullShift();
             evalWf.Run(shift, queries, refs, dataset);
+            break;
+        }
+
+    case "ingest-queries":
+        {
+            // usage: ingest-queries <path> <dataset>
+            var input = args.Length >= 3
+                ? args[1]
+                : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
+
+            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
+
+            await ingestWf.RunAsync(input, dataset + ":queries");
+            Console.WriteLine("Ingest (queries) finished.");
+            break;
+        }
+
+    case "ingest-refs":
+        {
+            // usage: ingest-refs <path> <dataset>
+            var input = args.Length >= 3
+                ? args[1]
+                : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
+
+            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
+
+            await ingestWf.RunAsync(input, dataset + ":refs");
+            Console.WriteLine("Ingest (refs) finished.");
             break;
         }
 
@@ -120,6 +149,9 @@ static class Helpers
         Console.WriteLine("RakeX CLI (simple)");
         Console.WriteLine("  ingest <path> <dataset>   - ingest TXT lines (demo)");
         Console.WriteLine("  eval   <dataset> [--sim]  - evaluate with persisted or simulated embeddings (demo)");
+        Console.WriteLine("  ingest-queries <path> <dataset> - ingest TXT lines as queries");
+        Console.WriteLine("  ingest-refs    <path> <dataset> - ingest TXT lines as references");
+
     }
 
 
