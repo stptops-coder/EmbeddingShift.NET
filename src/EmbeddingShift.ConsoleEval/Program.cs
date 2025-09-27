@@ -122,35 +122,57 @@ static class Helpers
         Console.WriteLine("  eval   <dataset> [--sim]  - evaluate with persisted or simulated embeddings (demo)");
     }
 
-    public static List<ReadOnlyMemory<float>> LoadVectorsBySpace(string embeddingsDir, string space)
+
+    // in static class Helpers
+    public static List<ReadOnlyMemory<float>> LoadVectorsBySpace(string embeddingsDir_UNUSED, string space)
     {
-        var result = new List<ReadOnlyMemory<float>>();
-        if (!Directory.Exists(embeddingsDir)) return result;
-
-        foreach (var file in Directory.EnumerateFiles(embeddingsDir, "*.json", SearchOption.AllDirectories))
+        // Try multiple plausible roots (bin folder, repo root, cwd)
+        var candidates = new[]
         {
-            try
-            {
-                var json = File.ReadAllText(file);
-                var rec = System.Text.Json.JsonSerializer.Deserialize<EmbeddingRec>(json);
-                if (rec is null || rec.vector is null) continue;
+        Path.Combine(AppContext.BaseDirectory, "data", "embeddings"),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data", "embeddings")),
+        Path.Combine(Directory.GetCurrentDirectory(), "data", "embeddings")
+        };
 
-                // Accept exact or "contains" match for safety
-                if (string.Equals(rec.space, space, StringComparison.OrdinalIgnoreCase) ||
-                    (rec.space?.IndexOf(space, StringComparison.OrdinalIgnoreCase) >= 0))
+        var result = new List<ReadOnlyMemory<float>>();
+        foreach (var root in candidates)
+        {
+            if (!Directory.Exists(root)) continue;
+
+            foreach (var file in Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories))
+            {
+                try
                 {
-                    result.Add(rec.vector);
+                    var json = File.ReadAllText(file);
+                    var rec = System.Text.Json.JsonSerializer.Deserialize<EmbeddingRec>(json);
+                    if (rec?.vector is null || rec.vector.Length == 0) continue;
+
+                    // Accept exact or substring match of the space (dataset)
+                    if (!string.IsNullOrWhiteSpace(rec.space) &&
+                        (string.Equals(rec.space, space, StringComparison.OrdinalIgnoreCase) ||
+                         rec.space.IndexOf(space, StringComparison.OrdinalIgnoreCase) >= 0))
+                    {
+                        result.Add(rec.vector);
+                    }
+                }
+                catch
+                {
+                    // ignore unreadable files
                 }
             }
-            catch
+
+            if (result.Count > 0)
             {
-                // ignore unreadable files
+                Console.WriteLine($"Found {result.Count} persisted embeddings for '{space}' under: {root}");
+                break; // stop at first root that yields results
             }
         }
+
+        if (result.Count == 0)
+            Console.WriteLine($"No persisted embeddings under any known root for '{space}'. Checked: {string.Join(" | ", candidates)}");
+
         return result;
     }
-
-
     // Mirror of FileStore's record shape
     public sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
 }
