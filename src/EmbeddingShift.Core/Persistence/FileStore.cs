@@ -1,67 +1,90 @@
 ﻿using System.Text.Json;
 using EmbeddingShift.Abstractions;
 
-namespace EmbeddingShift.Core.Persistence;
-
-public sealed class FileStore : IVectorStore
+namespace EmbeddingShift.Core.Persistence
 {
-    private readonly string _root;
-    private static readonly JsonSerializerOptions J = new(JsonSerializerDefaults.Web) { WriteIndented = false };
-
-    public FileStore(string root)
+    /// <summary>
+    /// Simple JSONL/JSON file-based vector store.
+    /// - Embeddings are saved under: data/embeddings/{space}/{id}.json
+    /// - Shifts under:               data/shifts/{id}.json
+    /// - Runs under:                 data/runs/{runId}.json
+    /// </summary>
+    public sealed class FileStore : IVectorStore
     {
-        _root = root;
-        Directory.CreateDirectory(Path.Combine(_root, "embeddings"));
-        Directory.CreateDirectory(Path.Combine(_root, "shifts"));
-        Directory.CreateDirectory(Path.Combine(_root, "runs"));
-    }
+        private readonly string _root;
+        private static readonly JsonSerializerOptions J = new(JsonSerializerDefaults.Web)
+        {
+            WriteIndented = false
+        };
 
-    public async Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
-    {
-        var rec = new { id, space, provider, dimensions, vector };
-        var path = Path.Combine(_root, "embeddings", $"{id:N}.json");
-        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
-    }
+        public FileStore(string root)
+        {
+            _root = root;
+            Directory.CreateDirectory(Path.Combine(_root, "embeddings"));
+            Directory.CreateDirectory(Path.Combine(_root, "shifts"));
+            Directory.CreateDirectory(Path.Combine(_root, "runs"));
+        }
 
-    public async Task<float[]> LoadEmbeddingAsync(Guid id)
-    {
-        var path = Path.Combine(_root, "embeddings", $"{id:N}.json");
-        if (!File.Exists(path)) return Array.Empty<float>();
-        var json = await File.ReadAllTextAsync(path);
-        var rec = JsonSerializer.Deserialize<EmbeddingRec>(json, J);
-        return rec?.vector ?? Array.Empty<float>();
-    }
+        public async Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
+        {
+            // ensure a subfolder per space/dataset
+            var spaceName = string.IsNullOrWhiteSpace(space) ? "default" : space.Trim();
+            var spaceDir = Path.Combine(_root, "embeddings", spaceName);
+            Directory.CreateDirectory(spaceDir);
 
-    public async Task SaveShiftAsync(Guid id, string type, string parametersJson)
-    {
-        var rec = new { id, type, parameters = parametersJson, savedAt = DateTime.UtcNow };
-        var path = Path.Combine(_root, "shifts", $"{id:N}.json");
-        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
-    }
+            var rec = new EmbeddingRec(id, spaceName, provider, dimensions, vector);
+            var path = Path.Combine(spaceDir, $"{id:N}.json");
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
+        }
 
-    public Task<IEnumerable<(Guid id, string type, string parametersJson)>> LoadShiftsAsync()
-    {
-        var dir = Path.Combine(_root, "shifts");
-        if (!Directory.Exists(dir))
-            return Task.FromResult<IEnumerable<(Guid, string, string)>>(Array.Empty<(Guid, string, string)>());
+        public async Task<float[]> LoadEmbeddingAsync(Guid id)
+        {
+            // search in all space folders
+            var rootDir = Path.Combine(_root, "embeddings");
+            if (!Directory.Exists(rootDir)) return Array.Empty<float>();
 
-        var items = Directory.EnumerateFiles(dir, "*.json")
-            .Select(f =>
+            foreach (var file in Directory.EnumerateFiles(rootDir, $"{id:N}.json", SearchOption.AllDirectories))
             {
-                var o = JsonSerializer.Deserialize<ShiftRec>(File.ReadAllText(f), J);
-                return (o!.id, o.type, o.parameters);
-            });
+                var json = await File.ReadAllTextAsync(file);
+                var rec = JsonSerializer.Deserialize<EmbeddingRec>(json, J);
+                if (rec?.vector is { Length: > 0 })
+                    return rec.vector;
+            }
+            return Array.Empty<float>();
+        }
 
-        return Task.FromResult(items);
+        public async Task SaveShiftAsync(Guid id, string type, string parametersJson)
+        {
+            var rec = new ShiftRec(id, type, parametersJson, DateTime.UtcNow);
+            var path = Path.Combine(_root, "shifts", $"{id:N}.json");
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
+        }
+
+        public Task<IEnumerable<(Guid id, string type, string parametersJson)>> LoadShiftsAsync()
+        {
+            var dir = Path.Combine(_root, "shifts");
+            if (!Directory.Exists(dir))
+                return Task.FromResult<IEnumerable<(Guid, string, string)>>(Array.Empty<(Guid, string, string)>());
+
+            var items = Directory.EnumerateFiles(dir, "*.json")
+                .Select(f =>
+                {
+                    var o = JsonSerializer.Deserialize<ShiftRec>(File.ReadAllText(f), J);
+                    return (o!.id, o.type, o.parameters);
+                });
+
+            return Task.FromResult(items);
+        }
+
+        public async Task SaveRunAsync(Guid runId, string kind, string dataset, DateTime startedAt, DateTime completedAt, string resultsPath)
+        {
+            var rec = new RunRec(runId, kind, dataset, startedAt, completedAt, resultsPath);
+            var path = Path.Combine(_root, "runs", $"{runId:N}.json");
+            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
+        }
+
+        private sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
+        private sealed record ShiftRec(Guid id, string type, string parameters, DateTime savedAt);
+        private sealed record RunRec(Guid runId, string kind, string dataset, DateTime startedAt, DateTime completedAt, string resultsPath);
     }
-
-    public async Task SaveRunAsync(Guid runId, string kind, string dataset, DateTime startedAt, DateTime completedAt, string resultsPath)
-    {
-        var rec = new { runId, kind, dataset, startedAt, completedAt, resultsPath };
-        var path = Path.Combine(_root, "runs", $"{runId:N}.json");
-        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
-    }
-
-    private sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
-    private sealed record ShiftRec(Guid id, string type, string parameters);
 }
