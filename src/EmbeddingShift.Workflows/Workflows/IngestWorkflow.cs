@@ -3,7 +3,10 @@ using EmbeddingShift.Abstractions;
 namespace EmbeddingShift.Workflows
 {
     /// <summary>
-    /// Ingest workflow: parse, chunk, embed, and store.
+    /// Orchestrates a simple ingest flow:
+    /// - Parse lines (file or folder) via IIngestor
+    /// - Embed each line via IEmbeddingProvider
+    /// - Persist each embedding via IVectorStore using the given dataset as 'space'
     /// </summary>
     public sealed class IngestWorkflow
     {
@@ -18,13 +21,28 @@ namespace EmbeddingShift.Workflows
             _store = store;
         }
 
+        /// <summary>
+        /// Runs ingest. Each parsed line becomes one embedding saved under the given dataset 'space'.
+        /// </summary>
         public async Task RunAsync(string filePath, string dataset)
         {
-            var chunks = _ingestor.Parse(filePath);
-            foreach (var chunk in chunks)
+            if (string.IsNullOrWhiteSpace(dataset))
+                dataset = "default";
+
+            foreach (var (text, order) in _ingestor.Parse(filePath))
             {
-                var embedding = await _provider.GetEmbeddingAsync(chunk.Text);
-                await _store.SaveEmbeddingAsync(Guid.NewGuid(), embedding, "base", _provider.Name, embedding.Length);
+                // Create embedding
+                var vec = await _provider.GetEmbeddingAsync(text);
+
+                // Persist embedding under the dataset as 'space'
+                var id = Guid.NewGuid();
+                await _store.SaveEmbeddingAsync(
+                    id: id,
+                    vector: vec.ToArray(),
+                    space: dataset,               // <<< IMPORTANT: use dataset here
+                    provider: _provider.Name,
+                    dimensions: vec.Length
+                );
             }
         }
     }
