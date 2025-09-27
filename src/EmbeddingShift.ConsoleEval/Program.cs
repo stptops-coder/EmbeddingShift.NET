@@ -127,14 +127,20 @@ static class Helpers
         var result = new List<ReadOnlyMemory<float>>();
         if (!Directory.Exists(embeddingsDir)) return result;
 
-        foreach (var file in Directory.EnumerateFiles(embeddingsDir, "*.json", SearchOption.TopDirectoryOnly))
+        foreach (var file in Directory.EnumerateFiles(embeddingsDir, "*.json", SearchOption.AllDirectories))
         {
             try
             {
                 var json = File.ReadAllText(file);
                 var rec = System.Text.Json.JsonSerializer.Deserialize<EmbeddingRec>(json);
-                if (rec is not null && string.Equals(rec.space, space, StringComparison.OrdinalIgnoreCase))
+                if (rec is null || rec.vector is null) continue;
+
+                // Accept exact or "contains" match for safety
+                if (string.Equals(rec.space, space, StringComparison.OrdinalIgnoreCase) ||
+                    (rec.space?.IndexOf(space, StringComparison.OrdinalIgnoreCase) >= 0))
+                {
                     result.Add(rec.vector);
+                }
             }
             catch
             {
@@ -143,6 +149,7 @@ static class Helpers
         }
         return result;
     }
+
 
     // Mirror of FileStore's record shape
     public sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
