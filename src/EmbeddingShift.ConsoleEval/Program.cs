@@ -2,7 +2,6 @@
 using EmbeddingShift.ConsoleEval;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Workflows;
-using System.Data;
 
 // Composition Root (kept simple)
 IRunLogger logger = new ConsoleRunLogger();
@@ -12,9 +11,9 @@ var runner = EvaluationRunner.WithDefaults(logger);
 IIngestor ingestor = new MinimalTxtIngestor();
 IEmbeddingProvider provider = new SimEmbeddingProvider();
 
-// Dummy vector store for demo (does not persist – only wiring test)
-// IVectorStore store = new NoopStore();
-IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(Path.Combine(AppContext.BaseDirectory, "data"));
+// File-based vector store for persistence
+IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(
+    Path.Combine(AppContext.BaseDirectory, "data"));
 
 var ingestWf = new IngestWorkflow(ingestor, provider, store);
 var evalWf = new EvaluationWorkflow(runner);
@@ -22,53 +21,76 @@ var evalWf = new EvaluationWorkflow(runner);
 // --- CLI ---
 if (args.Length == 0)
 {
-    PrintHelp();
+    Helpers.PrintHelp();
     return;
 }
 
 switch (args[0].ToLowerInvariant())
 {
     case "ingest":
-        // usage: ingest <path> <dataset>
-        var input = args.Length >= 3
-            ? args[1]
-            : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
+        {
+            // usage: ingest <path> <dataset>
+            var input = args.Length >= 3
+                ? args[1]
+                : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
 
-        var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
+            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
-        await ingestWf.RunAsync(input, dataset);
-        Console.WriteLine("Ingest finished.");
-        break;
+            await ingestWf.RunAsync(input, dataset);
+            Console.WriteLine("Ingest finished.");
+            break;
+        }
 
     case "eval":
-        // usage: eval <dataset>
-        // For demo we build queries/references artificially
-        var q1 = await provider.GetEmbeddingAsync("query one");
-        var q2 = await provider.GetEmbeddingAsync("query two");
-        var r1 = await provider.GetEmbeddingAsync("answer one");
-        var r2 = await provider.GetEmbeddingAsync("answer two");
-        var queries = new List<ReadOnlyMemory<float>> { q1, q2 };
-        var refs = new List<ReadOnlyMemory<float>> { r1, r2 };
+        {
+            // usage:
+            //   eval <dataset>            -> load persisted embeddings from FileStore
+            //   eval <dataset> --sim      -> use simulated embeddings (old behavior)
+            var dataset = args.Length >= 2 ? args[1] : "DemoDataset";
+            var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
 
-        // No real shift → identity via NullShift
-        IShift shift = new NullShift();
+            List<ReadOnlyMemory<float>> queries;
+            List<ReadOnlyMemory<float>> refs;
 
-        evalWf.Run(shift, queries, refs, args.Length >= 2 ? args[1] : "DemoDataset");
-        break;
+            if (useSim)
+            {
+                // --- simulated embeddings (kept for quick smoke tests) ---
+                var q1 = await provider.GetEmbeddingAsync("query one");
+                var q2 = await provider.GetEmbeddingAsync("query two");
+                var r1 = await provider.GetEmbeddingAsync("answer one");
+                var r2 = await provider.GetEmbeddingAsync("answer two");
+                queries = new() { q1, q2 };
+                refs = new() { r1, r2 };
+                Console.WriteLine("Eval mode: simulated embeddings (--sim).");
+            }
+            else
+            {
+                // --- load persisted embeddings for this dataset from FileStore/data ---
+                var dataRoot = Path.Combine(AppContext.BaseDirectory, "data", "embeddings");
+                refs = Helpers.LoadVectorsBySpace(dataRoot, dataset);
+                if (refs.Count == 0)
+                {
+                    Console.WriteLine($"No persisted embeddings found for dataset '{dataset}'.");
+                    return;
+                }
+
+                // For demo: use the same set as queries.
+                queries = refs.ToList();
+                Console.WriteLine($"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} items.");
+            }
+
+            // No real shift yet → identity via NullShift
+            IShift shift = new NullShift();
+            evalWf.Run(shift, queries, refs, dataset);
+            break;
+        }
 
     default:
-        PrintHelp();
+        Helpers.PrintHelp();
         break;
 }
 
-static void PrintHelp()
-{
-    Console.WriteLine("RakeX CLI (simple)");
-    Console.WriteLine("  ingest <path> <dataset>   - ingest TXT lines (demo)");
-    Console.WriteLine("  eval   <dataset>          - evaluate with simulated embeddings (demo)");
-}
-
-// --- Helper objects for the demo ---
+// --- Helper objects ---
 sealed class NoopStore : IVectorStore
 {
     public Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
@@ -87,6 +109,41 @@ sealed class NoopStore : IVectorStore
 sealed class NullShift : IShift
 {
     public string Name => "NullShift";
-
     public ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input) => input.ToArray();
+}
+
+// --- Static helpers in class to avoid CS8803 ---
+static class Helpers
+{
+    public static void PrintHelp()
+    {
+        Console.WriteLine("RakeX CLI (simple)");
+        Console.WriteLine("  ingest <path> <dataset>   - ingest TXT lines (demo)");
+        Console.WriteLine("  eval   <dataset> [--sim]  - evaluate with persisted or simulated embeddings (demo)");
+    }
+
+    public static List<ReadOnlyMemory<float>> LoadVectorsBySpace(string embeddingsDir, string space)
+    {
+        var result = new List<ReadOnlyMemory<float>>();
+        if (!Directory.Exists(embeddingsDir)) return result;
+
+        foreach (var file in Directory.EnumerateFiles(embeddingsDir, "*.json", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                var json = File.ReadAllText(file);
+                var rec = System.Text.Json.JsonSerializer.Deserialize<EmbeddingRec>(json);
+                if (rec is not null && string.Equals(rec.space, space, StringComparison.OrdinalIgnoreCase))
+                    result.Add(rec.vector);
+            }
+            catch
+            {
+                // ignore unreadable files
+            }
+        }
+        return result;
+    }
+
+    // Mirror of FileStore's record shape
+    public sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
 }

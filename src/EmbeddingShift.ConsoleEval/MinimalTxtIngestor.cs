@@ -1,12 +1,16 @@
-﻿using EmbeddingShift.Abstractions;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
+using EmbeddingShift.Abstractions;
 
 namespace EmbeddingShift.ConsoleEval
 {
+    /// <summary>
+    /// Very simple ingestor for demo purposes.
+    /// Reads either a single TXT file or all *.txt files in a folder (recursively).
+    /// Returns each line together with an increasing order index.
+    /// </summary>
     public sealed class MinimalTxtIngestor : IIngestor
     {
-        // Interface: IEnumerable<(string Text, int Order)> Parse(string path);
         public IEnumerable<(string Text, int Order)> Parse(string path)
         {
             int order = 0;
