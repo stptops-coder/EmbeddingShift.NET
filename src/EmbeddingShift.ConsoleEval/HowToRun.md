@@ -1,6 +1,6 @@
-# RakeX – ConsoleEval How-To (Ingest → Persist → Evaluate)
+# RakeX – ConsoleEval How-To (Ingest → Persist → Eval)
 
-This quick guide shows how to run the **ingest → persist → evaluate** loop from the **solution root**.
+This quick guide shows how to run the **ingest → persist → eval** loop from the **solution root**.
 
 > Paths assume repo root: `C:\pg\RakeX`  
 > Project: `src/EmbeddingShift.ConsoleEval`
@@ -25,7 +25,7 @@ $env:EMBEDDING_BACKEND = "sim"
 
 ---
 
-## Build
+## Build (once)
 
 ```powershell
 cd C:\pg\RakeX
@@ -43,6 +43,8 @@ Parses text lines from `samples/demo` and persists them as embeddings under `<da
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-queries samples/demo DemoDataset
 ```
+Expected console message:  
+`Ingest (queries) finished.`
 
 ### 2) Ingest References
 Parses text lines from the same folder and persists them as `<dataset>:refs`.
@@ -50,34 +52,48 @@ Parses text lines from the same folder and persists them as `<dataset>:refs`.
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-refs samples/demo DemoDataset
 ```
+Expected console message:  
+`Ingest (refs) finished.`
 
 > You can also pass a **single file** instead of a folder (one entry per line).
 
 ---
 
-## Evaluate
+## 3) Eval (persisted embeddings)
 
-### A) Full dataset evaluation (console summary)
-Evaluates stored `queries` against `refs` for the chosen dataset.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- evaluate DemoDataset
-```
-
-### B) Ad-hoc single query (without saving)
-Run an inline query text against stored refs:
+Evaluates stored `queries` against `refs` for the chosen dataset and writes a result bundle under `./results/<timestamp>_<run-id>`.
 
 ```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- evaluate DemoDataset --query "Example question about refunds"
+dotnet run --project src/EmbeddingShift.ConsoleEval -- eval DemoDataset
 ```
 
-### C) Evaluate a file of queries (one per line)
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- evaluate-file DemoDataset samples/demo/demo.txt
+Typical console output (example):
+```
+Found 3 persisted embeddings for 'DemoDataset:queries' under: C:\pg\RakeX\src\EmbeddingShift.ConsoleEvalin\Debug
+et8.0\data\embeddings
+Found 3 persisted embeddings for 'DemoDataset:refs' under: C:\pg\RakeX\src\EmbeddingShift.ConsoleEvalin\Debug
+et8.0\data\embeddings
+Eval mode: persisted embeddings (dataset 'DemoDataset'): 3 queries vs 3 refs.
+[RUN START] <run-guid> | evaluation | DemoDataset
+[RUN <run-guid>] CosineSimilarityEvaluator = 0.3068
+[RUN <run-guid>] MarginEvaluator = 0.8882
+[RUN <run-guid>] NdcgEvaluator = 0.6667
+[RUN <run-guid>] MrrEvaluator = 0.5556
+[RUN END] <run-guid> | Results at ./results/2025xxxx_xxxxxx-xxxxxxxx
 ```
 
-> The console prints top matches and similarity scores.  
-> Depending on configuration, results may also be exported to a file.
+You can open the folder printed after `Results at ...` to inspect exported artifacts (e.g., JSON or CSV, depending on configuration).
+
+---
+
+## Data Locations
+
+- **Embeddings (persisted):**  
+  `src/EmbeddingShift.ConsoleEval/bin/<Config>/net8.0/data/embeddings`
+- **Results (eval runs):**  
+  `src/EmbeddingShift.ConsoleEval/bin/<Config>/net8.0/results` (also echoed as `./results/...`)
+
+> `<Config>` is usually `Debug` unless you build with `-c Release`.
 
 ---
 
@@ -90,13 +106,6 @@ Change the env var and re-run; no code changes required.
 
 ---
 
-## Data Location
-
-By default, embeddings and artifacts are persisted under the console app’s data path (e.g., `./data/<dataset>/...`).  
-If you customized storage (SQLite/JSONL/etc.), the console uses that configuration.
-
----
-
 ## Clean Up
 
 To reset a demo run, remove the dataset folder under the data path (or use a `delete-dataset` command if present).
@@ -105,6 +114,6 @@ To reset a demo run, remove the dataset folder under the data path (or use a `de
 
 ## Troubleshooting
 
-- **Nothing printed?** Try a verbose flag (if supported) and ensure dataset names match exactly.  
+- **Nothing printed?** Ensure dataset names match exactly and that you ran both ingest steps first.  
 - **Backend errors:** Check `EMBEDDING_BACKEND` and, for OpenAI, `OPENAI_API_KEY`.  
 - **File not found:** Provide a folder *or* a file path; for folders, all `*.txt` are read (one entry per line).
