@@ -2,6 +2,7 @@
 using EmbeddingShift.ConsoleEval;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Workflows;
+using System.Data;
 
 // Composition Root (kept simple)
 IRunLogger logger = new ConsoleRunLogger();
@@ -12,7 +13,8 @@ IIngestor ingestor = new MinimalTxtIngestor();
 IEmbeddingProvider provider = new SimEmbeddingProvider();
 
 // Dummy vector store for demo (does not persist – only wiring test)
-IVectorStore store = new NoopStore();
+// IVectorStore store = new NoopStore();
+IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(Path.Combine(AppContext.BaseDirectory, "data"));
 
 var ingestWf = new IngestWorkflow(ingestor, provider, store);
 var evalWf = new EvaluationWorkflow(runner);
@@ -28,8 +30,13 @@ switch (args[0].ToLowerInvariant())
 {
     case "ingest":
         // usage: ingest <path> <dataset>
-        if (args.Length < 3) { PrintHelp(); return; }
-        await ingestWf.RunAsync(args[1], args[2]);
+        var input = args.Length >= 3
+            ? args[1]
+            : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
+
+        var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
+
+        await ingestWf.RunAsync(input, dataset);
         Console.WriteLine("Ingest finished.");
         break;
 
