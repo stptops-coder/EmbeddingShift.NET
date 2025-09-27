@@ -1,0 +1,3 @@
+﻿The quick brown fox jumps over the lazy dog.
+Embeddings are vector representations of text.
+Shifts adapt vectors without full retraining.

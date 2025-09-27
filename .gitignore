@@ -33,3 +33,9 @@ packages/
 
 # Secrets (nur Platzhalter; echte Secrets nie ins Repo)
 *.secret.json
+# runtime / generated
+/data/
+/results/
+/**/bin/
+/**/obj/
+!/samples/
