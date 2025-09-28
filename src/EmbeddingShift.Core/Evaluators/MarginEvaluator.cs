@@ -11,7 +11,7 @@ namespace EmbeddingShift.Core.Evaluators
             ReadOnlySpan<float> query,
             IReadOnlyList<ReadOnlyMemory<float>> refs)
         {
-            var shifted = shift.Apply(query);
+            var shifted = shift.Apply(query).Span;
 
             float best = float.NegativeInfinity;
             float second = float.NegativeInfinity;
@@ -35,3 +35,4 @@ namespace EmbeddingShift.Core.Evaluators
         }
     }
 }
+
