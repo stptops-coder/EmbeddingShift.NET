@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-//using System.ReadOnlyMemoryExtensions; // harmless if missing
+//// harmless if missing
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Utils;
 using VectorOps = EmbeddingShift.Core.Utils.VectorOps;
@@ -29,3 +29,4 @@ namespace EmbeddingShift.Core.Evaluators
         protected static float Cos(ReadOnlySpan<float> a, ReadOnlySpan<float> b) => VectorOps.Cosine(a, b);
     }
 }
+
