@@ -1,44 +1,37 @@
-﻿using EmbeddingShift.Abstractions;
-using EmbeddingShift.Core;
+﻿using System;
+using System.Collections.Generic;
+using EmbeddingShift.Abstractions;
 
 namespace EmbeddingShift.Core.Evaluators
 {
-    /// <summary>
-    /// PURPOSE:
-    ///   Measures ranking stability by computing the margin (Top-1 - Top-2)
-    ///   cosine scores after applying the shift.
-    ///
-    /// WHEN TO USE:
-    ///   - You care about a confident Top-1 result (clear winner vs. runner-up).
-    ///   - As a tie-breaker alongside mean cosine or nDCG/MRR.
-    ///
-    /// SCORE:
-    ///   - Double, can be negative/positive. Larger positive values mean
-    ///     stronger separation between the best and the second-best candidate.
-    /// </summary>
-
-    public sealed class MarginEvaluator : IShiftEvaluator
+    public sealed class MarginEvaluator : BaseEvaluator
     {
-        public EvaluationResult Evaluate(
+        protected override EvaluationResult EvaluateCore(
             IShift shift,
             ReadOnlySpan<float> query,
-            IReadOnlyList<ReadOnlyMemory<float>> referenceEmbeddings)
+            IReadOnlyList<ReadOnlyMemory<float>> refs)
         {
-            if (referenceEmbeddings is null || referenceEmbeddings.Count < 2)
-                return new EvaluationResult(nameof(MarginEvaluator), double.NegativeInfinity, "Need >= 2 references");
-
-            Span<float> q = stackalloc float[query.Length];
-            query.CopyTo(q);
             var shifted = shift.Apply(query);
-            var shiftedSpan = shifted.Span;
 
-            var scores = new List<double>(referenceEmbeddings.Count);
-            foreach (var r in referenceEmbeddings)
-                scores.Add(EmbeddingHelper.CosineSimilarity(shiftedSpan, r.Span));
+            float best = float.NegativeInfinity;
+            float second = float.NegativeInfinity;
 
-            scores.Sort((a, b) => b.CompareTo(a)); // desc
-            var margin = scores[0] - scores[1];
-            return new EvaluationResult(nameof(MarginEvaluator), margin, $"top1={scores[0]:F4}; top2={scores[1]:F4}");
+            for (int i = 0; i < refs.Count; i++)
+            {
+                var score = Cos(shifted, refs[i].Span);
+                if (score > best)
+                {
+                    second = best;
+                    best = score;
+                }
+                else if (score > second)
+                {
+                    second = score;
+                }
+            }
+
+            var margin = (second == float.NegativeInfinity) ? 0f : (best - second);
+            return new EvaluationResult(ShiftName(shift), margin, "Top1-Top2 margin");
         }
     }
 }
