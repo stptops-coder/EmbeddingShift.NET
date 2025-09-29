@@ -1,5 +1,5 @@
 ﻿using EmbeddingShift.Abstractions;
-using EmbeddingShift.Core;
+using CoreVec = EmbeddingShift.Core.Utils.VectorOps;
 
 namespace EmbeddingShift.Core.Evaluators
 {
