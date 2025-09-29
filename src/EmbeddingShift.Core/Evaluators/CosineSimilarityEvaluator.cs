@@ -38,7 +38,7 @@ namespace EmbeddingShift.Core.Evaluators
                 if (refSpan.Length != shiftedSpan.Length)
                     throw new ArgumentException("Dimension mismatch between shifted query and a reference embedding.");
 
-                var cos = VectorOps.Cosine(shiftedSpan, refSpan);
+                var cos = CoreVec.Cosine(shiftedSpan, refSpan);
                 sum += cos;
                 if (cos > max) max = cos;
             }
@@ -51,5 +51,6 @@ namespace EmbeddingShift.Core.Evaluators
         private static string ShiftName(IShift shift) => shift.GetType().Name;
     }
 }
+
 
 
