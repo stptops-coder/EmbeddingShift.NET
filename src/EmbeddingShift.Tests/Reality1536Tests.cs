@@ -1,9 +1,10 @@
 ﻿using System;
 using EmbeddingShift.Abstractions;   // EmbeddingHelper
-using EmbeddingShift.Core;
+using EmbeddingShift.Core.Utils;
 using EmbeddingShift.Core.Shifts;    // MultiplicativeShift
 using FluentAssertions;
 using Xunit;
+using VectorOps = EmbeddingShift.Core.Utils.VectorOps;
 
 namespace EmbeddingShift.Tests
 {
@@ -29,7 +30,7 @@ namespace EmbeddingShift.Tests
 
             var qN = Normalize(query);
             var tN = Normalize(target);
-            var baseToTarget = EmbeddingHelper.CosineSimilarity(qN, tN);
+            var baseToTarget = VectorOps.Cosine(qN, tN);
 
             var shift = new MultiplicativeShift(scale);
 
@@ -39,7 +40,7 @@ namespace EmbeddingShift.Tests
             // Zugriff als Span
             var qShiftedN = Normalize(qShifted.Span);
 
-            var postToTarget = EmbeddingHelper.CosineSimilarity(qShiftedN, tN);
+            var postToTarget = VectorOps.Cosine(qShiftedN, tN);
 
             postToTarget.Should().BeGreaterThan(0.03f);
             (postToTarget - baseToTarget).Should().BeGreaterThan(0.03f);
@@ -58,3 +59,4 @@ namespace EmbeddingShift.Tests
         }
     }
 }
+

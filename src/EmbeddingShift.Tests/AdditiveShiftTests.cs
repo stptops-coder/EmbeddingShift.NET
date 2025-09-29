@@ -25,3 +25,4 @@ public class AdditiveShiftTests
         Assert.Equal(EmbeddingDimensions.DIM, y.Length);
     }
 }
+

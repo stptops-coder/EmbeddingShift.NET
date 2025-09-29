@@ -1,8 +1,9 @@
 ﻿using System;
 using EmbeddingShift.Abstractions;   // EmbeddingHelper
-using EmbeddingShift.Core;
+using EmbeddingShift.Core.Utils;
 using FluentAssertions;
 using Xunit;
+using VectorOps = EmbeddingShift.Core.Utils.VectorOps;
 
 namespace EmbeddingShift.Tests
 {
@@ -19,7 +20,7 @@ namespace EmbeddingShift.Tests
             var target = Normalize(RandVec(D, rnd));
 
             // Baseline cosine
-            var baseToTarget = EmbeddingHelper.CosineSimilarity(query, target);
+            var baseToTarget = VectorOps.Cosine(query, target);
 
             // Additive blend towards target: q' = Normalize((1-β)·q + β·target)
             const float beta = 0.50f; // 50% pull towards target
@@ -28,7 +29,7 @@ namespace EmbeddingShift.Tests
                 blended[i] = (1 - beta) * query[i] + beta * target[i];
             var qPrime = Normalize(blended);
 
-            var postToTarget = EmbeddingHelper.CosineSimilarity(qPrime, target);
+            var postToTarget = VectorOps.Cosine(qPrime, target);
 
             // Expect a clear improvement
             (postToTarget - baseToTarget).Should().BeGreaterThan(0.40f,
@@ -58,3 +59,4 @@ namespace EmbeddingShift.Tests
         }
     }
 }
+

@@ -1,4 +1,5 @@
-﻿namespace EmbeddingShift.Tests;
+﻿using EmbeddingShift.Core.Utils;
+namespace EmbeddingShift.Tests;
 
 public class UnitTest1
 {
@@ -8,3 +9,4 @@ public class UnitTest1
 
     }
 }
+
