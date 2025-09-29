@@ -48,8 +48,5 @@ public static class Vec
         }
         return sum;
     }
-
-    [Obsolete("Use VectorOps.L2Norm instead")]
-    public static float Norm2(ReadOnlySpan<float> a) => VectorOps.L2Norm(a);
 }
 
