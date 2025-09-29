@@ -6,8 +6,8 @@ namespace EmbeddingShift.Abstractions
     /// Centralized vector operations for embeddings.
     /// Ensures consistent normalization across all components.
     /// </summary>
-    public static class VectorOps
-    {
+[Obsolete("Use EmbeddingShift.Core.Utils.VectorOps.* instead. This helper will be removed once callers migrate.")]
+public static class VectorOps{
         /// <summary>
         /// Computes the L2 norm (Euclidean length) of vector v.
         /// </summary>
@@ -75,3 +75,4 @@ namespace EmbeddingShift.Abstractions
         }
     }
 }
+

@@ -1,9 +1,9 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace EmbeddingShift.Abstractions;
-
-public static class EmbeddingHelper
-{
+[Obsolete("Prefer EmbeddingShift.Core.Utils.VectorOps; this helper is slated for removal.")]
+public static class EmbeddingHelper{
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static float Dot(ReadOnlySpan<float> a, ReadOnlySpan<float> b)
     {
@@ -79,3 +79,4 @@ public static class EmbeddingHelper
         return res;
     }
 }
+

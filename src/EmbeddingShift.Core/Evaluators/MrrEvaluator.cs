@@ -36,7 +36,7 @@ namespace EmbeddingShift.Core.Evaluators
 
             var scores = new List<(int idx, double s)>(referenceEmbeddings.Count);
             for (int i = 0; i < referenceEmbeddings.Count; i++)
-                scores.Add((i, EmbeddingHelper.CosineSimilarity(shiftedSpan, referenceEmbeddings[i].Span)));
+                scores.Add((i, VectorOps.Cosine(shiftedSpan, referenceEmbeddings[i].Span)));
 
             scores.Sort((a, b) => b.s.CompareTo(a.s)); // desc
             int rank = scores.FindIndex(t => t.idx == _relevantIndex);
@@ -45,3 +45,5 @@ namespace EmbeddingShift.Core.Evaluators
         }
     }
 }
+
+
