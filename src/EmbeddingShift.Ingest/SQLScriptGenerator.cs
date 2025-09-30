@@ -9,8 +9,8 @@ namespace EmbeddingShift.Ingest
     public static class SQLScriptGenerator
     {
         /// <summary>
-        /// Schreibt ein einfaches INSERT-Statement in die Datei (Append).
-        /// Strings werden korrekt gequotet (''-Escaping), Zahlen kulturinvariant.
+        /// Writes a simple INSERT statement into the file (append).
+        /// Strings are quoted correctly ('' escaping), numbers are culture-invariant.
         /// </summary>
         public static void WriteInsert(string path, string table, IDictionary<string, object> values)
         {
