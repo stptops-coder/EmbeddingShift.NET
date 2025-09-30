@@ -9,8 +9,8 @@ public sealed record EvaluationResult(
 public interface IShiftEvaluator
 {
     /// <summary>
-    /// Bewertet einen Shift relativ zu Referenzen (Ground-Truth oder „gute Treffer“).
-    /// Rückgabewert: je höher, desto besser (z.B. Cosine-Mittelwert, NDCG, etc.).
+    /// Evaluates a shift relative to references (ground truth or "good matches").
+    /// Return value: the higher, the better (e.g., cosine mean, NDCG, etc.).
     /// </summary>
     EvaluationResult Evaluate(
         IShift shift,

@@ -5,7 +5,7 @@ namespace EmbeddingShift.Core.Shifts;
 ///\ <summary>Adds a bias vector to the embedding.</summary>
 public sealed class AdditiveShift : IShift
 {
-    private readonly float[] _bias; // Länge = DIM
+    private readonly float[] _bias; // Length = DIM
     public string Name => "AdditiveShift";
 
 

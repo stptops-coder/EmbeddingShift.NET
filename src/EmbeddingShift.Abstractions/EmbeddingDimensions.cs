@@ -2,6 +2,6 @@ namespace EmbeddingShift.Abstractions;
 
 public static class EmbeddingDimensions
 {
-    // OpenAI-typische Embedding-Länge
+    // Typical OpenAI embedding length
     public const int DIM = 1536;
 }
