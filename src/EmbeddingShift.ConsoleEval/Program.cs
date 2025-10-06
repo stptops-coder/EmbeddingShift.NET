@@ -1,11 +1,19 @@
-﻿using EmbeddingShift.Abstractions;
+﻿using System.Linq;
+using EmbeddingShift.Abstractions;           // ShiftMethod
+using EmbeddingShift.Workflows;              // AdaptiveWorkflow
+using EmbeddingShift.Adaptive;               // ShiftEvaluationService
+using EmbeddingShift.Core.Generators;        // DeltaShiftGenerator (example)
+using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
 using EmbeddingShift.ConsoleEval;
-using EmbeddingShift.Core.Evaluators;
-using EmbeddingShift.Workflows;
 
 // Composition Root (kept simple)
 IRunLogger logger = new ConsoleRunLogger();
 var runner = EvaluationRunner.WithDefaults(logger);
+
+// Mode switch: default = Shifted; use --NoShiftIngestBased to force identity mode.
+var method = args.Any(a => a.Equals("--method=A", StringComparison.OrdinalIgnoreCase))
+    ? ShiftMethod.NoShiftIngestBased
+    : ShiftMethod.Shifted;
 
 // Demo ingest components
 IIngestor ingestor = new MinimalTxtIngestor();
@@ -22,6 +30,7 @@ var evalWf = new EvaluationWorkflow(runner);
 if (args.Length == 0)
 {
     Helpers.PrintHelp();
+    Console.WriteLine("  adaptive [--baseline]     - adaptive shift selection (Baseline = identity)");
     return;
 }
 
@@ -114,8 +123,23 @@ switch (args[0].ToLowerInvariant())
             break;
         }
 
+    case "adaptive":
+        {
+            IShiftGenerator generator = new DeltaShiftGenerator(); // or MultiplicativeShiftGenerator
+            var service = new ShiftEvaluationService(generator, EvaluatorCatalog.Defaults);
+
+            var wf = new AdaptiveWorkflow(generator, service, method);
+
+            Console.WriteLine($"Adaptive ready (method={method}).");
+            // Beispiel-Aufruf (später):
+            // var best = wf.Run(queries[0], refs);
+
+            break;
+        }
+
     default:
         Helpers.PrintHelp();
+        Console.WriteLine("  adaptive [--baseline]     - adaptive shift selection (Baseline = identity)");
         break;
 }
 
