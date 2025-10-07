@@ -8,6 +8,8 @@ public sealed class AdditiveShift : IShift
     private readonly float[] _bias; // Length = DIM
     public string Name => "AdditiveShift";
 
+    public ShiftKind Kind => ShiftKind.Heuristic;
+
 
     public AdditiveShift(ReadOnlySpan<float> bias)
     {

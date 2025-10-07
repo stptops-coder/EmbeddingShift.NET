@@ -10,7 +10,7 @@ using EmbeddingShift.ConsoleEval;
 IRunLogger logger = new ConsoleRunLogger();
 var runner = EvaluationRunner.WithDefaults(logger);
 
-// Mode switch: default = Shifted; use --NoShiftIngestBased to force identity mode.
+// Mode switch: default = Shifted; use --method=A to force identity (NoShiftIngestBased).
 var method = args.Any(a => a.Equals("--method=A", StringComparison.OrdinalIgnoreCase))
     ? ShiftMethod.NoShiftIngestBased
     : ShiftMethod.Shifted;
@@ -91,6 +91,11 @@ switch (args[0].ToLowerInvariant())
 
             // No real shift yet → identity via NullShift
             IShift shift = new NullShift();
+
+            // TODO [Baseline]: Always include NoShift (Method A) as baseline in evaluation runs.
+            // This ensures all Δ-metrics (e.g., cosine delta, nDCG diff, MRR change) are computed
+            // consistently against the unshifted embeddings.
+
             evalWf.Run(shift, queries, refs, dataset);
             break;
         }
@@ -162,6 +167,9 @@ sealed class NoopStore : IVectorStore
 sealed class NullShift : IShift
 {
     public string Name => "NullShift";
+
+    public ShiftKind Kind => ShiftKind.Heuristic;
+
     public ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input) => input.ToArray();
 }
 

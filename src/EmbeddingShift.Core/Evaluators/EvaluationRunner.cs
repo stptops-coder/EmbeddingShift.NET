@@ -41,6 +41,9 @@ namespace EmbeddingShift.Core.Evaluators
             if (references == null || references.Count == 0)
                 throw new ArgumentException("References must not be empty", nameof(references));
 
+            // TODO [Baseline]: If no baseline (NoShiftIngestBased) is provided, create one internally
+            // and log Δ-values (shifted vs. baseline) alongside absolute metrics.
+
             var runId = _logger.StartRun("evaluation", datasetName);
 
             foreach (var evaluator in _evaluators)

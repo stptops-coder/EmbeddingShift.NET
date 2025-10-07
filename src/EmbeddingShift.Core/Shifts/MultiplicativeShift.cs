@@ -8,6 +8,9 @@ namespace EmbeddingShift.Core.Shifts
 
         public string Name => "MultiplicativeShift";
 
+        public ShiftKind Kind => ShiftKind.Heuristic;
+
+
         // Optional: zentrale Limits
         private const float MinFactor = 0.25f; // small clamp up
         private const float MaxFactor = 4.0f;  // large clamp down
