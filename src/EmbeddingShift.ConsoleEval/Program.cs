@@ -168,7 +168,7 @@ sealed class NullShift : IShift
 {
     public string Name => "NullShift";
 
-    public ShiftKind Kind => ShiftKind.Heuristic;
+    public ShiftKind Kind => ShiftKind.NoShift;
 
     public ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input) => input.ToArray();
 }

@@ -1,35 +1,43 @@
 ﻿# EmbeddingShift.NET
 
-A .NET 8 based toolkit for working with vector embeddings and adaptive shift strategies.  
-It provides infrastructure for ingest, simulation, storage, and adaptive controllers.
+A .NET 8 toolkit for embedding-space **shift strategies** with evaluation and simulation.
+Focus: transparent, testable workflows for domain-heavy contexts (e.g., diagnostics, medical, or technical knowledge systems).
 
----
+## Overview
+- **Purpose:** Apply and evaluate shifts (e.g., `NoShift.IngestBased`) to improve retrieval quality.
+- **Motivation:** Domains evolve; shifts enable adaptation without retraining a foundation model.
+- **Workflow:** Ingest → Persist → Evaluate (MRR/nDCG) → (Optional) Adaptive selection.
 
-## Features
-- **Embedding Shift**  apply and evaluate different shift strategies on vector spaces  
-- **Simulation**  run tests without external API dependencies  
-- **Storage Layer**  persist embeddings and shifts with database abstractions  
-- **Adaptive Controller**  dynamically adjust and evaluate shifts  
+## Quickstart
+~~~bash
+dotnet build
+dotnet run --project src/EmbeddingShift.ConsoleEval -- --demo samples/demo/demo.txt --shift NoShift.IngestBased
+dotnet test
+~~~
 
----
+## Project structure
+- **Abstractions** – interfaces (`IShift`, `IShiftEvaluator`, `IVectorStore` …)
+- **Core** – base shifts/evaluators (`NoShiftIngestBased`, runners)
+- **Adaptive** – `AdaptiveShiftController`, selection & evaluation service
+- **Workflows** – scripted flows (ingest → persist → eval)
+- **Simulation** – offline runs without external APIs
+- **Console / ConsoleEval** – CLI & demo
+- **Tests** – unit tests for shifts/evaluators
+- **Docs** – architecture and usage notes
+- **scripts** – PowerShell helpers (optional)
 
-## Tech Stack
-- C# / .NET 8  
-- Visual Studio 2022  
-- GitHub Actions (optional for CI/CD)  
+## Domain alignment
+- Reproducible runs and clear interfaces suited for complex, regulated domains.
+- Modular and easy to extend with new shifts or evaluation metrics.
+- Includes `NoShift.IngestBased` as identity baseline; infrastructure for adaptive selection.
 
----
+## Status
+- ✅ Public demo paths ready
+- ✅ Evaluators and tests included
+- ⏩ Next step: B-Light Inside (post-initial release)
 
-## Project Structure
-- src/  Solution and code (Core, Adaptive, Simulation, Storage, Abstractions)  
-- scripts/  PowerShell helper scripts  
-- data/  input data  
-- esults/  test outputs  
+## Further reading
+See [`Docs/OVERVIEW_TOUR.md`](Docs/OVERVIEW_TOUR.md) for a short technical walkthrough.
 
----
-
-## Note
-This repository is part of my **RakeX** project (Rapid AI Knowledge Exchange).  
-Internally I use *RakeX* as umbrella name  here the focus is on the embedding & shift component.
-
----
+## License
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
