@@ -2,6 +2,10 @@
 
 namespace EmbeddingShift.Core.Shifts;
 
+/// <summary>
+/// Identity shift bound to the ingest baseline.
+/// Returns a copy of the input so that callers receive a stable ReadOnlyMemory.
+/// </summary>
 public sealed class NoShiftIngestBased : IShift
 {
     public string Name => "NoShift.IngestBased";
@@ -9,9 +13,8 @@ public sealed class NoShiftIngestBased : IShift
 
     public ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input)
     {
-        // Identity: returns a copy to satisfy ReadOnlyMemory<float> return without borrowing.
-        var clone = new float[input.Length];
-        input.CopyTo(clone);
-        return clone;
+        var copy = new float[input.Length];
+        input.CopyTo(copy);
+        return new ReadOnlyMemory<float>(copy);
     }
 }
