@@ -2,6 +2,12 @@
 
 namespace EmbeddingShift.Adaptive
 {
+    // TODO(Adaptive): Integrate AdaptiveShiftController as an improved orchestration layer.
+    // Current: AdaptiveWorkflow uses ShiftEvaluationService (local, stateless best-single selection).
+    // Why: Controller can decide globally across batches, support Top-K/ensembles, apply policies/memoization,
+    // optimize multiple objectives, and enforce constraints/budgets.
+    // Plan: Keep ShiftEvaluationService as the scoring engine; add an optional controller path (e.g., --use-controller/--topk)
+    // and promote it to default once validated.
     public sealed class AdaptiveShiftController
     {
         private readonly IShiftGenerator _generator;

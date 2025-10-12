@@ -141,7 +141,19 @@ switch (args[0].ToLowerInvariant())
 
             break;
         }
+    case "--help":
+    case "-h":
+        {
+            Helpers.PrintHelp();
+            break;
+        }
 
+    case "--version":
+        {
+            var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
+            Console.WriteLine($".NET ConsoleEval version {v}");
+            break;
+        }
     default:
         Helpers.PrintHelp();
         Console.WriteLine("  adaptive [--baseline]     - adaptive shift selection (Baseline = identity)");
@@ -178,14 +190,18 @@ static class Helpers
 {
     public static void PrintHelp()
     {
-        Console.WriteLine("RakeX CLI (simple)");
-        Console.WriteLine("  ingest <path> <dataset>   - ingest TXT lines (demo)");
-        Console.WriteLine("  eval   <dataset> [--sim]  - evaluate with persisted or simulated embeddings (demo)");
-        Console.WriteLine("  ingest-queries <path> <dataset> - ingest TXT lines as queries");
-        Console.WriteLine("  ingest-refs    <path> <dataset> - ingest TXT lines as references");
-
+        Console.WriteLine("EmbeddingShift.ConsoleEval — usage");
+        Console.WriteLine();
+        Console.WriteLine("  --help | -h                         show this help");
+        Console.WriteLine("  --version                           print version");
+        Console.WriteLine("  demo --shift <Name> [--dataset X]   run tiny demo (e.g., NoShift.IngestBased)");
+        Console.WriteLine("  ingest-refs <path> <dataset>        ingest reference vectors");
+        Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
+        Console.WriteLine();
+        Console.WriteLine("Examples:");
+        Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");
+        Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- adaptive");
     }
-
 
     // in static class Helpers
     public static List<ReadOnlyMemory<float>> LoadVectorsBySpace(string embeddingsDir_UNUSED, string space)
