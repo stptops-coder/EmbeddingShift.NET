@@ -15,7 +15,10 @@ namespace EmbeddingShift.Workflows
             _runner = runner;
         }
 
-        public void Run(IShift shift, IReadOnlyList<ReadOnlyMemory<float>> queries, IReadOnlyList<ReadOnlyMemory<float>> references, string dataset)
+        public void Run(IShift shift,
+            IReadOnlyList<ReadOnlyMemory<float>> queries, 
+            IReadOnlyList<ReadOnlyMemory<float>> references, 
+            string dataset)
         {
             _runner.RunEvaluation(shift, queries, references, dataset);
         }

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\src\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj" />
+    <!-- If SimEmbeddingProvider is in its own project, also reference it: -->
+    <!-- <ProjectReference Include="..\EmbeddingShift.Simulation\EmbeddingShift.Simulation.csproj" /> -->
+  </ItemGroup>
+</Project>

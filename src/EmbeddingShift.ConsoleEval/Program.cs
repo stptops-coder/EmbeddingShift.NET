@@ -82,7 +82,7 @@ switch (args[0].ToLowerInvariant())
 
                 if (queries.Count == 0 || refs.Count == 0)
                 {
-                    Console.WriteLine($"No persisted embeddings found for dataset '{dataset}' (queries={queries.Count}, refs={refs.Count}).");
+                    Console.WriteLine($"No persisted embeddings under any configured root for dataset '{dataset}'.");
                     return;
                 }
 

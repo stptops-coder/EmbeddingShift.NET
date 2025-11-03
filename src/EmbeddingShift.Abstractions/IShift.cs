@@ -26,7 +26,7 @@ public interface IShift
 
 
     /// <summary>
-    /// Human-readable identifier of the shift (e.g., "NoShift.IngestBased", "Additive(Policy)", ...).
+    /// Human-readable identifier of the shift (e.g., "NoShift.IngestBased", "Additive(Policy)", ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input);).
     /// </summary>
     string Name { get; }
 

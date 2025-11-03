@@ -1,12 +1,12 @@
-﻿using EmbeddingShift.Core.Utils;
+﻿using Xunit;
+
 namespace EmbeddingShift.Tests;
 
 public class UnitTest1
 {
     [Fact]
-    public void Test1()
+    public void Compiles()
     {
-
+        Assert.True(true);
     }
 }
-
