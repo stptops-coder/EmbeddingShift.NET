@@ -11,6 +11,7 @@
     <ProjectReference Include="..\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Adaptive\EmbeddingShift.Adaptive.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Core\EmbeddingShift.Core.csproj" />
+    <ProjectReference Include="..\EmbeddingShift.Providers.OpenAI\EmbeddingShift.Providers.OpenAI.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Workflows\EmbeddingShift.Workflows.csproj" />
   </ItemGroup>
 

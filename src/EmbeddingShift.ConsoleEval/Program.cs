@@ -7,6 +7,23 @@ using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
 using EmbeddingShift.ConsoleEval;
 
 // Composition Root (kept simple)
+// Flags:
+//   --provider=sim | openai-echo | openai-dryrun    (default: sim)
+string providerArg = args.FirstOrDefault(a => a.StartsWith("--provider=", StringComparison.OrdinalIgnoreCase))
+                    ?.Split('=', 2)[1] ?? "sim";
+
+// base provider used by all modes (still the existing SimEmbeddingProvider)
+IEmbeddingProvider baseProvider = new SimEmbeddingProvider();
+
+IEmbeddingProvider provider = providerArg.ToLowerInvariant() switch
+{
+    "openai-echo" => new EmbeddingShift.Providers.OpenAI.EchoEmbeddingProvider(baseProvider),
+    "openai-dryrun" => new EmbeddingShift.Providers.OpenAI.DryRunEmbeddingProvider(baseProvider),
+    _ => baseProvider
+};
+
+Console.WriteLine($"[BOOT] Embedding provider = {provider.Name}");
+
 IRunLogger logger = new ConsoleRunLogger();
 var runner = EvaluationRunner.WithDefaults(logger);
 
@@ -17,7 +34,6 @@ var method = args.Any(a => a.Equals("--method=A", StringComparison.OrdinalIgnore
 
 // Demo ingest components
 IIngestor ingestor = new MinimalTxtIngestor();
-IEmbeddingProvider provider = new SimEmbeddingProvider();
 
 // File-based vector store for persistence
 IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(

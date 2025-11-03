@@ -27,7 +27,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Workflows", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.ConsoleSmoke", "src\EmbeddingShift.ConsoleSmoke\EmbeddingShift.ConsoleSmoke.csproj", "{1C8861E3-844E-4716-8784-4523048D6AE9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Providers.OpenAI", "EmbeddingShift.Providers.OpenAI\EmbeddingShift.Providers.OpenAI.csproj", "{D3731EBA-1BC8-4374-9633-FE28079CCCB6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EmbeddingShift.Providers.OpenAI", "src\EmbeddingShift.Providers.OpenAI\EmbeddingShift.Providers.OpenAI.csproj", "{0D84A1FE-5F55-4D01-A49C-3961E77D44E0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -79,10 +79,10 @@ Global
 		{1C8861E3-844E-4716-8784-4523048D6AE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C8861E3-844E-4716-8784-4523048D6AE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C8861E3-844E-4716-8784-4523048D6AE9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D3731EBA-1BC8-4374-9633-FE28079CCCB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D3731EBA-1BC8-4374-9633-FE28079CCCB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D3731EBA-1BC8-4374-9633-FE28079CCCB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D3731EBA-1BC8-4374-9633-FE28079CCCB6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D84A1FE-5F55-4D01-A49C-3961E77D44E0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D84A1FE-5F55-4D01-A49C-3961E77D44E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D84A1FE-5F55-4D01-A49C-3961E77D44E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D84A1FE-5F55-4D01-A49C-3961E77D44E0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -98,7 +98,7 @@ Global
 		{1CCD79A7-6675-4288-8082-2D5B4F37BD90} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 		{ACFCF4D0-916C-429C-9741-A49F7FFF81F1} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 		{524CE6A8-2A79-43E7-9615-B383A6726663} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
-		{D3731EBA-1BC8-4374-9633-FE28079CCCB6} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
+		{0D84A1FE-5F55-4D01-A49C-3961E77D44E0} = {0D11074D-E2CA-4206-AD2E-36F5F39D06D4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2907C485-8FCC-4AF3-A7FC-82213D66AE8E}
