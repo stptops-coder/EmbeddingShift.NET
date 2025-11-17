@@ -35,6 +35,7 @@ packages/
 *.secret.json
 # runtime / generated
 /data/
+!/data/domains/
 /results/
 /**/bin/
 /**/obj/

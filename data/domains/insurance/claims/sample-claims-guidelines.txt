@@ -1,0 +1,5 @@
+﻿Sample Claims Handling Guidelines
+
+- Every claim must be reported within 14 days after the incident.
+- Photographic evidence should be collected where possible.
+- Large claims (> 50_000 EUR) require manual review by a senior adjuster.
