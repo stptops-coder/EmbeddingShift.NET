@@ -43,16 +43,19 @@ namespace EmbeddingShift.Tests
     internal static class TestPathHelper
     {
         /// <summary>
-        /// Returns the repository root assuming test assembly location like:
-        ///   ...\src\EmbeddingShift.Tests\bin\Debug\net8.0
-        /// We go up four levels to reach the repo root.
+        /// Returns the repository root by walking up the directory tree
+        /// until a .git folder is found. This is robust against changes
+        /// in the build output path.
         /// </summary>
         public static string GetRepositoryRoot()
         {
             var dir = AppContext.BaseDirectory;
 
-            for (int i = 0; i < 4; i++)
+            while (true)
             {
+                if (Directory.Exists(Path.Combine(dir, ".git")))
+                    return dir;
+
                 var parent = Directory.GetParent(dir);
                 if (parent == null)
                     break;
@@ -60,7 +63,8 @@ namespace EmbeddingShift.Tests
                 dir = parent.FullName;
             }
 
-            return dir;
+            // Fallback: return original base directory
+            return AppContext.BaseDirectory;
         }
     }
 }
