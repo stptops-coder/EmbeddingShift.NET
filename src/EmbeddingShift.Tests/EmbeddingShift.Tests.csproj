@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -30,6 +30,10 @@
     <ProjectReference Include="..\EmbeddingShift.Simulation\EmbeddingShift.Simulation.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Abstractions\EmbeddingShift.Abstractions.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Workflows\EmbeddingShift.Workflows.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EmbeddingShift.Preprocessing\EmbeddingShift.Preprocessing.csproj" />
   </ItemGroup>
 
 </Project>
