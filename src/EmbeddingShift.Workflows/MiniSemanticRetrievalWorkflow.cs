@@ -87,8 +87,8 @@ namespace EmbeddingShift.Workflows
 
             var metrics = new Dictionary<string, double>
             {
-                ["map@1"]  = meanAp,
-                ["ndcg@3"] = meanNdcg
+                [MetricKeys.Eval.Map1]  = meanAp,
+                [MetricKeys.Eval.Ndcg3] = meanNdcg
             };
 
             var notes = "Mini end-to-end ranking scenario with 3 queries and 3 policies (Workflows layer).";
@@ -165,3 +165,4 @@ namespace EmbeddingShift.Workflows
         }
     }
 }
+

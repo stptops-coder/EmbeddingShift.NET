@@ -62,12 +62,12 @@ namespace EmbeddingShift.Workflows
 
             var metrics = new Dictionary<string, double>
             {
-                ["eval.map@1.baseline"]   = mapBaseline,
-                ["eval.ndcg@3.baseline"] = ndcgBaseline,
-                ["eval.map@1.variant"]    = mapVariant,
-                ["eval.ndcg@3.variant"]  = ndcgVariant,
-                ["eval.delta.map@1"]      = mapVariant - mapBaseline,
-                ["eval.delta.ndcg@3"]    = ndcgVariant - ndcgBaseline
+                [MetricKeys.Eval.Map1Baseline]   = mapBaseline,
+                [MetricKeys.Eval.Ndcg3Baseline] = ndcgBaseline,
+                [MetricKeys.Eval.Map1Variant]    = mapVariant,
+                [MetricKeys.Eval.Ndcg3Variant]  = ndcgVariant,
+                [MetricKeys.Eval.DeltaMap1]      = mapVariant - mapBaseline,
+                [MetricKeys.Eval.DeltaNdcg3]    = ndcgVariant - ndcgBaseline
             };
 
             var notes =
@@ -207,3 +207,4 @@ namespace EmbeddingShift.Workflows
         }
     }
 }
+

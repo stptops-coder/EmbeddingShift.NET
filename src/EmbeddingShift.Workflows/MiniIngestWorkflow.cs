@@ -78,10 +78,10 @@ namespace EmbeddingShift.Workflows
 
             var metrics = new Dictionary<string, double>
             {
-                ["ingest.totalDocs"]       = totalDocs,
-                ["ingest.totalChunks"]     = totalChunks,
-                ["ingest.embeddingDim"]    = avgDim,
-                ["ingest.avgEmbeddingNorm"] = avgNorm
+                [MetricKeys.Ingest.TotalDocs]       = totalDocs,
+                [MetricKeys.Ingest.TotalChunks]     = totalChunks,
+                [MetricKeys.Ingest.EmbeddingDim]    = avgDim,
+                [MetricKeys.Ingest.AvgEmbeddingNorm] = avgNorm
             };
 
             var notes =
@@ -196,3 +196,4 @@ namespace EmbeddingShift.Workflows
         }
     }
 }
+
