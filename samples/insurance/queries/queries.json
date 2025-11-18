@@ -1,0 +1,17 @@
+﻿[
+  {
+    "id": "q1",
+    "text": "fire and water damage to the house",
+    "relevantDocId": "policy-fire-water"
+  },
+  {
+    "id": "q2",
+    "text": "theft of personal belongings and claims",
+    "relevantDocId": "policy-theft-claims"
+  },
+  {
+    "id": "q3",
+    "text": "flood and storm damage after heavy rain",
+    "relevantDocId": "policy-flood-storm"
+  }
+]
