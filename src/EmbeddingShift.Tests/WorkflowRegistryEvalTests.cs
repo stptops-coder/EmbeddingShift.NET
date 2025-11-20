@@ -63,7 +63,7 @@ namespace EmbeddingShift.Tests
             var artifacts = await wfRunner.ExecuteAsync("Eval-Registry-Test", wf);
 
             Assert.True(artifacts.Success);
-            Assert.Contains("Run Statistics", artifacts.ReportMarkdown);
+            Assert.Contains("Run Statistics", artifacts.ReportMarkdown());
 
             var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "RegistryPersistedRuns");
             var runDir  = RunPersistor.Persist(baseDir, artifacts);

@@ -1,38 +1,68 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using EmbeddingShift.Core.Stats;
+﻿using System;
+using System.IO;
+using System.Text;
 using EmbeddingShift.Core.Workflows;
 
 namespace EmbeddingShift.Core.Runs
 {
     /// <summary>
-    /// Simple facade that delegates execution to StatsAwareWorkflowRunner.
-    /// Persistence via IRunRepository can be added here later if needed.
+    /// Very small helper that persists a <see cref="WorkflowResult"/>
+    /// as a Markdown report into a timestamped run directory.
+    ///
+    /// This is intentionally minimal and only used by smoke and
+    /// pipeline tests. More advanced run persistence can be added later
+    /// without changing this contract.
     /// </summary>
-    public sealed class RunPersistor
+    public static class RunPersistor
     {
-        private readonly StatsAwareWorkflowRunner _runner;
-        private readonly IRunRepository? _repository;
-
-        public RunPersistor(StatsAwareWorkflowRunner runner, IRunRepository? repository = null)
+        /// <summary>
+        /// Persists the given <paramref name="result"/> as "report.md" into
+        /// a new subdirectory below <paramref name="baseDirectory"/>.
+        /// Returns the absolute path of the created run directory.
+        /// </summary>
+        public static string Persist(string baseDirectory, WorkflowResult result)
         {
-            _runner = runner;
-            _repository = repository;
+            if (baseDirectory is null)
+                throw new ArgumentNullException(nameof(baseDirectory));
+
+            if (string.IsNullOrWhiteSpace(baseDirectory))
+                throw new ArgumentException("Base directory must not be empty.", nameof(baseDirectory));
+
+            if (result is null)
+                throw new ArgumentNullException(nameof(result));
+
+            var workflowName = result.Workflow();
+            if (string.IsNullOrWhiteSpace(workflowName))
+                workflowName = "workflow";
+
+            var runId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
+            var directoryName = $"{SanitizeFileName(workflowName)}_{runId}";
+            var runDirectory = Path.Combine(baseDirectory, directoryName);
+
+            Directory.CreateDirectory(runDirectory);
+
+            var reportPath = Path.Combine(runDirectory, "report.md");
+            var markdown = result.ReportMarkdown();
+
+            File.WriteAllText(
+                reportPath,
+                markdown,
+                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+            return runDirectory;
         }
 
-        /// <summary>
-        /// Executes the given workflow. For now, this is just a thin wrapper
-        /// around StatsAwareWorkflowRunner; the repository is kept for future
-        /// extension but not yet used.
-        /// </summary>
-        public async Task<WorkflowResult> ExecuteAsync(
-            string workflowName,
-            IWorkflow workflow,
-            CancellationToken ct = default)
+        private static string SanitizeFileName(string name)
         {
-            // In a later step we could create a WorkflowRunArtifact here and
-            // persist it via _repository. For now we only delegate.
-            return await _runner.ExecuteAsync(workflowName, workflow, ct).ConfigureAwait(false);
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var sb = new StringBuilder(name.Length);
+
+            foreach (var ch in name)
+            {
+                sb.Append(Array.IndexOf(invalidChars, ch) >= 0 ? '_' : ch);
+            }
+
+            return sb.ToString();
         }
     }
 }

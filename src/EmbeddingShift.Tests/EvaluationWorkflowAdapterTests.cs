@@ -59,8 +59,8 @@ namespace EmbeddingShift.Tests
             var artifacts = await wfRunner.ExecuteAsync("Eval-Adapter-Test", adapter);
 
             Assert.True(artifacts.Success);
-            Assert.Equal("Evaluation", artifacts.Workflow);
-            Assert.Contains("Run Statistics", artifacts.ReportMarkdown);
+            Assert.Equal("Evaluation", artifacts.Workflow());
+            Assert.Contains("Run Statistics", artifacts.ReportMarkdown());
         }
 
         private sealed class InMemoryRunLogger : IRunLogger

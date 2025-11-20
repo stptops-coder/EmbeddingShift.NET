@@ -26,7 +26,7 @@ namespace EmbeddingShift.Tests
             Directory.CreateDirectory(reportDir);
             var reportPath = Path.Combine(reportDir, "Smoke_RunReport.md");
 
-            File.WriteAllText(reportPath, artifacts.ReportMarkdown);
+            File.WriteAllText(reportPath, artifacts.ReportMarkdown());
         }
     }
 }
