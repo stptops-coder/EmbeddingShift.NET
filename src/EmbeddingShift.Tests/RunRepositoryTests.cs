@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.Json;
 using EmbeddingShift.Core.Stats;
 using Xunit;
 
@@ -47,8 +48,15 @@ namespace EmbeddingShift.Tests
 
             var json = await File.ReadAllTextAsync(runFiles[0]);
 
-            Assert.Contains("\"WorkflowName\":\"TestWorkflow\"", json);
-            Assert.Contains("\"test_metric\":1.23", json);
+            using var doc = JsonDocument.Parse(json);
+            var root1 = doc.RootElement;
+
+            // WorkflowName prüfen
+            Assert.Equal("TestWorkflow", root1.GetProperty("WorkflowName").GetString());
+
+            // Metric prüfen
+            var metrics1 = root1.GetProperty("Metrics");
+            Assert.Equal(1.23, metrics1.GetProperty("test_metric").GetDouble());
         }
     }
 }

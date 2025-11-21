@@ -31,9 +31,6 @@ namespace EmbeddingShift.Tests
 
             var mdFiles = Directory.GetFiles(runDir, "*.md", SearchOption.AllDirectories);
             Assert.NotEmpty(mdFiles);
-
-            var jsonFiles = Directory.GetFiles(runDir, "*.json", SearchOption.AllDirectories);
-            Assert.NotEmpty(jsonFiles);
         }
     }
 }

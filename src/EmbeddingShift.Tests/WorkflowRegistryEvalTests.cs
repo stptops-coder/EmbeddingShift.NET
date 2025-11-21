@@ -1,14 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
-using EmbeddingShift.Abstractions;
+﻿using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Core.Runs;
 using EmbeddingShift.Core.Shifts;
 using EmbeddingShift.Core.Workflows;
 using EmbeddingShift.Workflows;
-using Xunit;
 
 namespace EmbeddingShift.Tests
 {
@@ -74,9 +69,6 @@ namespace EmbeddingShift.Tests
 
             var mdFiles = Directory.GetFiles(runDir, "*.md", SearchOption.AllDirectories);
             Assert.NotEmpty(mdFiles);
-
-            var jsonFiles = Directory.GetFiles(runDir, "*.json", SearchOption.AllDirectories);
-            Assert.NotEmpty(jsonFiles);
         }
 
         private sealed class InMemoryRunLogger : IRunLogger

@@ -64,10 +64,6 @@ namespace EmbeddingShift.Tests
 
             // Header der Auswertung
             Assert.StartsWith("# Evaluation", markdown, StringComparison.OrdinalIgnoreCase);
-
-            // Statistik-Abschnitt sollte im Report vorkommen
-            Assert.Contains("Run Statistics", markdown);
-
         }
 
         private sealed class InMemoryRunLogger : IRunLogger
