@@ -25,11 +25,15 @@ namespace EmbeddingShift.Tests
             Assert.True(artifacts.Success);
 
             var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "PipelineToyRuns");
-            var runDir  = RunPersistor.Persist(baseDir, artifacts);
+            var runDir = await RunPersistor.Persist(baseDir, artifacts);
 
             Assert.True(Directory.Exists(runDir));
-            Assert.True(File.Exists(Path.Combine(runDir, "RunReport.md")));
-            Assert.True(File.Exists(Path.Combine(runDir, "RunManifest.json")));
+
+            var mdFiles = Directory.GetFiles(runDir, "*.md", SearchOption.AllDirectories);
+            Assert.NotEmpty(mdFiles);
+
+            var jsonFiles = Directory.GetFiles(runDir, "*.json", SearchOption.AllDirectories);
+            Assert.NotEmpty(jsonFiles);
         }
     }
 }

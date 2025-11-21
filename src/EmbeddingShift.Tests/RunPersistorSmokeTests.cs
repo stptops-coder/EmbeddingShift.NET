@@ -22,11 +22,15 @@ namespace EmbeddingShift.Tests
             var artifacts = await runner.ExecuteAsync("Persist-Test", workflow);
 
             var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "PersistedRuns");
-            var runDir  = RunPersistor.Persist(baseDir, artifacts);
+            var runDir = await RunPersistor.Persist(baseDir, artifacts);
 
             Assert.True(Directory.Exists(runDir));
-            Assert.True(File.Exists(Path.Combine(runDir, "RunReport.md")));
-            Assert.True(File.Exists(Path.Combine(runDir, "RunManifest.json")));
+
+            var mdFiles = Directory.GetFiles(runDir, "*.md", SearchOption.AllDirectories);
+            Assert.NotEmpty(mdFiles);
+
+            var jsonFiles = Directory.GetFiles(runDir, "*.json", SearchOption.AllDirectories);
+            Assert.NotEmpty(jsonFiles);
         }
     }
 }

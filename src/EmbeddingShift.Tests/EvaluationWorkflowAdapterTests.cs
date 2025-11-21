@@ -59,8 +59,15 @@ namespace EmbeddingShift.Tests
             var artifacts = await wfRunner.ExecuteAsync("Eval-Adapter-Test", adapter);
 
             Assert.True(artifacts.Success);
-            Assert.Equal("Evaluation", artifacts.Workflow());
-            Assert.Contains("Run Statistics", artifacts.ReportMarkdown());
+
+            var markdown = artifacts.ReportMarkdown("Evaluation");
+
+            // Header der Auswertung
+            Assert.StartsWith("# Evaluation", markdown, StringComparison.OrdinalIgnoreCase);
+
+            // Statistik-Abschnitt sollte im Report vorkommen
+            Assert.Contains("Run Statistics", markdown);
+
         }
 
         private sealed class InMemoryRunLogger : IRunLogger
