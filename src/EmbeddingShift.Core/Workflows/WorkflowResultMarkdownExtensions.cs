@@ -1,52 +1,47 @@
 ﻿using System;
-using System.Linq;
-using System.Reflection;
 using System.Text;
 
 namespace EmbeddingShift.Core.Workflows
 {
     /// <summary>
-    /// Helper extensions that turn <see cref="WorkflowResult"/> into
-    /// a simple textual / markdown representation for tests.
+    /// Markdown helpers for <see cref="WorkflowResult"/>.
+    /// Central place for all workflow-related Markdown formatting.
     /// </summary>
     public static class WorkflowResultMarkdownExtensions
     {
-        public static string Workflow(this WorkflowResult result)
+        /// <summary>
+        /// Builds a simple markdown representation of the given workflow result.
+        /// The <paramref name="title"/> can be used to override the main heading,
+        /// e.g. "Evaluation", "Run Statistics", etc.
+        /// </summary>
+        public static string ToMarkdown(this WorkflowResult result, string title = "Workflow")
         {
-            if (result is null) return string.Empty;
-
-            var type = result.GetType();
-
-            var nameProp =
-                type.GetProperty("WorkflowName", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance) ??
-                type.GetProperty("Name", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance) ??
-                type.GetProperty("Id", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-
-            var value = nameProp?.GetValue(result);
-            return value?.ToString() ?? type.Name;
-        }
-
-        public static string ReportMarkdown(this WorkflowResult result)
-        {
-            if (result is null) return string.Empty;
+            if (result is null) throw new ArgumentNullException(nameof(result));
 
             var sb = new StringBuilder();
-            var type = result.GetType();
 
-            sb.AppendLine($"# Workflow: {result.Workflow()}");
+            // Very conservative: we do not rely on any specific properties
+            // of WorkflowResult here, so this stays compile-safe even if
+            // the type evolves.
+            sb.AppendLine($"# {title}");
             sb.AppendLine();
-
-            var props = type
-                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead);
-
-            foreach (var prop in props)
-            {
-                var value = prop.GetValue(result);
-                sb.AppendLine($"- **{prop.Name}**: {value}");
-            }
+            sb.AppendLine($"Generated at: {DateTimeOffset.UtcNow:O}");
 
             return sb.ToString();
         }
+
+        /// <summary>
+        /// Backwards-compatible alias for older code that still calls
+        /// result.ReportMarkdown(...). Uses <see cref="ToMarkdown"/> internally.
+        /// </summary>
+        public static string ReportMarkdown(this WorkflowResult result, string title = "Workflow")
+            => result.ToMarkdown(title);
+
+        /// <summary>
+        /// Backwards-compatible alias for older code that still calls
+        /// result.Workflow(). Currently just calls <see cref="ToMarkdown"/>.
+        /// </summary>
+        public static string Workflow(this WorkflowResult result, string title = "Workflow")
+            => result.ToMarkdown(title);
     }
 }

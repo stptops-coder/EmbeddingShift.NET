@@ -1,26 +1,47 @@
-﻿using System;
-using System.IO;
-using System.Text;
+﻿using System.Text;
 using EmbeddingShift.Core.Workflows;
+using EmbeddingShift.Core.Stats;
 
 namespace EmbeddingShift.Core.Runs
 {
     /// <summary>
-    /// Very small helper that persists a <see cref="WorkflowResult"/>
-    /// as a Markdown report into a timestamped run directory.
-    ///
-    /// This is intentionally minimal and only used by smoke and
-    /// pipeline tests. More advanced run persistence can be added later
-    /// without changing this contract.
+    /// Simple facade that delegates execution to StatsAwareWorkflowRunner.
+    /// Persistence via IRunRepository can be added here later if needed.
     /// </summary>
-    public static class RunPersistor
+    public sealed class RunPersistor
     {
+        private readonly StatsAwareWorkflowRunner _runner;
+        private readonly IRunRepository? _repository;
+
+        public RunPersistor(StatsAwareWorkflowRunner runner, IRunRepository? repository = null)
+        {
+            _runner = runner;
+            _repository = repository;
+        }
+
         /// <summary>
-        /// Persists the given <paramref name="result"/> as "report.md" into
-        /// a new subdirectory below <paramref name="baseDirectory"/>.
-        /// Returns the absolute path of the created run directory.
+        /// Executes the given workflow. For now, this is just a thin wrapper
+        /// around StatsAwareWorkflowRunner; the repository is kept for future
+        /// extension but not yet used.
         /// </summary>
-        public static string Persist(string baseDirectory, WorkflowResult result)
+        public async Task<WorkflowResult> ExecuteAsync(
+            string workflowName,
+            IWorkflow workflow,
+            CancellationToken ct = default)
+        {
+            // In a later step we could create a WorkflowRunArtifact here and
+            // persist it via _repository. For now we only delegate.
+            return await _runner.ExecuteAsync(workflowName, workflow, ct).ConfigureAwait(false);
+        }
+        /// <summary>
+        /// Persists the markdown report of a <see cref="WorkflowResult"/> in a
+        /// timestamped subdirectory and returns the run directory path.
+        /// This is intentionally simple and suitable for smoke tests.
+        /// </summary>
+        public static async Task<string> Persist(
+            string baseDirectory,
+            WorkflowResult result,
+            CancellationToken cancellationToken = default)
         {
             if (baseDirectory is null)
                 throw new ArgumentNullException(nameof(baseDirectory));
@@ -31,38 +52,45 @@ namespace EmbeddingShift.Core.Runs
             if (result is null)
                 throw new ArgumentNullException(nameof(result));
 
+            // Create a stable run folder name: <workflow>_<timestamp>
             var workflowName = result.Workflow();
             if (string.IsNullOrWhiteSpace(workflowName))
                 workflowName = "workflow";
 
             var runId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
-            var directoryName = $"{SanitizeFileName(workflowName)}_{runId}";
-            var runDirectory = Path.Combine(baseDirectory, directoryName);
+            var safeName = SanitizeFileName(workflowName);
+            var runDirectory = Path.Combine(baseDirectory, $"{safeName}_{runId}");
 
             Directory.CreateDirectory(runDirectory);
 
             var reportPath = Path.Combine(runDirectory, "report.md");
             var markdown = result.ReportMarkdown();
 
-            File.WriteAllText(
-                reportPath,
-                markdown,
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+            using (var stream = new FileStream(reportPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            using (var writer = new StreamWriter(stream, encoding))
+            {
+                // Use AsMemory so we can pass the cancellation token.
+                await writer.WriteAsync(markdown.AsMemory(), cancellationToken)
+                            .ConfigureAwait(false);
+            }
 
             return runDirectory;
         }
 
         private static string SanitizeFileName(string name)
         {
-            var invalidChars = Path.GetInvalidFileNameChars();
-            var sb = new StringBuilder(name.Length);
+            var invalid = Path.GetInvalidFileNameChars();
+            var builder = new StringBuilder(name.Length);
 
             foreach (var ch in name)
             {
-                sb.Append(Array.IndexOf(invalidChars, ch) >= 0 ? '_' : ch);
+                builder.Append(Array.IndexOf(invalid, ch) >= 0 ? '_' : ch);
             }
 
-            return sb.ToString();
+            return builder.ToString();
         }
+
     }
 }
