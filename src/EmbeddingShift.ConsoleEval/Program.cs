@@ -5,6 +5,9 @@ using EmbeddingShift.Adaptive;               // ShiftEvaluationService
 using EmbeddingShift.Core.Generators;        // DeltaShiftGenerator (example)
 using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
 using EmbeddingShift.ConsoleEval;
+using EmbeddingShift.Core.Runs;        // RunPersistor
+using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
+using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
 
 // Composition Root (kept simple)
 // Flags:
@@ -164,6 +167,51 @@ switch (args[0].ToLowerInvariant())
             break;
         }
 
+    case "mini-insurance":
+        {
+            Console.WriteLine("[MiniInsurance] Running file-based insurance workflow using sample policies and queries...");
+
+            // Workflow-Instanz wie im Test
+            IWorkflow workflow = new FileBasedInsuranceMiniWorkflow();
+            var wfRunner = new StatsAwareWorkflowRunner();
+
+            // läuft wie im FileBasedInsuranceMiniWorkflowTests, nur mit anderem Namen
+            var result = await wfRunner.ExecuteAsync("FileBased-Insurance-Mini-Console", workflow);
+
+            // Kandidaten-Verzeichnisse für die Persistierung der Ergebnisse.
+            var baseDirectories = new[]
+            {
+                Path.Combine(AppContext.BaseDirectory, "results"),
+                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "results")),
+                Path.Combine(Directory.GetCurrentDirectory(), "results")
+            };
+
+            string? persistedPath = null;
+
+            foreach (var baseDir in baseDirectories)
+            {
+                try
+                {
+                    persistedPath = await RunPersistor.Persist(baseDir, result);
+                    Console.WriteLine($"[MiniInsurance] Results persisted to: {persistedPath}");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    // falls ein Pfad nicht beschreibbar ist, zum nächsten weitergehen
+                    Console.WriteLine($"[MiniInsurance] Failed to persist to '{baseDir}': {ex.Message}");
+                }
+            }
+
+            if (persistedPath is null)
+            {
+                Console.WriteLine("[MiniInsurance] WARNING: Could not persist results in any candidate directory.");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine(result.ReportMarkdown("Mini Insurance Evaluation"));
+            break;
+        }
     case "--version":
         {
             var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
