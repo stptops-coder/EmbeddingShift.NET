@@ -8,6 +8,8 @@ using EmbeddingShift.ConsoleEval;
 using EmbeddingShift.Core.Runs;        // RunPersistor
 using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
+using EmbeddingShift.Core.Infrastructure;    // DirectoryLayout for /data and /results roots
+
 
 // Composition Root (kept simple)
 // Flags:
@@ -175,37 +177,27 @@ switch (args[0].ToLowerInvariant())
             IWorkflow workflow = new FileBasedInsuranceMiniWorkflow();
             var wfRunner = new StatsAwareWorkflowRunner();
 
-            // läuft wie im FileBasedInsuranceMiniWorkflowTests, nur mit anderem Namen
+            // Läuft wie im FileBasedInsuranceMiniWorkflowTests, nur mit anderem Namen.
             var result = await wfRunner.ExecuteAsync("FileBased-Insurance-Mini-Console", workflow);
 
-            // Kandidaten-Verzeichnisse für die Persistierung der Ergebnisse.
-            var baseDirectories = new[]
-            {
-                Path.Combine(AppContext.BaseDirectory, "results"),
-                Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "results")),
-                Path.Combine(Directory.GetCurrentDirectory(), "results")
-            };
+            // Use the central layout helper: /results/insurance (with safe fallbacks).
+            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
 
             string? persistedPath = null;
 
-            foreach (var baseDir in baseDirectories)
+            try
             {
-                try
-                {
-                    persistedPath = await RunPersistor.Persist(baseDir, result);
-                    Console.WriteLine($"[MiniInsurance] Results persisted to: {persistedPath}");
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    // falls ein Pfad nicht beschreibbar ist, zum nächsten weitergehen
-                    Console.WriteLine($"[MiniInsurance] Failed to persist to '{baseDir}': {ex.Message}");
-                }
+                persistedPath = await RunPersistor.Persist(baseDir, result);
+                Console.WriteLine($"[MiniInsurance] Results persisted to: {persistedPath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MiniInsurance] WARNING: Failed to persist results under '{baseDir}': {ex.Message}");
             }
 
             if (persistedPath is null)
             {
-                Console.WriteLine("[MiniInsurance] WARNING: Could not persist results in any candidate directory.");
+                Console.WriteLine("[MiniInsurance] WARNING: Could not persist results.");
             }
 
             Console.WriteLine();
