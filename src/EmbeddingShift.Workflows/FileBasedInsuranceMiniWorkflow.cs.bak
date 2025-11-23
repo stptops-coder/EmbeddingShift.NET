@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,8 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using EmbeddingShift.Core.Stats;
 using EmbeddingShift.Core.Workflows;
-using EmbeddingShift.Abstractions.Shifts;
-using EmbeddingShift.Core.Shifts;
 
 namespace EmbeddingShift.Workflows
 {
@@ -22,21 +20,15 @@ namespace EmbeddingShift.Workflows
     public sealed class FileBasedInsuranceMiniWorkflow : IWorkflow
     {
         private readonly ILocalEmbeddingProvider _embeddingProvider;
-        private readonly IEmbeddingShiftPipeline _shiftPipeline;
 
         public FileBasedInsuranceMiniWorkflow()
-            : this(
-                new KeywordCountEmbeddingProvider(),
-                CreateDefaultPipeline())
+            : this(new KeywordCountEmbeddingProvider())
         {
         }
 
-        internal FileBasedInsuranceMiniWorkflow(
-            ILocalEmbeddingProvider embeddingProvider,
-            IEmbeddingShiftPipeline? shiftPipeline = null)
+        internal FileBasedInsuranceMiniWorkflow(ILocalEmbeddingProvider embeddingProvider)
         {
             _embeddingProvider = embeddingProvider ?? throw new ArgumentNullException(nameof(embeddingProvider));
-            _shiftPipeline = shiftPipeline ?? CreateDefaultPipeline();
         }
 
         public string Name => "FileBased-Insurance-Mini";
@@ -72,12 +64,7 @@ namespace EmbeddingShift.Workflows
 
             var docEmbeddings = docs.ToDictionary(
                 kvp => kvp.Key,
-                kvp =>
-                {
-                    var emb = _embeddingProvider.Embed(kvp.Value);
-                    _shiftPipeline.ApplyInPlace(emb);
-                    return emb;
-                });
+                kvp => _embeddingProvider.Embed(kvp.Value));
 
             var apValues   = new List<double>();
             var ndcgValues = new List<double>();
@@ -96,7 +83,6 @@ namespace EmbeddingShift.Workflows
                     }
 
                     var qEmb = _embeddingProvider.Embed(q.Text ?? string.Empty);
-                    _shiftPipeline.ApplyInPlace(qEmb);
 
                     var ranked = docEmbeddings
                         .Select(d => new
@@ -208,12 +194,6 @@ namespace EmbeddingShift.Workflows
             return count;
         }
 
-        private static IEmbeddingShiftPipeline CreateDefaultPipeline()
-        {
-            // v1: no-op pipeline (no shifts). Real shifts can be injected later.
-            return new EmbeddingShiftPipeline(Array.Empty<IEmbeddingShift>());
-        }
-
         internal interface ILocalEmbeddingProvider
         {
             int Dimension { get; }
@@ -250,4 +230,3 @@ namespace EmbeddingShift.Workflows
         private sealed record QueryDefinition(string Id, string Text, string RelevantDocId);
     }
 }
-
