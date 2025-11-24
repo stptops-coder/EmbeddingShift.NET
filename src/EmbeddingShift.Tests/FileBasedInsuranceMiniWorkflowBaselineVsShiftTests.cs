@@ -90,6 +90,17 @@ namespace EmbeddingShift.Tests
             // This assertion is just to keep the test from being "empty".
             // To inspect concrete values, set a breakpoint on metricDiffs.
             Assert.NotNull(metricDiffs);
+            foreach (var kvp in metricDiffs)
+            {
+                var key = kvp.Key;
+                var (baseline, shifted, delta) = kvp.Value;
+
+                // Shift darf nicht schlechter sein als Baseline (mit kleinem Toleranzfenster)
+                Assert.True(
+                    shifted >= baseline - 1e-6,
+                    $"Metric {key} got worse: baseline={baseline}, shifted={shifted}");
+            }
+
         }
     }
 }
