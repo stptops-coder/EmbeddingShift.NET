@@ -14,8 +14,9 @@ namespace EmbeddingShift.Tests
     /// - once without any shift pipeline (baseline)
     /// - once with a real shift pipeline that modifies embeddings
     ///
-    /// In addition to checking Success, this test ensures that
-    /// no metric gets worse when the shift pipeline is applied.
+    /// In addition to checking Success, this test prepares a
+    /// Baseline-vs-Shift metric comparison based on WorkflowResult.Metrics.
+    /// There are intentionally no hard metric gates yet.
     /// </summary>
     public class FileBasedInsuranceMiniWorkflowBaselineVsShiftTests
     {
@@ -46,7 +47,7 @@ namespace EmbeddingShift.Tests
         }
 
         [Fact]
-        public async Task Baseline_and_shifted_runs_do_not_degrade_metrics()
+        public async Task Baseline_and_shifted_runs_complete_successfully_and_expose_metrics_for_comparison()
         {
             var runner = new StatsAwareWorkflowRunner();
 
@@ -68,7 +69,9 @@ namespace EmbeddingShift.Tests
 
             Assert.True(shiftedResult.Success);
 
-            // Metrics are exposed as IReadOnlyDictionary<string,double>.
+            // --- Metric comparison scaffold ------------------------------------
+            // WorkflowResult exposes Metrics as IReadOnlyDictionary<string,double>.
+            // We build a combined view over baseline and shifted metrics.
             var baselineMetrics = baselineResult.Metrics ?? new Dictionary<string, double>();
             var shiftedMetrics  = shiftedResult.Metrics  ?? new Dictionary<string, double>();
 
@@ -84,19 +87,20 @@ namespace EmbeddingShift.Tests
                 metricDiffs[key] = (b, s, s - b);
             }
 
-            // Soft gate: no metric is allowed to get worse than baseline
-            // (with a tiny numerical tolerance).
-            const double Tolerance = 1e-6;
-
+            // This assertion is just to keep the test from being "empty".
+            // To inspect concrete values, set a breakpoint on metricDiffs.
+            Assert.NotNull(metricDiffs);
             foreach (var kvp in metricDiffs)
             {
                 var key = kvp.Key;
                 var (baseline, shifted, delta) = kvp.Value;
 
+                // Shift darf nicht schlechter sein als Baseline (mit kleinem Toleranzfenster)
                 Assert.True(
-                    shifted + Tolerance >= baseline,
-                    $"Metric '{key}' degraded: baseline={baseline}, shifted={shifted}, delta={delta}");
+                    shifted >= baseline - 1e-6,
+                    $"Metric {key} got worse: baseline={baseline}, shifted={shifted}");
             }
+
         }
     }
 }
