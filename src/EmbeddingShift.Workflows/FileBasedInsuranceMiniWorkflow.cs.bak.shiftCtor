@@ -31,12 +31,6 @@ namespace EmbeddingShift.Workflows
         {
         }
 
-        public FileBasedInsuranceMiniWorkflow(IEmbeddingShiftPipeline shiftPipeline)
-            : this(
-                new KeywordCountEmbeddingProvider(),
-                shiftPipeline)
-        {
-        }
         internal FileBasedInsuranceMiniWorkflow(
             ILocalEmbeddingProvider embeddingProvider,
             IEmbeddingShiftPipeline? shiftPipeline = null)
@@ -256,5 +250,4 @@ namespace EmbeddingShift.Workflows
         private sealed record QueryDefinition(string Id, string Text, string RelevantDocId);
     }
 }
-
 
