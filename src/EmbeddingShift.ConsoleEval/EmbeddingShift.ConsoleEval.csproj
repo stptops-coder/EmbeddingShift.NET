@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -13,6 +13,7 @@
     <ProjectReference Include="..\EmbeddingShift.Core\EmbeddingShift.Core.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Providers.OpenAI\EmbeddingShift.Providers.OpenAI.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Workflows\EmbeddingShift.Workflows.csproj" />
+    <ProjectReference Include="..\\EmbeddingShift.Simulation\\EmbeddingShift.Simulation.csproj" />
   </ItemGroup>
 
 </Project>
