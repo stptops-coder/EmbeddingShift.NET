@@ -61,28 +61,6 @@ public sealed class SimEmbeddingProvider : IEmbeddingProvider
         }
     }
 
-    /// <summary>
-    /// Factory for deterministic simulation (no additional noise).
-    /// Useful for explicit code / UI configuration without environment variables.
-    /// </summary>
-    public static SimEmbeddingProvider CreateDeterministic()
-        => new SimEmbeddingProvider(new EmbeddingSimulationOptions
-        {
-            Mode = EmbeddingSimulationMode.Deterministic,
-            NoiseAmplitude = 0f
-        });
-
-    /// <summary>
-    /// Factory for noisy simulation. Noise amplitude should typically
-    /// stay in a small range, e.g. 0.01 - 0.1, to mimic realistic variation.
-    /// </summary>
-    public static SimEmbeddingProvider CreateNoisy(float noiseAmplitude = 0.05f)
-        => new SimEmbeddingProvider(new EmbeddingSimulationOptions
-        {
-            Mode = EmbeddingSimulationMode.Noisy,
-            NoiseAmplitude = noiseAmplitude
-        });
-
     public Task<float[]> GetEmbeddingAsync(string text)
     {
         using var sha = SHA256.Create();
