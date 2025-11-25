@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using EmbeddingShift.Abstractions;           // ShiftMethod
 using EmbeddingShift.Workflows;              // AdaptiveWorkflow
 using EmbeddingShift.Adaptive;               // ShiftEvaluationService
@@ -18,7 +18,7 @@ string providerArg = args.FirstOrDefault(a => a.StartsWith("--provider=", String
                     ?.Split('=', 2)[1] ?? "sim";
 
 // base provider used by all modes (still the existing SimEmbeddingProvider)
-IEmbeddingProvider baseProvider = new SimEmbeddingProvider();
+IEmbeddingProvider baseProvider = EmbeddingProviderFactory.FromEnvironment();
 
 IEmbeddingProvider provider = providerArg.ToLowerInvariant() switch
 {
@@ -312,3 +312,4 @@ static class Helpers
     // Mirror of FileStore's record shape
     public sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
 }
+
