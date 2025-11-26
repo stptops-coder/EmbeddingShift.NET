@@ -214,10 +214,88 @@ namespace EmbeddingShift.Workflows
             return count;
         }
 
+    
         private static IEmbeddingShiftPipeline CreateDefaultPipeline()
         {
             // v1: no-op pipeline (no shifts). Real shifts can be injected later.
             return new EmbeddingShiftPipeline(Array.Empty<IEmbeddingShift>());
+        }
+
+        /// <summary>
+        /// Pipeline helper for experiments: applies a single domain-level FirstShift
+        /// to all insurance embeddings. Used by tests and console experiments to
+        /// compare against the baseline pipeline.
+        /// </summary>
+        public static IEmbeddingShiftPipeline CreateFirstShiftPipeline()
+        {
+            var firstVector = BuildFirstShiftVector();
+
+            IEmbeddingShift firstShift = new FirstShift(
+                name: "Insurance-First",
+                shiftVector: firstVector,
+                weight: 1.0f);
+
+            return new EmbeddingShiftPipeline(new[] { firstShift });
+        }
+
+        /// <summary>
+        /// Pipeline helper for experiments: applies both a FirstShift and an
+        /// additional DeltaShift on top. This demonstrates the First+Delta
+        /// combination in the file-based insurance mini workflow.
+        /// </summary>
+        public static IEmbeddingShiftPipeline CreateFirstPlusDeltaPipeline()
+        {
+            var firstVector = BuildFirstShiftVector();
+            var deltaVector = BuildDeltaShiftVector();
+
+            IEmbeddingShift firstShift = new FirstShift(
+                name: "Insurance-First",
+                shiftVector: firstVector,
+                weight: 1.0f);
+
+            IEmbeddingShift deltaShift = new DeltaShift(
+                name: "Insurance-Delta",
+                deltaVector: deltaVector,
+                weight: 1.0f);
+
+            return new EmbeddingShiftPipeline(new IEmbeddingShift[] { firstShift, deltaShift });
+        }
+
+        /// <summary>
+        /// Construct the "base" insurance shift vector (FirstShift).
+        /// We apply a small, global prior on the core insurance keywords.
+        /// Layout is aligned with KeywordCountEmbeddingProvider:
+        /// 0: fire, 1: water, 2: damage, 3: theft, 4: claims, 5: flood, 6: storm.
+        /// </summary>
+        private static float[] BuildFirstShiftVector()
+        {
+            var provider = new KeywordCountEmbeddingProvider();
+            var vector = new float[provider.Dimension];
+
+            // Domain-level prior: globally emphasise damage/theft/claims/flood/storm.
+            vector[2] = 0.5f; // damage
+            vector[3] = 0.3f; // theft
+            vector[4] = 0.3f; // claims
+            vector[5] = 0.3f; // flood
+            vector[6] = 0.3f; // storm
+
+            return vector;
+        }
+
+        /// <summary>
+        /// Construct the "delta" adjustment vector (DeltaShift) on top
+        /// of the base prior. Here we bias a bit more towards flood/storm.
+        /// </summary>
+        private static float[] BuildDeltaShiftVector()
+        {
+            var provider = new KeywordCountEmbeddingProvider();
+            var vector = new float[provider.Dimension];
+
+            // Delta adjustment: emphasise flood & storm even more.
+            vector[5] = 0.5f; // flood
+            vector[6] = 0.5f; // storm
+
+            return vector;
         }
 
         internal interface ILocalEmbeddingProvider

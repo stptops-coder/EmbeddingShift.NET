@@ -236,6 +236,84 @@ switch (args[0].ToLowerInvariant())
             Console.WriteLine(result.ReportMarkdown("Mini Insurance Evaluation"));
             break;
         }
+    case "mini-insurance-first-delta":
+        {
+            Console.WriteLine("[MiniInsurance] Baseline vs FirstShift vs First+Delta (mini workflow)");
+            Console.WriteLine();
+
+            var wfRunner = new StatsAwareWorkflowRunner();
+
+            // Baseline: default pipeline (no shifts)
+            IWorkflow baselineWorkflow = new FileBasedInsuranceMiniWorkflow();
+            var baselineResult = await wfRunner.ExecuteAsync(
+                "FileBased-Insurance-Mini-Baseline",
+                baselineWorkflow);
+
+            if (!baselineResult.Success)
+            {
+                Console.WriteLine("[MiniInsurance] Baseline run failed:");
+                Console.WriteLine(baselineResult.ReportMarkdown("Mini Insurance Baseline"));
+                break;
+            }
+
+            // FirstShift only
+            var firstPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstShiftPipeline();
+            IWorkflow firstWorkflow = new FileBasedInsuranceMiniWorkflow(firstPipeline);
+            var firstResult = await wfRunner.ExecuteAsync(
+                "FileBased-Insurance-Mini-FirstShift",
+                firstWorkflow);
+
+            if (!firstResult.Success)
+            {
+                Console.WriteLine("[MiniInsurance] FirstShift run failed:");
+                Console.WriteLine(firstResult.ReportMarkdown("Mini Insurance FirstShift"));
+                break;
+            }
+
+            // First + Delta
+            var firstDeltaPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline();
+            IWorkflow firstDeltaWorkflow = new FileBasedInsuranceMiniWorkflow(firstDeltaPipeline);
+            var firstDeltaResult = await wfRunner.ExecuteAsync(
+                "FileBased-Insurance-Mini-FirstPlusDelta",
+                firstDeltaWorkflow);
+
+            if (!firstDeltaResult.Success)
+            {
+                Console.WriteLine("[MiniInsurance] First+Delta run failed:");
+                Console.WriteLine(firstDeltaResult.ReportMarkdown("Mini Insurance First+Delta"));
+                break;
+            }
+
+            var baselineMetrics = baselineResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
+            var firstMetrics = firstResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
+            var firstDeltaMetrics = firstDeltaResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
+
+            var allKeys = new System.Collections.Generic.SortedSet<string>(baselineMetrics.Keys);
+            allKeys.UnionWith(firstMetrics.Keys);
+            allKeys.UnionWith(firstDeltaMetrics.Keys);
+
+            Console.WriteLine("[MiniInsurance] Metrics comparison (Baseline vs First vs First+Delta):");
+            Console.WriteLine();
+            Console.WriteLine("Metric                Baseline    First      First+Delta   ΔFirst-BL   ΔFirst+Delta-BL");
+            Console.WriteLine("-------------------   --------    --------   -----------   ---------   ---------------");
+
+            foreach (var key in allKeys)
+            {
+                baselineMetrics.TryGetValue(key, out var b);
+                firstMetrics.TryGetValue(key, out var f);
+                firstDeltaMetrics.TryGetValue(key, out var fd);
+
+                var df = f - b;
+                var dfd = fd - b;
+
+                Console.WriteLine(
+                    $"{key,-19}   {b,8:F3}    {f,8:F3}   {fd,11:F3}   {df,9:+0.000;-0.000;0.000}   {dfd,15:+0.000;-0.000;0.000}");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("[MiniInsurance] Done.");
+            break;
+        }
     case "--version":
         {
             var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
@@ -285,6 +363,8 @@ static class Helpers
         Console.WriteLine("  demo --shift <Name> [--dataset X]   run tiny demo (e.g., NoShift.IngestBased)");
         Console.WriteLine("  ingest-refs <path> <dataset>        ingest reference vectors");
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
+        Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
+        Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");
