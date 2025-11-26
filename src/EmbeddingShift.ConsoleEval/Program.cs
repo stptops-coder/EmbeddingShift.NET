@@ -17,9 +17,39 @@ using EmbeddingShift.Core.Infrastructure;    // DirectoryLayout for /data and /r
 string providerArg = args.FirstOrDefault(a => a.StartsWith("--provider=", StringComparison.OrdinalIgnoreCase))
                     ?.Split('=', 2)[1] ?? "sim";
 
+// CLI-level override of simulation environment options (if present)
+string? simModeArg = null;
+string? simNoiseArg = null;
+
+foreach (var arg in args)
+{
+    if (arg.StartsWith("--sim-mode=", StringComparison.OrdinalIgnoreCase))
+    {
+        simModeArg = arg.Substring("--sim-mode=".Length);
+    }
+    else if (arg.StartsWith("--sim-noise=", StringComparison.OrdinalIgnoreCase))
+    {
+        simNoiseArg = arg.Substring("--sim-noise=".Length);
+    }
+}
+
+if (!string.IsNullOrWhiteSpace(simModeArg))
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SIM_MODE", simModeArg);
+}
+
+if (!string.IsNullOrWhiteSpace(simNoiseArg))
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SIM_NOISE_AMPLITUDE", simNoiseArg);
+}
+
+var embeddingProvider = EmbeddingProviderFactory.FromEnvironment();
+EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
+
+
 // base provider used by all modes (still the existing SimEmbeddingProvider)
 IEmbeddingProvider baseProvider = EmbeddingProviderFactory.FromEnvironment();
-        EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
+EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
 EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
 
 IEmbeddingProvider provider = providerArg.ToLowerInvariant() switch
