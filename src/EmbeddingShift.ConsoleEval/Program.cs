@@ -19,6 +19,7 @@ string providerArg = args.FirstOrDefault(a => a.StartsWith("--provider=", String
 
 // base provider used by all modes (still the existing SimEmbeddingProvider)
 IEmbeddingProvider baseProvider = EmbeddingProviderFactory.FromEnvironment();
+EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
 
 IEmbeddingProvider provider = providerArg.ToLowerInvariant() switch
 {
