@@ -19,6 +19,7 @@ string providerArg = args.FirstOrDefault(a => a.StartsWith("--provider=", String
 
 // base provider used by all modes (still the existing SimEmbeddingProvider)
 IEmbeddingProvider baseProvider = EmbeddingProviderFactory.FromEnvironment();
+        EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
 EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
 
 IEmbeddingProvider provider = providerArg.ToLowerInvariant() switch
@@ -313,4 +314,5 @@ static class Helpers
     // Mirror of FileStore's record shape
     public sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
 }
+
 
