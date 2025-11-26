@@ -422,6 +422,133 @@ switch (args[0].ToLowerInvariant())
 
             break;
         }
+    case "mini-insurance-first-learned-delta":
+        {
+            Console.WriteLine("[MiniInsurance] Baseline vs FirstShift vs First+LearnedDelta (mini workflow)");
+            Console.WriteLine();
+
+            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
+
+            // Load latest trained Delta candidate.
+            var learnedDelta = MiniInsuranceFirstDeltaCandidateLoader
+                .LoadLatestDeltaVectorOrDefault(baseDir, out var found);
+
+            if (!found)
+            {
+                Console.WriteLine("[MiniInsurance] No trained Delta candidate found.");
+                Console.WriteLine($"  Looked under: {baseDir}");
+                Console.WriteLine("  Run 'mini-insurance-first-delta', then");
+                Console.WriteLine("      'mini-insurance-first-delta-aggregate' and");
+                Console.WriteLine("      'mini-insurance-first-delta-train' first.");
+                break;
+            }
+
+            var wfRunner = new StatsAwareWorkflowRunner();
+
+            // Baseline: default pipeline (no shifts).
+            IWorkflow baselineWorkflow = new FileBasedInsuranceMiniWorkflow();
+            var baselineResult = await wfRunner.ExecuteAsync(
+                "FileBased-Insurance-Mini-Baseline-Learned",
+                baselineWorkflow);
+
+            if (!baselineResult.Success)
+            {
+                Console.WriteLine("[MiniInsurance] Baseline run failed:");
+                Console.WriteLine(baselineResult.ReportMarkdown("Mini Insurance Baseline (LearnedDelta)"));
+                break;
+            }
+
+            // FirstShift only.
+            var firstPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstShiftPipeline();
+            IWorkflow firstWorkflow = new FileBasedInsuranceMiniWorkflow(firstPipeline);
+            var firstResult = await wfRunner.ExecuteAsync(
+                "FileBased-Insurance-Mini-FirstShift-Learned",
+                firstWorkflow);
+
+            if (!firstResult.Success)
+            {
+                Console.WriteLine("[MiniInsurance] FirstShift run failed:");
+                Console.WriteLine(firstResult.ReportMarkdown("Mini Insurance FirstShift (LearnedDelta)"));
+                break;
+            }
+
+            // First + learned Delta.
+            var learnedPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline(learnedDelta);
+            IWorkflow learnedWorkflow = new FileBasedInsuranceMiniWorkflow(learnedPipeline);
+            var learnedResult = await wfRunner.ExecuteAsync(
+                "FileBased-Insurance-Mini-FirstPlusLearnedDelta",
+                learnedWorkflow);
+
+            if (!learnedResult.Success)
+            {
+                Console.WriteLine("[MiniInsurance] First+LearnedDelta run failed:");
+                Console.WriteLine(learnedResult.ReportMarkdown("Mini Insurance First+LearnedDelta"));
+                break;
+            }
+
+            // Persist runs + comparison so sie wieder in die Aggregation einfließen können.
+            string? baselineRunDir = null;
+            string? firstRunDir = null;
+            string? learnedRunDir = null;
+            string? comparisonDir = null;
+
+            try
+            {
+                baselineRunDir = await RunPersistor.Persist(baseDir, baselineResult);
+                firstRunDir = await RunPersistor.Persist(baseDir, firstResult);
+                learnedRunDir = await RunPersistor.Persist(baseDir, learnedResult);
+
+                var comparison = MiniInsuranceFirstDeltaArtifacts.CreateComparison(
+                    baselineResult,
+                    firstResult,
+                    learnedResult,
+                    baselineRunDir,
+                    firstRunDir,
+                    learnedRunDir);
+
+                comparisonDir = MiniInsuranceFirstDeltaArtifacts.PersistComparison(baseDir, comparison);
+
+                Console.WriteLine($"[MiniInsurance] Baseline run persisted to:           {baselineRunDir}");
+                Console.WriteLine($"[MiniInsurance] FirstShift run persisted to:        {firstRunDir}");
+                Console.WriteLine($"[MiniInsurance] First+LearnedDelta run persisted to:{learnedRunDir}");
+                Console.WriteLine($"[MiniInsurance] Metrics comparison persisted to:    {comparisonDir}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MiniInsurance] WARNING: Failed to persist LearnedDelta artifacts under '{baseDir}': {ex.Message}");
+            }
+
+            var baselineMetrics = baselineResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
+            var firstMetrics = firstResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
+            var learnedMetrics = learnedResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
+
+            var allKeys = new System.Collections.Generic.SortedSet<string>(baselineMetrics.Keys);
+            allKeys.UnionWith(firstMetrics.Keys);
+            allKeys.UnionWith(learnedMetrics.Keys);
+
+            Console.WriteLine();
+            Console.WriteLine("[MiniInsurance] Metrics comparison (Baseline vs First vs First+LearnedDelta):");
+            Console.WriteLine();
+            Console.WriteLine("Metric                Baseline    First      First+LearnedΔ   ΔFirst-BL   ΔFirst+LearnedΔ-BL");
+            Console.WriteLine("-------------------   --------    --------   --------------   ---------   -------------------");
+
+            foreach (var key in allKeys)
+            {
+                baselineMetrics.TryGetValue(key, out var b);
+                firstMetrics.TryGetValue(key, out var f);
+                learnedMetrics.TryGetValue(key, out var fl);
+
+                var df = f - b;
+                var dfl = fl - b;
+
+                Console.WriteLine(
+                    $"{key,-19}   {b,8:F3}    {f,8:F3}   {fl,14:F3}   {df,9:+0.000;-0.000;0.000}   {dfl,19:+0.000;-0.000;0.000}");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("[MiniInsurance] LearnedDelta comparison done.");
+            break;
+        }
     case "--version":
         {
             var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
@@ -475,6 +602,7 @@ static class Helpers
         Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
         Console.WriteLine("  mini-insurance-first-delta-aggregate aggregate metrics over all comparison runs");
         Console.WriteLine("  mini-insurance-first-delta-train    train a Delta shift candidate from aggregated metrics");
+        Console.WriteLine("  mini-insurance-first-learned-delta  compare baseline vs First vs First+LearnedDelta");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");

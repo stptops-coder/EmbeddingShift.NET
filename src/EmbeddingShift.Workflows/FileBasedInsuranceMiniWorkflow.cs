@@ -262,6 +262,43 @@ namespace EmbeddingShift.Workflows
         }
 
         /// <summary>
+        /// Creates a First+Delta pipeline using a caller-supplied delta vector.
+        /// If the vector length does not match the embedding dimension, it will
+        /// be truncated or zero-padded to fit the FirstShift vector length.
+        /// This overload is the hook for using trained / learned delta candidates.
+        /// </summary>
+        public static IEmbeddingShiftPipeline CreateFirstPlusDeltaPipeline(float[] deltaVector)
+        {
+            if (deltaVector == null)
+                throw new System.ArgumentNullException(nameof(deltaVector));
+
+            var firstVector = BuildFirstShiftVector();
+            var normalizedDelta = new float[firstVector.Length];
+
+            var length = deltaVector.Length < normalizedDelta.Length
+                ? deltaVector.Length
+                : normalizedDelta.Length;
+
+            for (int i = 0; i < length; i++)
+            {
+                normalizedDelta[i] = deltaVector[i];
+            }
+
+            IEmbeddingShift firstShift = new FirstShift(
+                name: "Insurance-First",
+                shiftVector: firstVector,
+                weight: 1.0f);
+
+            IEmbeddingShift deltaShift = new DeltaShift(
+                name: "Insurance-Delta-Learned",
+                deltaVector: normalizedDelta,
+                weight: 1.0f);
+
+            return new EmbeddingShiftPipeline(new IEmbeddingShift[] { firstShift, deltaShift });
+        }
+
+
+        /// <summary>
         /// Construct the "base" insurance shift vector (FirstShift).
         /// We apply a small, global prior on the core insurance keywords.
         /// Layout is aligned with KeywordCountEmbeddingProvider:
