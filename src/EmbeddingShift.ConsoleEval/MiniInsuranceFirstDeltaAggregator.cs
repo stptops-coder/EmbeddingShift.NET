@@ -137,38 +137,22 @@ namespace EmbeddingShift.ConsoleEval
         }
 
         /// <summary>
-        /// Persists the aggregate as JSON plus Markdown in a new subdirectory
-        /// under the given base directory.
+        /// Convenience wrapper that delegates to IMetricsRepository.
         /// </summary>
-        public static string PersistAggregate(string baseDirectory, MiniInsuranceFirstDeltaAggregate aggregate)
+        public static string PersistAggregate(
+            string baseDirectory,
+            MiniInsuranceFirstDeltaAggregate aggregate)
         {
-            if (string.IsNullOrWhiteSpace(baseDirectory))
-                throw new ArgumentException("Base directory must not be null or empty.", nameof(baseDirectory));
-
-            var runId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
-            var aggregateDir = Path.Combine(baseDirectory, $"mini-insurance-first-delta-aggregate_{runId}");
-
-            Directory.CreateDirectory(aggregateDir);
-
-            var jsonOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-
-            var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
-
-            var jsonPath = Path.Combine(aggregateDir, "metrics-aggregate.json");
-            var json = JsonSerializer.Serialize(aggregate, jsonOptions);
-            File.WriteAllText(jsonPath, json, encoding);
-
-            var markdownPath = Path.Combine(aggregateDir, "metrics-aggregate.md");
-            var markdown = BuildMarkdown(aggregate);
-            File.WriteAllText(markdownPath, markdown, encoding);
-
-            return aggregateDir;
+            IMetricsRepository repository = new FileSystemMetricsRepository();
+            return repository.SaveMiniInsuranceFirstDeltaAggregate(baseDirectory, aggregate);
         }
 
-        private static string BuildMarkdown(MiniInsuranceFirstDeltaAggregate aggregate)
+        /// <summary>
+        /// Builds the Markdown representation for an aggregate.
+        /// This is used by the file-system repository but can also
+        /// be reused by other backends.
+        /// </summary>
+        internal static string BuildMarkdown(MiniInsuranceFirstDeltaAggregate aggregate)
         {
             var sb = new StringBuilder();
 
