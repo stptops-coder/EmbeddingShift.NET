@@ -384,6 +384,44 @@ switch (args[0].ToLowerInvariant())
 
             break;
         }
+    case "mini-insurance-first-delta-train":
+        {
+            Console.WriteLine("[MiniInsurance] Training Delta shift candidate from aggregated First/Delta metrics...");
+            Console.WriteLine();
+
+            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
+
+            try
+            {
+                var aggregate = MiniInsuranceFirstDeltaAggregator.AggregateFromDirectory(baseDir);
+                var candidate = MiniInsuranceFirstDeltaTrainer.TrainFromAggregate(baseDir, aggregate);
+                var trainingDir = MiniInsuranceFirstDeltaTrainer.PersistCandidate(baseDir, candidate);
+
+                Console.WriteLine($"[MiniInsurance] Used {aggregate.ComparisonCount} comparison runs.");
+                Console.WriteLine($"[MiniInsurance] Training artifacts persisted to: {trainingDir}");
+                Console.WriteLine();
+
+                Console.WriteLine($"Combined First improvement:       {candidate.ImprovementFirst:+0.000;-0.000;0.000}");
+                Console.WriteLine($"Combined First+Delta improvement: {candidate.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
+                Console.WriteLine($"Delta improvement vs First:       {candidate.DeltaImprovement:+0.000;-0.000;0.000}");
+                Console.WriteLine();
+                Console.WriteLine("Proposed Delta vector (index: value):");
+
+                for (int i = 0; i < candidate.DeltaVector.Length; i++)
+                {
+                    Console.WriteLine($"  [{i}] = {candidate.DeltaVector[i]:+0.000;-0.000;0.000}");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("[MiniInsurance] Training done.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MiniInsurance] ERROR: Training failed under '{baseDir}': {ex.Message}");
+            }
+
+            break;
+        }
     case "--version":
         {
             var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
@@ -436,6 +474,7 @@ static class Helpers
         Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
         Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
         Console.WriteLine("  mini-insurance-first-delta-aggregate aggregate metrics over all comparison runs");
+        Console.WriteLine("  mini-insurance-first-delta-train    train a Delta shift candidate from aggregated metrics");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");
