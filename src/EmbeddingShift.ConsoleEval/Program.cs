@@ -284,6 +284,40 @@ switch (args[0].ToLowerInvariant())
                 break;
             }
 
+            // Persist individual runs under /results/insurance and build a JSON+Markdown comparison.
+            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
+
+            string? baselineRunDir = null;
+            string? firstRunDir = null;
+            string? firstPlusDeltaRunDir = null;
+            string? comparisonDir = null;
+
+            try
+            {
+                baselineRunDir = await RunPersistor.Persist(baseDir, baselineResult);
+                firstRunDir = await RunPersistor.Persist(baseDir, firstResult);
+                firstPlusDeltaRunDir = await RunPersistor.Persist(baseDir, firstDeltaResult);
+
+                var comparison = MiniInsuranceFirstDeltaArtifacts.CreateComparison(
+                    baselineResult,
+                    firstResult,
+                    firstDeltaResult,
+                    baselineRunDir,
+                    firstRunDir,
+                    firstPlusDeltaRunDir);
+
+                comparisonDir = MiniInsuranceFirstDeltaArtifacts.PersistComparison(baseDir, comparison);
+
+                Console.WriteLine($"[MiniInsurance] Baseline run persisted to:      {baselineRunDir}");
+                Console.WriteLine($"[MiniInsurance] FirstShift run persisted to:   {firstRunDir}");
+                Console.WriteLine($"[MiniInsurance] First+Delta run persisted to: {firstPlusDeltaRunDir}");
+                Console.WriteLine($"[MiniInsurance] Metrics comparison persisted to: {comparisonDir}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MiniInsurance] WARNING: Failed to persist First/Delta artifacts under '{baseDir}': {ex.Message}");
+            }
+
             var baselineMetrics = baselineResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
             var firstMetrics = firstResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
             var firstDeltaMetrics = firstDeltaResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
@@ -292,6 +326,7 @@ switch (args[0].ToLowerInvariant())
             allKeys.UnionWith(firstMetrics.Keys);
             allKeys.UnionWith(firstDeltaMetrics.Keys);
 
+            Console.WriteLine();
             Console.WriteLine("[MiniInsurance] Metrics comparison (Baseline vs First vs First+Delta):");
             Console.WriteLine();
             Console.WriteLine("Metric                Baseline    First      First+Delta   ΔFirst-BL   ΔFirst+Delta-BL");
@@ -312,6 +347,41 @@ switch (args[0].ToLowerInvariant())
 
             Console.WriteLine();
             Console.WriteLine("[MiniInsurance] Done.");
+            break;
+        }
+    case "mini-insurance-first-delta-aggregate":
+        {
+            Console.WriteLine("[MiniInsurance] Aggregating First/Delta metrics from previous comparison runs...");
+            Console.WriteLine();
+
+            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
+
+            try
+            {
+                var aggregate = MiniInsuranceFirstDeltaAggregator.AggregateFromDirectory(baseDir);
+                var aggregateDir = MiniInsuranceFirstDeltaAggregator.PersistAggregate(baseDir, aggregate);
+
+                Console.WriteLine($"[MiniInsurance] Aggregated {aggregate.ComparisonCount} comparison runs.");
+                Console.WriteLine($"[MiniInsurance] Aggregate metrics persisted to: {aggregateDir}");
+                Console.WriteLine();
+
+                Console.WriteLine("Metric                AvgBaseline  AvgFirst    AvgFirst+Delta   AvgΔFirst-BL   AvgΔFirst+Delta-BL");
+                Console.WriteLine("-------------------   -----------  ---------   --------------   ------------   -------------------");
+
+                foreach (var row in aggregate.Metrics)
+                {
+                    Console.WriteLine(
+                        $"{row.Metric,-19}   {row.AverageBaseline,11:F3}  {row.AverageFirst,9:F3}   {row.AverageFirstPlusDelta,14:F3}   {row.AverageDeltaFirstVsBaseline,12:+0.000;-0.000;0.000}   {row.AverageDeltaFirstPlusDeltaVsBaseline,19:+0.000;-0.000;0.000}");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("[MiniInsurance] Aggregate done.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MiniInsurance] ERROR: Could not aggregate comparison runs under '{baseDir}': {ex.Message}");
+            }
+
             break;
         }
     case "--version":
@@ -365,6 +435,7 @@ static class Helpers
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
         Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
         Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
+        Console.WriteLine("  mini-insurance-first-delta-aggregate aggregate metrics over all comparison runs");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");
