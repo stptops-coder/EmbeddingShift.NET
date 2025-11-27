@@ -1,4 +1,6 @@
 ﻿using System;
+using EmbeddingShift.Abstractions.Shifts;
+using EmbeddingShift.ConsoleEval.Repositories;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -162,6 +164,23 @@ namespace EmbeddingShift.ConsoleEval
             var markdownPath = Path.Combine(trainingDir, "shift-candidate.md");
             var markdown = BuildMarkdown(candidate);
             File.WriteAllText(markdownPath, markdown, encoding);
+
+            // Additionally persist a generic ShiftTrainingResult representation
+            // using the shared abstraction and file-system repository.
+            var genericResult = new ShiftTrainingResult
+            {
+                WorkflowName = "mini-insurance-first-delta",
+                CreatedUtc = candidate.CreatedUtc,
+                BaseDirectory = candidate.BaseDirectory,
+                ComparisonRuns = candidate.ComparisonRuns,
+                ImprovementFirst = candidate.ImprovementFirst,
+                ImprovementFirstPlusDelta = candidate.ImprovementFirstPlusDelta,
+                DeltaImprovement = candidate.DeltaImprovement,
+                DeltaVector = candidate.DeltaVector ?? Array.Empty<float>()
+            };
+
+            var genericRepo = new FileSystemShiftTrainingResultRepository(baseDirectory);
+            genericRepo.Save(genericResult);
 
             return trainingDir;
         }
