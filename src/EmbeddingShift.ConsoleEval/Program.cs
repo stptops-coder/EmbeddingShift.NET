@@ -1,14 +1,15 @@
-using System.Linq;
 using EmbeddingShift.Abstractions;           // ShiftMethod
-using EmbeddingShift.Workflows;              // AdaptiveWorkflow
 using EmbeddingShift.Adaptive;               // ShiftEvaluationService
-using EmbeddingShift.Core.Generators;        // DeltaShiftGenerator (example)
-using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
 using EmbeddingShift.ConsoleEval;
+using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
+using EmbeddingShift.Core.Generators;        // DeltaShiftGenerator (example)
+using EmbeddingShift.Core.Infrastructure;    // DirectoryLayout for /data and /results roots
 using EmbeddingShift.Core.Runs;        // RunPersistor
 using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
-using EmbeddingShift.Core.Infrastructure;    // DirectoryLayout for /data and /results roots
+using EmbeddingShift.Workflows;              // AdaptiveWorkflow
+using System.Linq;
+using EmbeddingShift.ConsoleEval.Inspector;
 
 
 // Composition Root (kept simple)
@@ -553,6 +554,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-first-delta-inspect":
         {
             Console.WriteLine("[MiniInsurance] Inspecting latest trained Delta candidate...");
+            Console.WriteLine("  mini-insurance-shift-training-inspect  inspect latest generic shift training result for mini-insurance");
             Console.WriteLine();
 
             var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
@@ -617,6 +619,14 @@ switch (args[0].ToLowerInvariant())
 
             Console.WriteLine();
             Console.WriteLine("[MiniInsurance] Candidate inspection done.");
+            break;
+        }
+    case "mini-insurance-shift-training-inspect":
+        {
+            var root = DirectoryLayout.ResolveResultsRoot("insurance");
+            ShiftTrainingResultInspector.PrintLatest(
+                workflowName: "mini-insurance-first-delta",
+                rootDirectory: root);
             break;
         }
     case "--version":
