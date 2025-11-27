@@ -37,7 +37,9 @@ dotnet test
 - ⏩ Next step: B-Light Inside (post-initial release)
 
 ## Further reading
-See [`Docs/OVERVIEW_TOUR.md`](Docs/OVERVIEW_TOUR.md) for a short technical walkthrough.
+- [`Docs/OVERVIEW_TOUR.md`](Docs/OVERVIEW_TOUR.md)  <!-- will be filled later -->
+- [`Docs/MiniInsuranceFirstDeltaLoop.md`](Docs/MiniInsuranceFirstDeltaLoop.md)
+
 
 ## License
 This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
