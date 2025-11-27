@@ -555,6 +555,7 @@ switch (args[0].ToLowerInvariant())
         {
             Console.WriteLine("[MiniInsurance] Inspecting latest trained Delta candidate...");
             Console.WriteLine("  mini-insurance-shift-training-inspect  inspect latest generic shift training result for mini-insurance");
+            Console.WriteLine("  mini-insurance-shift-training-history  list recent generic shift training results for mini-insurance");
             Console.WriteLine();
 
             var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
@@ -627,6 +628,15 @@ switch (args[0].ToLowerInvariant())
             ShiftTrainingResultInspector.PrintLatest(
                 workflowName: "mini-insurance-first-delta",
                 rootDirectory: root);
+            break;
+        }
+    case "mini-insurance-shift-training-history":
+        {
+            var root = DirectoryLayout.ResolveResultsRoot("insurance");
+            ShiftTrainingResultInspector.PrintHistory(
+                workflowName: "mini-insurance-first-delta",
+                rootDirectory: root,
+                maxItems: 20);
             break;
         }
     case "--version":

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Text.Json;
 using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.ConsoleEval.Repositories;
 
@@ -111,4 +113,96 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine();
         Console.WriteLine("[ShiftTraining] Inspection done.");
     }
+
+    /// <summary>
+    /// Lists the latest training results for the specified workflow in
+    /// descending order (newest first).
+    /// </summary>
+    /// <param name="workflowName">Logical workflow name, e.g. "mini-insurance-first-delta".</param>
+    /// <param name="rootDirectory">Root directory where training results are stored.</param>
+    /// <param name="maxItems">Maximum number of results to print.</param>
+    public static void PrintHistory(string workflowName, string rootDirectory, int maxItems = 20)
+    {
+        if (string.IsNullOrWhiteSpace(workflowName))
+            throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
+        if (string.IsNullOrWhiteSpace(rootDirectory))
+            throw new ArgumentException("Root directory must not be null or empty.", nameof(rootDirectory));
+
+        Console.WriteLine($"[ShiftTraining] History for workflow '{workflowName}'");
+        Console.WriteLine($"[ShiftTraining] Root directory: {rootDirectory}");
+        Console.WriteLine();
+
+        if (!Directory.Exists(rootDirectory))
+        {
+            Console.WriteLine("[ShiftTraining] Root directory does not exist.");
+            return;
+        }
+
+        var pattern = $"{workflowName}-training_*";
+        var directories = Directory.GetDirectories(rootDirectory, pattern, SearchOption.TopDirectoryOnly);
+        if (directories.Length == 0)
+        {
+            Console.WriteLine("[ShiftTraining] No training result directories found.");
+            return;
+        }
+
+        Array.Sort(directories, StringComparer.Ordinal);
+        Array.Reverse(directories);
+
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        Console.WriteLine("Idx | Created (UTC)         | Runs | dFirst  | dFirst+Δ | dΔvsFirst");
+        Console.WriteLine("----+-----------------------+------+--------+----------+-----------");
+
+        var printed = 0;
+
+        foreach (var dir in directories)
+        {
+            if (printed >= maxItems)
+                break;
+
+            var jsonPath = Path.Combine(dir, "shift-training-result.json");
+            if (!File.Exists(jsonPath))
+                continue;
+
+            ShiftTrainingResult? result;
+            try
+            {
+                var json = File.ReadAllText(jsonPath);
+                result = JsonSerializer.Deserialize<ShiftTrainingResult>(json, jsonOptions);
+            }
+            catch
+            {
+                // Ignore malformed entries.
+                continue;
+            }
+
+            if (result is null)
+                continue;
+
+            var created = result.CreatedUtc;
+            var runs = result.ComparisonRuns;
+            var dFirst = result.ImprovementFirst;
+            var dFirstPlusDelta = result.ImprovementFirstPlusDelta;
+            var dDelta = result.DeltaImprovement;
+
+            Console.WriteLine(
+                $"{printed,3} | {created:yyyy-MM-ddTHH:mm:ss} | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,9:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000}");
+
+            printed++;
+        }
+
+        if (printed == 0)
+        {
+            Console.WriteLine("[ShiftTraining] No valid training results found.");
+            return;
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"[ShiftTraining] Listed {printed} training result(s).");
+    }
+
 }
