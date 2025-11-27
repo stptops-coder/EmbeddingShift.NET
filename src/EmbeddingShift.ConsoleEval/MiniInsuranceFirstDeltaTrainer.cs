@@ -99,30 +99,31 @@ namespace EmbeddingShift.ConsoleEval
 
             // Domain layout:
             // 0: fire, 1: water, 2: damage, 3: theft, 4: claims, 5: flood, 6: storm.
-            const float BaseFlood = 0.5f;
-            const float BaseStorm = 0.5f;
 
+            // Base magnitude for the flood/storm delta component.
+            const float BaseMagnitude = 0.5f;
             const double Epsilon = 1e-6;
-            float factor;
 
-            if (deltaImprovement > Epsilon)
+            // Use the combined First+Delta improvement as primary driver for
+            // the delta magnitude. We clamp it into a reasonable range to
+            // avoid exploding shifts on noisy metrics.
+            var absImprovement = Math.Abs(improvementFirstPlusDelta);
+            var clamped = Math.Min(absImprovement, 0.2); // up to 0.2
+
+            // Map [0, 0.2] -> [0.5, 1.5] as a scaling factor.
+            var scale = 0.5 + (clamped / 0.2); // 0.5 .. 1.5
+
+            // If the trained Delta performs worse than First alone, dampen it.
+            if (deltaImprovement < -Epsilon)
             {
-                // Delta helps: strengthen the flood/storm part slightly.
-                factor = 1.1f;
-            }
-            else if (deltaImprovement < -Epsilon)
-            {
-                // Delta hurts: weaken it.
-                factor = 0.5f;
-            }
-            else
-            {
-                // Neutral: keep the base pattern.
-                factor = 1.0f;
+                scale *= 0.5;
             }
 
-            deltaVector[5] = BaseFlood * factor;
-            deltaVector[6] = BaseStorm * factor;
+            var magnitude = BaseMagnitude * (float)scale;
+
+            // Flood and storm dimensions receive the same learned magnitude.
+            deltaVector[5] = magnitude;
+            deltaVector[6] = magnitude;
 
             return new MiniInsuranceShiftTrainingResult
             {
