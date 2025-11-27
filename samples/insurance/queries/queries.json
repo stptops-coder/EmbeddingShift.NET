@@ -13,5 +13,15 @@
     "id": "q3",
     "text": "flood and storm damage after heavy rain",
     "relevantDocId": "policy-flood-storm"
+  },
+  {
+    "id": "q4",
+    "text": "flood damage to basement",
+    "relevantDocId": "policy-flood-storm"
+  },
+  {
+    "id": "q5",
+    "text": "storm damage and flood damage to property",
+    "relevantDocId": "policy-flood-storm"
   }
 ]
