@@ -14,11 +14,12 @@ namespace EmbeddingShift.ConsoleEval
     public static class MiniInsuranceFirstDeltaCandidateLoader
     {
         /// <summary>
-        /// Loads the latest Delta vector from mini-insurance-first-delta-training_*
-        /// directories under the given base directory. If no candidate is found,
-        /// returns a zero vector of EmbeddingDimensions.DIM and sets found=false.
+        /// Loads the latest mini-insurance shift training result (candidate)
+        /// from mini-insurance-first-delta-training_* directories under the
+        /// given base directory. Returns null and found=false if no candidate
+        /// could be loaded.
         /// </summary>
-        public static float[] LoadLatestDeltaVectorOrDefault(
+        public static MiniInsuranceShiftTrainingResult? LoadLatestCandidate(
             string baseDirectory,
             out bool found)
         {
@@ -33,10 +34,9 @@ namespace EmbeddingShift.ConsoleEval
             if (trainingDirs.Length == 0)
             {
                 found = false;
-                return new float[EmbeddingDimensions.DIM];
+                return null;
             }
 
-            // Sort by name (timestamp prefix) descending → newest first.
             Array.Sort(trainingDirs, StringComparer.Ordinal);
             Array.Reverse(trainingDirs);
 
@@ -56,29 +56,56 @@ namespace EmbeddingShift.ConsoleEval
                 {
                     var json = File.ReadAllText(jsonPath, encoding);
                     var candidate = JsonSerializer.Deserialize<MiniInsuranceShiftTrainingResult>(json, jsonOptions);
-                    if (candidate?.DeltaVector != null && candidate.DeltaVector.Length > 0)
+                    if (candidate != null && candidate.DeltaVector != null)
                     {
                         found = true;
-                        return candidate.DeltaVector;
+                        return candidate;
                     }
                 }
                 catch
                 {
-                    // Ignore malformed candidates and continue with the next directory.
+                    // ignore malformed candidates and continue
                 }
             }
 
             found = false;
-            return new float[EmbeddingDimensions.DIM];
+            return null;
         }
 
         /// <summary>
         /// Convenience overload using the standard insurance results root.
         /// </summary>
-        public static float[] LoadLatestDeltaVectorOrDefault(out bool found)
+        public static MiniInsuranceShiftTrainingResult? LoadLatestCandidate(out bool found)
         {
             var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-            return LoadLatestDeltaVectorOrDefault(baseDir, out found);
+            return LoadLatestCandidate(baseDir, out found);
         }
+
+
+        /// <summary>
+        /// Convenience overload using the standard insurance results root.
+        /// </summary>
+        public static float[] LoadLatestDeltaVectorOrDefault(
+            string baseDirectory,
+            out bool found)
+        {
+            var candidate = LoadLatestCandidate(baseDirectory, out found);
+            if (!found || candidate?.DeltaVector == null || candidate.DeltaVector.Length == 0)
+            {
+                return new float[EmbeddingDimensions.DIM];
+            }
+
+            var source = candidate.DeltaVector;
+            if (source.Length == EmbeddingDimensions.DIM)
+            {
+                return source;
+            }
+
+            var normalized = new float[EmbeddingDimensions.DIM];
+            var length = Math.Min(source.Length, normalized.Length);
+            Array.Copy(source, normalized, length);
+            return normalized;
+        }
+
     }
 }

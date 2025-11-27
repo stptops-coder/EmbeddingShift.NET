@@ -549,6 +549,76 @@ switch (args[0].ToLowerInvariant())
             Console.WriteLine("[MiniInsurance] LearnedDelta comparison done.");
             break;
         }
+
+    case "mini-insurance-first-delta-inspect":
+        {
+            Console.WriteLine("[MiniInsurance] Inspecting latest trained Delta candidate...");
+            Console.WriteLine();
+
+            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
+            var candidate = MiniInsuranceFirstDeltaCandidateLoader
+                .LoadLatestCandidate(baseDir, out var found);
+
+            if (!found || candidate == null)
+            {
+                Console.WriteLine("[MiniInsurance] No shift candidate found.");
+                Console.WriteLine($"  Looked under: {baseDir}");
+                Console.WriteLine("  Run 'mini-insurance-first-delta-aggregate' and");
+                Console.WriteLine("      'mini-insurance-first-delta-train' first.");
+                break;
+            }
+
+            Console.WriteLine($"Created (UTC):            {candidate.CreatedUtc:O}");
+            Console.WriteLine($"Base directory:           {candidate.BaseDirectory}");
+            Console.WriteLine($"Comparison runs:          {candidate.ComparisonRuns}");
+            Console.WriteLine($"Improvement First:        {candidate.ImprovementFirst:+0.000;-0.000;0.000}");
+            Console.WriteLine($"Improvement First+Delta:  {candidate.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
+            Console.WriteLine($"Delta improvement vs First: {candidate.DeltaImprovement:+0.000;-0.000;0.000}");
+            Console.WriteLine();
+
+            var vector = candidate.DeltaVector ?? Array.Empty<float>();
+            if (vector.Length == 0)
+            {
+                Console.WriteLine("Delta vector: (empty)");
+                Console.WriteLine();
+                Console.WriteLine("[MiniInsurance] Candidate inspection done.");
+                break;
+            }
+
+            Console.WriteLine("Top Delta dimensions (by |value|):");
+
+            var used = new bool[vector.Length];
+            const int topN = 8;
+
+            for (int n = 0; n < topN; n++)
+            {
+                var bestIdx = -1;
+                var bestAbs = 0.0f;
+
+                for (int i = 0; i < vector.Length; i++)
+                {
+                    if (used[i]) continue;
+                    var abs = Math.Abs(vector[i]);
+                    if (abs > bestAbs)
+                    {
+                        bestAbs = abs;
+                        bestIdx = i;
+                    }
+                }
+
+                if (bestIdx < 0 || bestAbs <= 0.0f)
+                {
+                    break;
+                }
+
+                used[bestIdx] = true;
+                Console.WriteLine($"  [{bestIdx}] = {vector[bestIdx]:+0.000;-0.000;0.000}");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("[MiniInsurance] Candidate inspection done.");
+            break;
+        }
     case "--version":
         {
             var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
@@ -602,6 +672,7 @@ static class Helpers
         Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
         Console.WriteLine("  mini-insurance-first-delta-aggregate aggregate metrics over all comparison runs");
         Console.WriteLine("  mini-insurance-first-delta-train    train a Delta shift candidate from aggregated metrics");
+        Console.WriteLine("  mini-insurance-first-delta-inspect  inspect latest trained Delta candidate");
         Console.WriteLine("  mini-insurance-first-learned-delta  compare baseline vs First vs First+LearnedDelta");
         Console.WriteLine();
         Console.WriteLine("Examples:");
