@@ -65,10 +65,75 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
 
         Directory.CreateDirectory(targetDirectory);
 
-        var jsonPath = Path.Combine(targetDirectory, "shift-training-result.json");
-        var json = JsonSerializer.Serialize(result with { CreatedUtc = createdUtc }, _jsonOptions);
+        var effectiveResult = result with { CreatedUtc = createdUtc };
 
+        var jsonPath = Path.Combine(targetDirectory, "shift-training-result.json");
+        var json = JsonSerializer.Serialize(effectiveResult, _jsonOptions);
         File.WriteAllText(jsonPath, json, _utf8NoBom);
+
+        var markdownPath = Path.Combine(targetDirectory, "shift-training-result.md");
+        var markdown = BuildMarkdown(effectiveResult);
+        File.WriteAllText(markdownPath, markdown, _utf8NoBom);
+    }
+    private static string BuildMarkdown(ShiftTrainingResult result)
+    {
+        var sb = new StringBuilder();
+
+        sb.AppendLine($"# Shift Training Result – {result.WorkflowName}");
+        sb.AppendLine();
+        sb.AppendLine("| Field                      | Value |");
+        sb.AppendLine("|---------------------------|-------|");
+        sb.AppendLine($"| Created (UTC)             | `{result.CreatedUtc:O}` |");
+        sb.AppendLine($"| Base directory            | `{result.BaseDirectory}` |");
+        sb.AppendLine($"| Comparison runs           | `{result.ComparisonRuns}` |");
+        sb.AppendLine($"| Improvement First         | `{result.ImprovementFirst:+0.000;-0.000;0.000}` |");
+        sb.AppendLine($"| Improvement First+Delta   | `{result.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}` |");
+        sb.AppendLine($"| Delta improvement vs First| `{result.DeltaImprovement:+0.000;-0.000;0.000}` |");
+        sb.AppendLine();
+
+        var vector = result.DeltaVector ?? Array.Empty<float>();
+        if (vector.Length == 0)
+        {
+            sb.AppendLine("Delta vector: *(empty)*");
+            return sb.ToString();
+        }
+
+        sb.AppendLine("## Top Delta dimensions (by |value|)");
+        sb.AppendLine();
+        sb.AppendLine("| Index | Value |");
+        sb.AppendLine("|-------|-------|");
+
+        var used = new bool[vector.Length];
+        const int topN = 8;
+
+        for (var n = 0; n < topN; n++)
+        {
+            var bestIndex = -1;
+            var bestAbs = 0.0f;
+
+            for (var i = 0; i < vector.Length; i++)
+            {
+                if (used[i])
+                    continue;
+
+                var abs = Math.Abs(vector[i]);
+                if (abs > bestAbs)
+                {
+                    bestAbs = abs;
+                    bestIndex = i;
+                }
+            }
+
+            if (bestIndex < 0 || bestAbs <= 0.0f)
+            {
+                break;
+            }
+
+            used[bestIndex] = true;
+            sb.AppendLine($"| {bestIndex} | {vector[bestIndex]:+0.000;-0.000;0.000} |");
+        }
+
+        return sb.ToString();
     }
 
     /// <inheritdoc />
