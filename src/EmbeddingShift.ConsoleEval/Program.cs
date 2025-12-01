@@ -639,6 +639,14 @@ switch (args[0].ToLowerInvariant())
                 maxItems: 20);
             break;
         }
+        case "mini-insurance-shift-training-best":
+        {
+            var root = DirectoryLayout.ResolveResultsRoot("insurance");
+            ShiftTrainingResultInspector.PrintBest(
+                workflowName: "mini-insurance-first-delta",
+                rootDirectory: root);
+            break;
+        }
     case "--version":
         {
             var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
@@ -694,6 +702,8 @@ static class Helpers
         Console.WriteLine("  mini-insurance-first-delta-train    train a Delta shift candidate from aggregated metrics");
         Console.WriteLine("  mini-insurance-first-delta-inspect  inspect latest trained Delta candidate");
         Console.WriteLine("  mini-insurance-first-learned-delta  compare baseline vs First vs First+LearnedDelta");
+        Console.WriteLine("  mini-insurance-shift-training-history  list recent generic shift training results for mini-insurance");
+        Console.WriteLine("  mini-insurance-shift-training-best     show best generic shift training result for mini-insurance");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");

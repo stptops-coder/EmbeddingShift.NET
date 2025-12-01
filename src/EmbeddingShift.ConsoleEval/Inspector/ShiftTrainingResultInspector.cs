@@ -205,4 +205,146 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine($"[ShiftTraining] Listed {printed} training result(s).");
     }
 
+    /// <summary>
+    /// Finds and prints the best training result for the specified workflow
+    /// based on the combined improvement (First+Delta vs Baseline).
+    /// Falls back to ImprovementFirst if ImprovementFirstPlusDelta is zero.
+    /// </summary>
+    /// <param name="workflowName">Logical workflow name, e.g. "mini-insurance-first-delta".</param>
+    /// <param name="rootDirectory">Root directory where training results are stored.</param>
+    public static void PrintBest(string workflowName, string rootDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(workflowName))
+            throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
+        if (string.IsNullOrWhiteSpace(rootDirectory))
+            throw new ArgumentException("Root directory must not be null or empty.", nameof(rootDirectory));
+
+        Console.WriteLine($"[ShiftTraining] Best training result for workflow '{workflowName}'");
+        Console.WriteLine($"[ShiftTraining] Root directory: {rootDirectory}");
+        Console.WriteLine();
+
+        if (!Directory.Exists(rootDirectory))
+        {
+            Console.WriteLine("[ShiftTraining] Root directory does not exist.");
+            return;
+        }
+
+        var pattern = $"{workflowName}-training_*";
+        var directories = Directory.GetDirectories(rootDirectory, pattern, SearchOption.TopDirectoryOnly);
+        if (directories.Length == 0)
+        {
+            Console.WriteLine("[ShiftTraining] No training result directories found.");
+            return;
+        }
+
+        Array.Sort(directories, StringComparer.Ordinal);
+        Array.Reverse(directories);
+
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ShiftTrainingResult? bestResult = null;
+        string? bestDirectory = null;
+        double bestScore = double.NegativeInfinity;
+
+        foreach (var dir in directories)
+        {
+            var jsonPath = Path.Combine(dir, "shift-training-result.json");
+            if (!File.Exists(jsonPath))
+                continue;
+
+            ShiftTrainingResult? result;
+            try
+            {
+                var json = File.ReadAllText(jsonPath);
+                result = JsonSerializer.Deserialize<ShiftTrainingResult>(json, jsonOptions);
+            }
+            catch
+            {
+                // Ignore malformed entries.
+                continue;
+            }
+
+            if (result is null)
+                continue;
+
+            // Score: primarily ImprovementFirstPlusDelta, fallback to ImprovementFirst.
+            var score = result.ImprovementFirstPlusDelta;
+            if (Math.Abs(score) < 1e-9)
+            {
+                score = result.ImprovementFirst;
+            }
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestResult = result;
+                bestDirectory = dir;
+            }
+        }
+
+        if (bestResult is null)
+        {
+            Console.WriteLine("[ShiftTraining] No valid training results found.");
+            return;
+        }
+
+        Console.WriteLine($"Best directory : {bestDirectory}");
+        Console.WriteLine($"Score          : {bestScore:+0.000;-0.000;0.000}");
+        Console.WriteLine();
+        Console.WriteLine($"Workflow       : {bestResult.WorkflowName}");
+        Console.WriteLine($"Created (UTC)  : {bestResult.CreatedUtc:O}");
+        Console.WriteLine($"Base directory : {bestResult.BaseDirectory}");
+        Console.WriteLine($"Runs           : {bestResult.ComparisonRuns}");
+        Console.WriteLine($"Improvement First         : {bestResult.ImprovementFirst:+0.000;-0.000;0.000}");
+        Console.WriteLine($"Improvement First+Delta   : {bestResult.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
+        Console.WriteLine($"Delta improvement vs First: {bestResult.DeltaImprovement:+0.000;-0.000;0.000}");
+        Console.WriteLine();
+
+        var vector = bestResult.DeltaVector ?? Array.Empty<float>();
+        if (vector.Length == 0)
+        {
+            Console.WriteLine("Delta vector: (empty)");
+            Console.WriteLine();
+            Console.WriteLine("[ShiftTraining] Best result inspection done.");
+            return;
+        }
+
+        Console.WriteLine("Top Delta dimensions (by |value|):");
+
+        var used = new bool[vector.Length];
+        const int topN = 8;
+
+        for (var n = 0; n < topN; n++)
+        {
+            var bestIndex = -1;
+            var bestAbs = 0.0f;
+
+            for (var i = 0; i < vector.Length; i++)
+            {
+                if (used[i])
+                    continue;
+
+                var abs = Math.Abs(vector[i]);
+                if (abs > bestAbs)
+                {
+                    bestAbs = abs;
+                    bestIndex = i;
+                }
+            }
+
+            if (bestIndex < 0 || bestAbs <= 0.0f)
+            {
+                break;
+            }
+
+            used[bestIndex] = true;
+            Console.WriteLine($"  [{bestIndex}] = {vector[bestIndex]:+0.000;-0.000;0.000}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("[ShiftTraining] Best result inspection done.");
+    }
 }
