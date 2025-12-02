@@ -51,6 +51,9 @@ public sealed record ShiftTrainingResult
     /// embedding dimension (e.g. 1536 for OpenAI text-embeddings).
     /// </summary>
     public float[] DeltaVector { get; init; } = Array.Empty<float>();
+
+    public string ScopeId { get; init; } = "default";
+
 }
 
 /// <summary>

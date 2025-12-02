@@ -176,7 +176,8 @@ namespace EmbeddingShift.ConsoleEval
                 ImprovementFirst = candidate.ImprovementFirst,
                 ImprovementFirstPlusDelta = candidate.ImprovementFirstPlusDelta,
                 DeltaImprovement = candidate.DeltaImprovement,
-                DeltaVector = candidate.DeltaVector ?? Array.Empty<float>()
+                DeltaVector = candidate.DeltaVector ?? Array.Empty<float>(),
+                ScopeId = "default"
             };
 
             var genericRepo = new FileSystemShiftTrainingResultRepository(baseDirectory);
