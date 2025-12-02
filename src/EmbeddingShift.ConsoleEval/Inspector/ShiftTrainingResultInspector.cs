@@ -154,8 +154,8 @@ internal static class ShiftTrainingResultInspector
             PropertyNameCaseInsensitive = true
         };
 
-        Console.WriteLine("Idx | Created (UTC)         | Runs | dFirst  | dFirst+Δ | dΔvsFirst");
-        Console.WriteLine("----+-----------------------+------+--------+----------+-----------");
+        Console.WriteLine("Idx | Created (UTC)         | Runs | dFirst  | dFirst+Δ | dΔvsFirst | Scope");
+        Console.WriteLine("----+-----------------------+------+--------+----------+-----------+-------");
 
         var printed = 0;
 
@@ -189,8 +189,7 @@ internal static class ShiftTrainingResultInspector
             var dFirstPlusDelta = result.ImprovementFirstPlusDelta;
             var dDelta = result.DeltaImprovement;
 
-            Console.WriteLine(
-                $"{printed,3} | {created:yyyy-MM-ddTHH:mm:ss} | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,9:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000}");
+            Console.WriteLine($"{printed,3} | {created:yyyy-MM-ddTHH:mm:ss} | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,9:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000} | {result.ScopeId}");
 
             printed++;
         }
@@ -298,6 +297,7 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine($"Created (UTC)  : {bestResult.CreatedUtc:O}");
         Console.WriteLine($"Base directory : {bestResult.BaseDirectory}");
         Console.WriteLine($"Runs           : {bestResult.ComparisonRuns}");
+        Console.WriteLine($"ScopeId        : {bestResult.ScopeId}");
         Console.WriteLine($"Improvement First         : {bestResult.ImprovementFirst:+0.000;-0.000;0.000}");
         Console.WriteLine($"Improvement First+Delta   : {bestResult.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
         Console.WriteLine($"Delta improvement vs First: {bestResult.DeltaImprovement:+0.000;-0.000;0.000}");
