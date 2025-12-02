@@ -155,7 +155,7 @@ internal static class ShiftTrainingResultInspector
         };
 
         Console.WriteLine("Idx | Created (UTC)         | Runs | dFirst  | dFirst+Δ | dΔvsFirst | Scope");
-        Console.WriteLine("----+-----------------------+------+--------+----------+-----------+-------");
+        Console.WriteLine("----+-----------------------+------+---------+----------+-----------+-------");
 
         var printed = 0;
 
