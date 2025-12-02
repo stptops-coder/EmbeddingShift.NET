@@ -177,7 +177,7 @@ namespace EmbeddingShift.ConsoleEval
                 ImprovementFirstPlusDelta = candidate.ImprovementFirstPlusDelta,
                 DeltaImprovement = candidate.DeltaImprovement,
                 DeltaVector = candidate.DeltaVector ?? Array.Empty<float>(),
-                ScopeId = "default"
+                ScopeId = MiniInsuranceScopes.DefaultScopeId
             };
 
             var genericRepo = new FileSystemShiftTrainingResultRepository(baseDirectory);
