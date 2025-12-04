@@ -1,6 +1,8 @@
 using EmbeddingShift.Abstractions;           // ShiftMethod
 using EmbeddingShift.Adaptive;               // ShiftEvaluationService
 using EmbeddingShift.ConsoleEval;
+using EmbeddingShift.ConsoleEval.Commands;
+using EmbeddingShift.ConsoleEval.Inspector;
 using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
 using EmbeddingShift.Core.Generators;        // DeltaShiftGenerator (example)
 using EmbeddingShift.Core.Infrastructure;    // DirectoryLayout for /data and /results roots
@@ -9,7 +11,6 @@ using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
 using EmbeddingShift.Workflows;              // AdaptiveWorkflow
 using System.Linq;
-using EmbeddingShift.ConsoleEval.Inspector;
 
 
 // Composition Root (kept simple)
@@ -359,6 +360,16 @@ switch (args[0].ToLowerInvariant())
             await pipeline.RunAsync(includeLearnedDelta: true);
             break;
         }
+    case "mini-insurance-training-inspect":
+        // Inspect latest Mini-Insurance training result under
+        // local/mini-insurance/training/history
+        await MiniInsuranceTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
+        break;
+
+    case "mini-insurance-training-list":
+        await MiniInsuranceTrainingListCommand.RunAsync(args.Skip(1).ToArray());
+        break;
+
     case "mini-insurance-first-delta-aggregate":
         {
             Console.WriteLine("[MiniInsurance] Aggregating First/Delta metrics from previous comparison runs...");
