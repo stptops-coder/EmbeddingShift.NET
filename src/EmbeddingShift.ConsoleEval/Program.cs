@@ -350,6 +350,15 @@ switch (args[0].ToLowerInvariant())
             Console.WriteLine("[MiniInsurance] Done.");
             break;
         }
+    case "mini-insurance-first-delta-pipeline":
+        {
+            // Full end-to-end pipeline for Mini-Insurance (baseline, First, First+Delta, LearnedDelta).
+            var pipeline = new EmbeddingShift.ConsoleEval.MiniInsurance.MiniInsuranceFirstDeltaPipeline(
+                msg => Console.WriteLine(msg));
+
+            await pipeline.RunAsync(includeLearnedDelta: true);
+            break;
+        }
     case "mini-insurance-first-delta-aggregate":
         {
             Console.WriteLine("[MiniInsurance] Aggregating First/Delta metrics from previous comparison runs...");
@@ -698,6 +707,7 @@ static class Helpers
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
         Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
         Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
+        Console.WriteLine("  mini-insurance-first-delta-pipeline run full Mini-Insurance First+Delta pipeline (baseline/First/First+Delta/LearnedDelta)");
         Console.WriteLine("  mini-insurance-first-delta-aggregate aggregate metrics over all comparison runs");
         Console.WriteLine("  mini-insurance-first-delta-train    train a Delta shift candidate from aggregated metrics");
         Console.WriteLine("  mini-insurance-first-delta-inspect  inspect latest trained Delta candidate");
