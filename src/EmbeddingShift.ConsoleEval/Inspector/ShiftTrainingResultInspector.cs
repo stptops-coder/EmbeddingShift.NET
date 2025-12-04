@@ -189,7 +189,10 @@ internal static class ShiftTrainingResultInspector
             var dFirstPlusDelta = result.ImprovementFirstPlusDelta;
             var dDelta = result.DeltaImprovement;
 
-            Console.WriteLine($"{printed,3} | {created:yyyy-MM-ddTHH:mm:ss}   | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,9:0.000;-0.000;0.000}| {dDelta,9:0.000;-0.000;0.000} | {result.ScopeId}");
+            var scopeId = string.IsNullOrWhiteSpace(result.ScopeId) ? "-" : result.ScopeId;
+
+            Console.WriteLine(
+                $"{printed,3} | {created:yyyy-MM-ddTHH:mm:ss}   | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,9:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000} | {scopeId}");
 
             printed++;
         }
