@@ -1,0 +1,25 @@
+{
+  "WorkflowName": "mini-insurance-first-delta",
+  "CreatedUtc": "2025-12-04T01:43:33.2601017Z",
+  "BaselineRunDirectory": "C:\\pg\\RakeX\\src\\EmbeddingShift.ConsoleEval\\local\\mini-insurance\\runs\\# Workflow____Generated at_ 2025-12-04T01_43_33.2342859\u002B00_00___20251204_014333_235",
+  "FirstShiftRunDirectory": "C:\\pg\\RakeX\\src\\EmbeddingShift.ConsoleEval\\local\\mini-insurance\\runs\\# Workflow____Generated at_ 2025-12-04T01_43_33.2496764\u002B00_00___20251204_014333_249",
+  "FirstPlusDeltaRunDirectory": "C:\\pg\\RakeX\\src\\EmbeddingShift.ConsoleEval\\local\\mini-insurance\\runs\\# Workflow____Generated at_ 2025-12-04T01_43_33.2548172\u002B00_00___20251204_014333_254",
+  "Metrics": [
+    {
+      "Metric": "map@1",
+      "Baseline": 0.9,
+      "First": 1,
+      "FirstPlusDelta": 1,
+      "DeltaFirstVsBaseline": 0.09999999999999998,
+      "DeltaFirstPlusDeltaVsBaseline": 0.09999999999999998
+    },
+    {
+      "Metric": "ndcg@3",
+      "Baseline": 0.9261859507142916,
+      "First": 1,
+      "FirstPlusDelta": 1,
+      "DeltaFirstVsBaseline": 0.07381404928570845,
+      "DeltaFirstPlusDeltaVsBaseline": 0.07381404928570845
+    }
+  ]
+}

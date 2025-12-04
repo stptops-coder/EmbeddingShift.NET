@@ -1,45 +1,48 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using EmbeddingShift.Core.Runs;
+using EmbeddingShift.Core.Workflows;
+using EmbeddingShift.Workflows;
 
 namespace EmbeddingShift.ConsoleEval.MiniInsurance
 {
     /// <summary>
     /// Orchestrates the complete Mini-Insurance First+Delta pipeline:
     /// Baseline -> FirstShift -> First+Delta -> (optional) LearnedDelta
-    /// -> Metrics -> Persisted artifacts.
-    /// 
-    /// For now, all steps are implemented as stubs so that the class
-    /// compiles and can be wired up incrementally in later deltas.
+    /// -> Metrics -> persisted artifacts under a stable local/mini-insurance layout.
     /// </summary>
     internal sealed class MiniInsuranceFirstDeltaPipeline
     {
         private readonly Action<string>? _log;
+        private readonly StatsAwareWorkflowRunner _wfRunner;
+
+        private WorkflowResult? _baselineResult;
+        private WorkflowResult? _firstResult;
+        private WorkflowResult? _firstPlusDeltaResult;
+
+        private string? _baselineRunDir;
+        private string? _firstRunDir;
+        private string? _firstPlusDeltaRunDir;
 
         public MiniInsuranceFirstDeltaPipeline(Action<string>? log = null)
         {
             _log = log;
+            _wfRunner = new StatsAwareWorkflowRunner();
         }
 
         private void Log(string message)
         {
-            var line = "[MiniInsurancePipeline] " + message;
-            if (_log != null)
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            _log?.Invoke(message);
+            if (_log is null)
             {
-                _log(line);
-            }
-            else
-            {
-                Console.WriteLine(line);
+                Console.WriteLine($"[MiniInsurancePipeline] {message}");
             }
         }
 
-        /// <summary>
-        /// Runs the complete Mini-Insurance First+Delta pipeline.
-        /// </summary>
-        /// <param name="includeLearnedDelta">
-        /// If true, the pipeline will also include the LearnedDelta step.
-        /// </param>
         public async Task RunAsync(
             bool includeLearnedDelta = true,
             CancellationToken cancellationToken = default)
@@ -48,77 +51,182 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
             Log($"Using Mini-Insurance base path: {domainRoot}");
 
             Log("Step 1: Baseline");
-            await RunBaselineAsync(domainRoot, cancellationToken).ConfigureAwait(false);
+            await RunBaselineAsync(cancellationToken).ConfigureAwait(false);
 
             Log("Step 2: FirstShift");
-            await RunFirstShiftAsync(domainRoot, cancellationToken).ConfigureAwait(false);
+            await RunFirstShiftAsync(cancellationToken).ConfigureAwait(false);
 
             Log("Step 3: First+Delta");
-            await RunFirstPlusDeltaAsync(domainRoot, cancellationToken).ConfigureAwait(false);
+            await RunFirstPlusDeltaAsync(cancellationToken).ConfigureAwait(false);
 
             if (includeLearnedDelta)
             {
                 Log("Step 4: LearnedDelta");
-                await RunLearnedDeltaAsync(domainRoot, cancellationToken).ConfigureAwait(false);
+                await RunLearnedDeltaAsync(cancellationToken).ConfigureAwait(false);
             }
             else
             {
                 Log("Step 4: LearnedDelta skipped (includeLearnedDelta = false)");
             }
 
-            Log("Step 5: Metrics");
-            await ComputeAndPersistMetricsAsync(domainRoot, cancellationToken).ConfigureAwait(false);
+            Log("Step 5: Metrics (aggregate over comparison runs)");
+            await ComputeAndPersistMetricsAsync(cancellationToken).ConfigureAwait(false);
 
             Log("Step 6: Persisting artifacts / final layout");
-            await PersistArtifactsAsync(domainRoot, cancellationToken).ConfigureAwait(false);
+            await PersistArtifactsAsync(cancellationToken).ConfigureAwait(false);
 
             Log("Mini-Insurance First+Delta pipeline finished.");
         }
 
-        // --------------------------------------------------------------------
-        // Stub methods – will be wired to the existing Mini-Insurance
-        // workflows and commands in the next deltas (Delta 6 / Delta 7).
-        // --------------------------------------------------------------------
-
-        private Task RunBaselineAsync(string domainRoot, CancellationToken cancellationToken)
+        private async Task RunBaselineAsync(CancellationToken cancellationToken)
         {
-            // TODO: Call existing Mini-Insurance baseline evaluation / run.
-            // This method will become the single place orchestrating the baseline run.
+            var workflow = new FileBasedInsuranceMiniWorkflow();
+            var result = await _wfRunner.ExecuteAsync(
+                    "FileBased-Insurance-Mini-Baseline-Pipeline",
+                    workflow,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                Log("[Error] Baseline run failed; aborting pipeline.");
+                Log(result.ReportMarkdown("Mini Insurance Baseline (Pipeline)"));
+                throw new InvalidOperationException("Mini-Insurance baseline run failed.");
+            }
+
+            _baselineResult = result;
+
+            var runsRoot = MiniInsurancePaths.GetRunsRoot();
+            _baselineRunDir = await RunPersistor.Persist(
+                    runsRoot,
+                    result,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            Log($"Baseline run persisted to:      {_baselineRunDir}");
+        }
+
+        private async Task RunFirstShiftAsync(CancellationToken cancellationToken)
+        {
+            if (_baselineResult is null)
+                throw new InvalidOperationException("Baseline result must be computed before FirstShift.");
+
+            var firstPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstShiftPipeline();
+            IWorkflow firstWorkflow = new FileBasedInsuranceMiniWorkflow(firstPipeline);
+
+            var result = await _wfRunner.ExecuteAsync(
+                    "FileBased-Insurance-Mini-FirstShift-Pipeline",
+                    firstWorkflow,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                Log("[Error] FirstShift run failed; aborting pipeline.");
+                Log(result.ReportMarkdown("Mini Insurance FirstShift (Pipeline)"));
+                throw new InvalidOperationException("Mini-Insurance FirstShift run failed.");
+            }
+
+            _firstResult = result;
+
+            var runsRoot = MiniInsurancePaths.GetRunsRoot();
+            _firstRunDir = await RunPersistor.Persist(
+                    runsRoot,
+                    result,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            Log($"FirstShift run persisted to:   {_firstRunDir}");
+        }
+
+        private async Task RunFirstPlusDeltaAsync(CancellationToken cancellationToken)
+        {
+            if (_baselineResult is null)
+                throw new InvalidOperationException("Baseline result must be computed before First+Delta.");
+
+            var pipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline();
+            IWorkflow workflow = new FileBasedInsuranceMiniWorkflow(pipeline);
+
+            var result = await _wfRunner.ExecuteAsync(
+                    "FileBased-Insurance-Mini-FirstPlusDelta-Pipeline",
+                    workflow,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                Log("[Error] First+Delta run failed; aborting pipeline.");
+                Log(result.ReportMarkdown("Mini Insurance First+Delta (Pipeline)"));
+                throw new InvalidOperationException("Mini-Insurance First+Delta run failed.");
+            }
+
+            _firstPlusDeltaResult = result;
+
+            var runsRoot = MiniInsurancePaths.GetRunsRoot();
+            _firstPlusDeltaRunDir = await RunPersistor.Persist(
+                    runsRoot,
+                    result,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            Log($"First+Delta run persisted to: {_firstPlusDeltaRunDir}");
+
+            // Persist a comparison object for this run under runsRoot.
+            var comparison = EmbeddingShift.ConsoleEval.MiniInsuranceFirstDeltaArtifacts.CreateComparison(
+                _baselineResult,
+                _firstResult ?? result,
+                result,
+                _baselineRunDir ?? string.Empty,
+                _firstRunDir ?? string.Empty,
+                _firstPlusDeltaRunDir ?? string.Empty);
+
+            var comparisonDir = EmbeddingShift.ConsoleEval.MiniInsuranceFirstDeltaArtifacts.PersistComparison(
+                runsRoot,
+                comparison);
+
+            Log($"First/Delta comparison stored: {comparisonDir}");
+        }
+
+        private Task RunLearnedDeltaAsync(CancellationToken cancellationToken)
+        {
+            // Placeholder: LearnedDelta wird in einem späteren Delta
+            // an die Trainings- und Scope-Struktur (MiniInsuranceFirstDeltaTrainer,
+            // MiniInsuranceFirstDeltaCandidateLoader, FileSystemShiftTrainingResultRepository)
+            // angebunden.
+            Log("LearnedDelta step is currently a placeholder (training integration follows in Delta 7).");
             return Task.CompletedTask;
         }
 
-        private Task RunFirstShiftAsync(string domainRoot, CancellationToken cancellationToken)
+        private Task ComputeAndPersistMetricsAsync(CancellationToken cancellationToken)
         {
-            // TODO: Call existing Mini-Insurance FirstShift workflow
-            // (e.g., FirstShift-only evaluation / run).
+            var runsRoot = MiniInsurancePaths.GetRunsRoot();
+            var aggregatesRoot = MiniInsurancePaths.GetAggregatesRoot();
+
+            try
+            {
+                var aggregate = EmbeddingShift.ConsoleEval.MiniInsuranceFirstDeltaAggregator
+                    .AggregateFromDirectory(runsRoot);
+
+                var aggregateDir = EmbeddingShift.ConsoleEval.MiniInsuranceFirstDeltaAggregator
+                    .PersistAggregate(aggregatesRoot, aggregate);
+
+                Log($"Aggregated {aggregate.ComparisonCount} comparison runs.");
+                Log($"Aggregate metrics persisted to: {aggregateDir}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[Warning] Failed to compute/persist aggregate metrics: {ex.Message}");
+            }
+
             return Task.CompletedTask;
         }
 
-        private Task RunFirstPlusDeltaAsync(string domainRoot, CancellationToken cancellationToken)
+        private Task PersistArtifactsAsync(CancellationToken cancellationToken)
         {
-            // TODO: Call existing Mini-Insurance First+Delta aggregation / run.
-            return Task.CompletedTask;
-        }
-
-        private Task RunLearnedDeltaAsync(string domainRoot, CancellationToken cancellationToken)
-        {
-            // TODO: Call existing LearnedDelta / best-trained delta for Mini-Insurance.
-            return Task.CompletedTask;
-        }
-
-        private Task ComputeAndPersistMetricsAsync(string domainRoot, CancellationToken cancellationToken)
-        {
-            // TODO: Consolidate metrics across all previous runs (Baseline, First, First+Delta,
-            // LearnedDelta) and persist them under the stable domainRoot.
-            return Task.CompletedTask;
-        }
-
-        private Task PersistArtifactsAsync(string domainRoot, CancellationToken cancellationToken)
-        {
-            // TODO: Copy / move / persist all relevant artifacts (runs, training, aggregates,
-            // inspection data) into the final folder structure under domainRoot.
-            // The structure (runs/, training/, aggregates/, inspect/) will be introduced
-            // explicitly in Delta 6.
+            // Noch keine zusätzlichen Schritte nötig: die Layout-Entscheidungen
+            // laufen bereits über MiniInsurancePaths (runs/aggregates/...).
+            // Hier könnte später z.B. ein Manifest oder eine „latest“-Symlinkstruktur
+            // ergänzt werden.
             return Task.CompletedTask;
         }
     }
