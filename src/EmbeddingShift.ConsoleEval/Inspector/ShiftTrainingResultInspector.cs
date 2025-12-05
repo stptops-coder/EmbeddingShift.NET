@@ -315,37 +315,27 @@ internal static class ShiftTrainingResultInspector
             return;
         }
 
+        // at this point vector.Length > 0, because the empty case already returned above
+        var delta = vector;
+
+        Console.WriteLine();
+
+        // Show overall magnitude of the learned shift vector
+        var l2 = Math.Sqrt(delta.Sum(v => (double)v * v));
+        Console.WriteLine($"Delta L2 norm (global magnitude): {l2:0.000000E+0}");
+        Console.WriteLine();
         Console.WriteLine("Top Delta dimensions (by |value|):");
 
-        var used = new bool[vector.Length];
-        const int topN = 8;
+        var top = delta
+            .Select((value, index) => new { Index = index, Value = value })
+            .OrderByDescending(x => Math.Abs(x.Value))
+            .Take(8);
 
-        for (var n = 0; n < topN; n++)
+        foreach (var item in top)
         {
-            var bestIndex = -1;
-            var bestAbs = 0.0f;
-
-            for (var i = 0; i < vector.Length; i++)
-            {
-                if (used[i])
-                    continue;
-
-                var abs = Math.Abs(vector[i]);
-                if (abs > bestAbs)
-                {
-                    bestAbs = abs;
-                    bestIndex = i;
-                }
-            }
-
-            if (bestIndex < 0 || bestAbs <= 0.0f)
-            {
-                break;
-            }
-
-            used[bestIndex] = true;
-            Console.WriteLine($"  [{bestIndex}] = {vector[bestIndex]:+0.000;-0.000;0.000}");
+            Console.WriteLine($"  [{item.Index}] = {item.Value:0.000000E+0}");
         }
+
 
         Console.WriteLine();
         Console.WriteLine("[ShiftTraining] Best result inspection done.");
