@@ -667,7 +667,8 @@ switch (args[0].ToLowerInvariant())
                 rootDirectory: root);
             break;
         }
-    case "mini-insurance-posneg-train":
+ 
+case "mini-insurance-posneg-train":
         {
             Console.WriteLine("[MiniInsurance] Training pos-neg learned global Delta shift (simulation backend)...");
             Console.WriteLine();
@@ -682,6 +683,46 @@ switch (args[0].ToLowerInvariant())
             Console.WriteLine($"  Results root: {result.BaseDirectory}");
             Console.WriteLine("  A generic shift training inspector wired to this workflow");
             Console.WriteLine("  can be used later to inspect the learned Delta vector in detail.");
+            Console.WriteLine();
+            Console.WriteLine("  Use one of the following commands to inspect the training result:");
+            Console.WriteLine("    mini-insurance-posneg-training-inspect  - show latest training result");
+            Console.WriteLine("    mini-insurance-posneg-training-history  - list recent training results");
+            Console.WriteLine("    mini-insurance-posneg-training-best     - show best training result");
+            Console.WriteLine();
+
+            break;
+        }
+
+    case "mini-insurance-posneg-training-inspect":
+        {
+            var root = DirectoryLayout.ResolveResultsRoot("insurance");
+
+            ShiftTrainingResultInspector.PrintLatest(
+                workflowName: "mini-insurance-posneg",
+                rootDirectory: root);
+
+            break;
+        }
+
+    case "mini-insurance-posneg-training-history":
+        {
+            var root = DirectoryLayout.ResolveResultsRoot("insurance");
+
+            ShiftTrainingResultInspector.PrintHistory(
+                workflowName: "mini-insurance-posneg",
+                rootDirectory: root,
+                maxItems: 20);
+
+            break;
+        }
+
+    case "mini-insurance-posneg-training-best":
+        {
+            var root = DirectoryLayout.ResolveResultsRoot("insurance");
+
+            ShiftTrainingResultInspector.PrintBest(
+                workflowName: "mini-insurance-posneg",
+                rootDirectory: root);
 
             break;
         }
