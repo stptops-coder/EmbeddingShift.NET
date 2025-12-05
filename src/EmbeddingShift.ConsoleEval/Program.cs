@@ -667,6 +667,35 @@ switch (args[0].ToLowerInvariant())
                 rootDirectory: root);
             break;
         }
+    case "mini-insurance-posneg-train":
+        {
+            Console.WriteLine("[MiniInsurance] Training pos-neg learned global Delta shift (simulation backend)...");
+            Console.WriteLine();
+
+            var result = await MiniInsurancePosNegTrainer.TrainAsync(EmbeddingBackend.Sim);
+
+            Console.WriteLine("[MiniInsurance] Pos-neg training finished.");
+            Console.WriteLine($"  Workflow    : {result.WorkflowName}");
+            Console.WriteLine($"  Runs        : {result.ComparisonRuns}");
+            Console.WriteLine($"  Vector dim  : {result.DeltaVector?.Length ?? 0}");
+            Console.WriteLine();
+            Console.WriteLine($"  Results root: {result.BaseDirectory}");
+            Console.WriteLine("  A generic shift training inspector wired to this workflow");
+            Console.WriteLine("  can be used later to inspect the learned Delta vector in detail.");
+
+            break;
+        }
+
+    case "mini-insurance-posneg-run":
+        {
+            Console.WriteLine("[MiniInsurance] Running baseline vs pos-neg shift (simulation backend)...");
+            Console.WriteLine();
+
+            await MiniInsurancePosNegRunner.RunAsync(EmbeddingBackend.Sim);
+
+            break;
+        }
+
     case "--version":
         {
             var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
