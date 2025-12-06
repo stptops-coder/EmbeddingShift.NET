@@ -187,15 +187,35 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
             Log($"First/Delta comparison stored: {comparisonDir}");
         }
 
-        private Task RunLearnedDeltaAsync(CancellationToken cancellationToken)
+        private async Task RunLearnedDeltaAsync(CancellationToken cancellationToken)
         {
-            // Placeholder: LearnedDelta wird in einem späteren Delta
-            // an die Trainings- und Scope-Struktur (MiniInsuranceFirstDeltaTrainer,
-            // MiniInsuranceFirstDeltaCandidateLoader, FileSystemShiftTrainingResultRepository)
-            // angebunden.
-            Log("LearnedDelta step is currently a placeholder (training integration follows in Delta 7).");
-            return Task.CompletedTask;
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Learn a global Delta vector from positive/negative policy pairs
+            // using the existing MiniInsurancePosNegTrainer (simulation backend).
+            Log("[LearnedDelta] Training pos-neg global Delta shift (simulation backend)...");
+            var trainingResult = await EmbeddingShift.ConsoleEval.MiniInsurancePosNegTrainer
+                .TrainAsync(EmbeddingShift.ConsoleEval.EmbeddingBackend.Sim)
+                .ConfigureAwait(false);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            Log($"[LearnedDelta] Training finished.");
+            Log($"  Workflow    : {trainingResult.WorkflowName}");
+            Log($"  Runs        : {trainingResult.ComparisonRuns}");
+            Log($"  Vector dim  : {trainingResult.DeltaVector?.Length ?? 0}");
+            Log($"  Results root: {trainingResult.BaseDirectory}");
+
+            // Evaluate the learned Delta against the current Mini-Insurance setup.
+            // This prints MAP@1 / NDCG@3 deltas to the console.
+            Log("[LearnedDelta] Evaluating learned Delta (pos-neg run)...");
+            await EmbeddingShift.ConsoleEval.MiniInsurancePosNegRunner
+                .RunAsync(EmbeddingShift.ConsoleEval.EmbeddingBackend.Sim)
+                .ConfigureAwait(false);
+
+            Log("[LearnedDelta] Learned Delta evaluation completed (see MAP/NDCG above).");
         }
+
 
         private Task ComputeAndPersistMetricsAsync(CancellationToken cancellationToken)
         {
