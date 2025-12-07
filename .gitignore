@@ -40,3 +40,6 @@ packages/
 /**/bin/
 /**/obj/
 !/samples/
+# EmbeddingShift: local evaluation artifacts (Mini-Insurance runs & aggregates)
+src/EmbeddingShift.ConsoleEval/local/
+
