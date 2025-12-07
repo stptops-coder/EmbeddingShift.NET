@@ -19,7 +19,7 @@ namespace EmbeddingShift.ConsoleEval
     /// persists the result as a ShiftTrainingResult so that it can be re-used
     /// across domains and scopes.
     /// </summary>
-    internal static class MiniInsurancePosNegTrainer
+    public static class MiniInsurancePosNegTrainer
     {
         private const string WorkflowName = "mini-insurance-posneg";
 

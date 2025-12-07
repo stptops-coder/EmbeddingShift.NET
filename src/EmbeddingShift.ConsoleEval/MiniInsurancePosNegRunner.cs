@@ -16,7 +16,7 @@ namespace EmbeddingShift.ConsoleEval
     /// - Shifted:  query + learned pos-neg vector
     /// Metrics: MAP@1 and NDCG@3 over the mini-insurance sample.
     /// </summary>
-    internal static class MiniInsurancePosNegRunner
+    public static class MiniInsurancePosNegRunner
     {
         private const string WorkflowName = "mini-insurance-posneg";
 

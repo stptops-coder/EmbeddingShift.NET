@@ -802,6 +802,7 @@ static class Helpers
         Console.WriteLine("  mini-insurance-first-learned-delta  compare baseline vs First vs First+LearnedDelta");
         Console.WriteLine("  mini-insurance-shift-training-history  list recent generic shift training results for mini-insurance");
         Console.WriteLine("  mini-insurance-shift-training-best     show best generic shift training result for mini-insurance");
+        Console.WriteLine("  shift-training-inspect <workflowName> [domainKey]  inspect latest shift training result");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");
