@@ -386,23 +386,30 @@ switch (args[0].ToLowerInvariant())
                 Console.WriteLine($"[MiniInsurance] Aggregate metrics persisted to: {aggregateDir}");
                 Console.WriteLine();
 
-                Console.WriteLine("Metric                AvgBaseline  AvgFirst    AvgFirst+Delta   AvgΔFirst-BL   AvgΔFirst+Delta-BL");
-                Console.WriteLine("-------------------   -----------  ---------   --------------   ------------   -------------------");
+                Console.WriteLine("Metric                AvgBaseline   AvgFirst    AvgFirst+Delta   AvgΔFirst-BL   AvgΔFirst+Delta-BL");
+                Console.WriteLine("-------------------   -----------   ---------   --------------   ------------   -------------------");
 
                 foreach (var row in aggregate.Metrics)
                 {
                     Console.WriteLine(
-                        $"{row.Metric,-19}   {row.AverageBaseline,11:F3}  {row.AverageFirst,9:F3}   {row.AverageFirstPlusDelta,14:F3}   {row.AverageDeltaFirstVsBaseline,12:+0.000;-0.000;0.000}   {row.AverageDeltaFirstPlusDeltaVsBaseline,19:+0.000;-0.000;0.000}");
+                        $"{row.Metric,-19}   {row.AverageBaseline,11:0.000}   {row.AverageFirst,9:0.000}   {row.AverageFirstPlusDelta,14:0.000}   {row.AverageDeltaFirstVsBaseline,12:+0.000;-0.000;0.000}   {row.AverageDeltaFirstPlusDeltaVsBaseline,19:+0.000;-0.000;0.000}");
                 }
 
                 Console.WriteLine();
-                Console.WriteLine("[MiniInsurance] Aggregate done.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[MiniInsurance] ERROR: Could not aggregate comparison runs under '{baseDir}': {ex.Message}");
+                Console.WriteLine($"[MiniInsurance] ERROR while aggregating metrics: {ex.Message}");
             }
 
+            Console.WriteLine("[MiniInsurance] Aggregation done.");
+            break;
+        }
+
+    case "shift-training-inspect":
+        {
+            // Generic inspector for file-based shift training results under /results/<domainKey>.
+            await ShiftTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
             break;
         }
     case "mini-insurance-first-delta-train":

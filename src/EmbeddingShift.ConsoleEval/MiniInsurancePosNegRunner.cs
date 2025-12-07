@@ -183,6 +183,59 @@ namespace EmbeddingShift.ConsoleEval
             Console.WriteLine();
             Console.WriteLine($"  Delta      MAP@1 = {mapShifted - mapBaseline:+0.000;-0.000;0.000}");
             Console.WriteLine($"             NDCG@3 = {ndcg3Shifted - ndcg3Baseline:+0.000;-0.000;0.000}");
+
+            // Persist metrics for later inspection/aggregation.
+            // We create a small run directory under resultsRoot:
+            //   mini-insurance-posneg-run_YYYYMMDD_HHMMSS_fff
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
+            var runDirName = $"mini-insurance-posneg-run_{timestamp}";
+            var runDir = Path.Combine(resultsRoot, runDirName);
+            Directory.CreateDirectory(runDir);
+
+            var metrics = new
+            {
+                WorkflowName,
+                CreatedUtc = DateTime.UtcNow,
+                PolicyCount = docs.Count,
+                EffectiveQueryCount = usedCases,
+                MapBaseline = mapBaseline,
+                MapPosNeg = mapShifted,
+                DeltaMap = mapShifted - mapBaseline,
+                Ndcg3Baseline = ndcg3Baseline,
+                Ndcg3PosNeg = ndcg3Shifted,
+                DeltaNdcg3 = ndcg3Shifted - ndcg3Baseline
+            };
+
+            var jsonOptions = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+
+            var jsonPath = Path.Combine(runDir, "metrics-posneg.json");
+            await File.WriteAllTextAsync(
+                    jsonPath,
+                    JsonSerializer.Serialize(metrics, jsonOptions))
+                .ConfigureAwait(false);
+
+            var mdBuilder = new System.Text.StringBuilder();
+            mdBuilder.AppendLine("# Mini Insurance PosNeg Metrics");
+            mdBuilder.AppendLine();
+            mdBuilder.AppendLine($"Created (UTC): {metrics.CreatedUtc:O}");
+            mdBuilder.AppendLine();
+            mdBuilder.AppendLine($"Workflow   : {metrics.WorkflowName}");
+            mdBuilder.AppendLine($"Policies   : {metrics.PolicyCount}");
+            mdBuilder.AppendLine($"Queries    : {metrics.EffectiveQueryCount}");
+            mdBuilder.AppendLine();
+            mdBuilder.AppendLine("## Metrics");
+            mdBuilder.AppendLine();
+            mdBuilder.AppendLine("| Metric | Baseline | PosNeg | Delta |");
+            mdBuilder.AppendLine("|--------|----------|--------|-------|");
+            mdBuilder.AppendLine($"| MAP@1  | {metrics.MapBaseline:0.000} | {metrics.MapPosNeg:0.000} | {metrics.DeltaMap:+0.000;-0.000;0.000} |");
+            mdBuilder.AppendLine($"| NDCG@3 | {metrics.Ndcg3Baseline:0.000} | {metrics.Ndcg3PosNeg:0.000} | {metrics.DeltaNdcg3:+0.000;-0.000;0.000} |");
+
+            var mdPath = Path.Combine(runDir, "metrics-posneg.md");
+            await File.WriteAllTextAsync(mdPath, mdBuilder.ToString())
+                .ConfigureAwait(false);
         }
 
         private static int FindRank(

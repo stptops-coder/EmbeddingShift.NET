@@ -200,11 +200,31 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            Log($"[LearnedDelta] Training finished.");
+            Log("[LearnedDelta] Training finished.");
             Log($"  Workflow    : {trainingResult.WorkflowName}");
             Log($"  Runs        : {trainingResult.ComparisonRuns}");
             Log($"  Vector dim  : {trainingResult.DeltaVector?.Length ?? 0}");
             Log($"  Results root: {trainingResult.BaseDirectory}");
+
+            var deltaVector = trainingResult.DeltaVector; // float[]
+            double normSquared = 0;
+            if (deltaVector != null)
+            {
+                for (var i = 0; i < deltaVector.Length; i++)
+                {
+                    var v = deltaVector[i];
+                    normSquared += v * v;
+                }
+            }
+            var norm = System.Math.Sqrt(normSquared);
+
+            // These improvements are aggregated over the training comparisons
+            // (e.g. MAP/NDCG deltas). For the current small Mini-Insurance set
+            // they may still be 0.000, but the logging makes future effects visible.
+            Log($"  ΔFirst      : {trainingResult.ImprovementFirst:+0.000;-0.000;0.000}");
+            Log($"  ΔFirst+Delta: {trainingResult.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
+            Log($"  Δ(final)    : {trainingResult.DeltaImprovement:+0.000;-0.000;0.000}");
+            Log($"  |DeltaVec|  : {norm:0.000000}");
 
             // Evaluate the learned Delta against the current Mini-Insurance setup.
             // This prints MAP@1 / NDCG@3 deltas to the console.
@@ -215,7 +235,6 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
             Log("[LearnedDelta] Learned Delta evaluation completed (see MAP/NDCG above).");
         }
-
 
         private Task ComputeAndPersistMetricsAsync(CancellationToken cancellationToken)
         {
