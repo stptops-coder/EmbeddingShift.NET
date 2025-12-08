@@ -59,6 +59,7 @@ namespace EmbeddingShift.Adaptive
         {
             var result = _repository.LoadLatest(_workflowName);
 
+            // No training result or delta information: fall back to the base shift only.
             if (result == null || result.DeltaVector == null || result.DeltaVector.Length == 0)
             {
                 yield return _fallbackShift;
@@ -68,12 +69,15 @@ namespace EmbeddingShift.Adaptive
             var vector = NormalizeToEmbeddingDim(result.DeltaVector);
             if (IsZero(vector))
             {
+                // Delta vector is effectively zero, there is no meaningful learned shift.
                 yield return _fallbackShift;
                 yield break;
             }
 
-            // AdditiveShift.Kind is heuristic by design; the "learned" aspect
-            // is captured by workflow metadata (ShiftTrainingResult etc.).
+            // From here on we have a usable learned Delta vector.
+            // Always include the fallback shift as a candidate so that the adaptive
+            // layer can decide whether "no shift" is better than the learned shift.
+            yield return _fallbackShift;
             yield return new AdditiveShift(vector);
         }
 

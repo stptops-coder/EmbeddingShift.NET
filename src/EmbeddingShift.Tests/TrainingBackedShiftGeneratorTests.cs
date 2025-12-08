@@ -15,21 +15,24 @@ namespace EmbeddingShift.Tests
         public void Generate_UsesDeltaVector_FromLatestTrainingResult()
         {
             // Arrange
-            var repo = new InMemoryShiftTrainingResultRepository();
+            var repo = new InMemoryShiftTrainingResultRepositoryForGenerator();
+            var fallback = new NoShiftIngestBased();
 
             var delta = new float[EmbeddingDimensions.DIM];
             delta[0] = 1.0f;
             delta[1] = -2.0f;
             delta[2] = 0.5f;
 
-            repo.Save(new ShiftTrainingResult
+            repo.SetResult(new ShiftTrainingResult
             {
                 WorkflowName = "wf",
                 DeltaVector = delta
             });
 
-            var fallback = new NoShiftIngestBased();
-            var generator = new TrainingBackedShiftGenerator(repo, "wf", fallback);
+            var generator = new TrainingBackedShiftGenerator(
+                repo,
+                workflowName: "wf",
+                fallbackShift: fallback);
 
             var input = new float[EmbeddingDimensions.DIM];
             input[0] = 10.0f;
@@ -44,11 +47,13 @@ namespace EmbeddingShift.Tests
             // Act
             var shifts = generator.Generate(pairs).ToList();
 
-            // Assert
-            Assert.Single(shifts);
-            var shift = shifts[0];
+            // Assert: we expect fallback + one learned additive shift.
+            Assert.Equal(2, shifts.Count);
+            Assert.Contains(shifts, s => s is NoShiftIngestBased);
 
-            var output = shift.Apply(input);
+            var learned = Assert.IsType<AdditiveShift>(shifts.Single(s => s is AdditiveShift));
+
+            var output = learned.Apply(input);
             var span = output.Span;
 
             Assert.Equal(11.0f, span[0], 3);   // 10 + 1
@@ -60,9 +65,13 @@ namespace EmbeddingShift.Tests
         public void Generate_FallsBackToNoShift_WhenNoTrainingResult()
         {
             // Arrange
-            var repo = new InMemoryShiftTrainingResultRepository();
+            var repo = new InMemoryShiftTrainingResultRepositoryForGenerator();
             var fallback = new NoShiftIngestBased();
-            var generator = new TrainingBackedShiftGenerator(repo, "wf", fallback);
+
+            var generator = new TrainingBackedShiftGenerator(
+                repo,
+                workflowName: "wf",
+                fallbackShift: fallback);
 
             var input = new float[EmbeddingDimensions.DIM];
             input[0] = 5.0f;
@@ -75,24 +84,31 @@ namespace EmbeddingShift.Tests
             // Act
             var shifts = generator.Generate(pairs).ToList();
 
-            // Assert
+            // Assert: without a training result we only see the fallback shift.
             Assert.Single(shifts);
             var shift = shifts[0];
 
             var output = shift.Apply(input);
             var span = output.Span;
 
-            // NoShift.IngestBased should just copy the input.
             Assert.Equal(5.0f, span[0], 3);
         }
 
-        private sealed class InMemoryShiftTrainingResultRepository : IShiftTrainingResultRepository
+        /// <summary>
+        /// Simple in-memory repository used only for generator tests.
+        /// </summary>
+        private sealed class InMemoryShiftTrainingResultRepositoryForGenerator : IShiftTrainingResultRepository
         {
             private ShiftTrainingResult? _result;
 
+            public void SetResult(ShiftTrainingResult result)
+            {
+                Save(result);
+            }
+
             public void Save(ShiftTrainingResult result)
             {
-                _result = result;
+                _result = result ?? throw new ArgumentNullException(nameof(result));
             }
 
             public ShiftTrainingResult? LoadLatest(string workflowName)
