@@ -183,19 +183,30 @@ switch (args[0].ToLowerInvariant())
             break;
         }
 
-    case "adaptive":
+        case "adaptive":
         {
-            IShiftGenerator generator = new DeltaShiftGenerator(); // or MultiplicativeShiftGenerator
+            // Use a training-backed shift generator that reads the latest
+            // shift training result (e.g. from mini-insurance-posneg) and
+            // exposes it as a learned additive shift. This is the bridge
+            // between the statistics/training layer and the adaptive layer.
+            var resultsRoot = DirectoryLayout.ResolveResultsRoot("insurance");
+            var repository = new EmbeddingShift.ConsoleEval.Repositories.FileSystemShiftTrainingResultRepository(resultsRoot);
+
+            IShiftGenerator generator = new TrainingBackedShiftGenerator(
+                repository,
+                workflowName: "mini-insurance-posneg");
+
             var service = new ShiftEvaluationService(generator, EvaluatorCatalog.Defaults);
 
             var wf = new AdaptiveWorkflow(generator, service, method);
 
-            Console.WriteLine($"Adaptive ready (method={method}).");
-            // Beispiel-Aufruf (später):
+            Console.WriteLine($"Adaptive ready (method={method}, workflow=mini-insurance-posneg).");
+            // Example usage (later):
             // var best = wf.Run(queries[0], refs);
 
             break;
         }
+
     case "--help":
     case "-h":
         {
