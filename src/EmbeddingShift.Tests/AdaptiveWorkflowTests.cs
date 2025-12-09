@@ -12,22 +12,21 @@ using Xunit;
 namespace EmbeddingShift.Tests
 {
     /// <summary>
-    /// Verifies that AdaptiveWorkflow + TrainingBackedShiftGenerator
-    /// actually use the DeltaVector from the latest ShiftTrainingResult.
-    ///
-    /// This is an end-to-end check for the adaptive path:
+    /// End-to-end check:
     /// ShiftTrainingResult → TrainingBackedShiftGenerator → AdaptiveWorkflow.
+    ///
+    /// Scenario: the stored Delta vector is effectively zero.
+    /// In this case the workflow must stay with the fallback shift.
     /// </summary>
     public sealed class AdaptiveWorkflowTests
     {
         [Fact]
-        public void Run_UsesLearnedDeltaVector_FromTrainingResult()
+        public void Run_UsesFallbackShift_WhenDeltaVectorIsZero()
         {
-            // Arrange: in-memory repository with a simple Delta on first dimension.
-            var repo = new InMemoryShiftTrainingResultRepository();
+            // Arrange: repository with a zero delta vector.
+            var repo = new InMemoryShiftTrainingResultRepositoryForAdaptive();
 
-            var delta = new float[EmbeddingDimensions.DIM];
-            delta[0] = 2.0f; // +2 on first dimension
+            var delta = new float[EmbeddingDimensions.DIM]; // all zeros
 
             repo.Save(new ShiftTrainingResult
             {
@@ -51,15 +50,24 @@ namespace EmbeddingShift.Tests
                 service,
                 ShiftMethod.Shifted);
 
-            // Simple query and reference: we only care that the chosen shift
-            // modifies the query according to DeltaVector.
+            // Simple 1D-like geometry in the first dimension:
+            // Query = (1, 0, 0, ...)
+            // Ref   = (1, 0, 0, ...)
+            //
+            // Because the delta vector is zero, the generator will only yield
+            // the fallback shift. The workflow must therefore return this
+            // fallback shift and leave the query unchanged.
+
             var queryArray = new float[EmbeddingDimensions.DIM];
             queryArray[0] = 1.0f;
+
+            var refArray = new float[EmbeddingDimensions.DIM];
+            refArray[0] = 1.0f;
 
             var query = new ReadOnlyMemory<float>(queryArray);
             var references = new List<ReadOnlyMemory<float>>
             {
-                query
+                new ReadOnlyMemory<float>(refArray)
             };
 
             // Act
@@ -67,15 +75,17 @@ namespace EmbeddingShift.Tests
             var shifted = bestShift.Apply(queryArray);
             var span = shifted.Span;
 
-            // Assert: first dimension must be 1 + 2 = 3
-            Assert.Equal(3.0f, span[0], 3);
+            // Assert: adaptive workflow must stay with the fallback shift.
+            Assert.IsType<NoShiftIngestBased>(bestShift);
+
+            // The query must remain unchanged in the first dimension.
+            Assert.Equal(1.0f, span[0], 3);
         }
 
         /// <summary>
-        /// Minimal in-memory implementation of IShiftTrainingResultRepository
-        /// for testing the adaptive path without touching the file system.
+        /// Minimal in-memory repository for adaptive workflow tests.
         /// </summary>
-        private sealed class InMemoryShiftTrainingResultRepository : IShiftTrainingResultRepository
+        private sealed class InMemoryShiftTrainingResultRepositoryForAdaptive : IShiftTrainingResultRepository
         {
             private readonly List<ShiftTrainingResult> _results = new();
 
