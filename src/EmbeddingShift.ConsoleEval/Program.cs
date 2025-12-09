@@ -201,6 +201,7 @@ switch (args[0].ToLowerInvariant())
             var wf = new AdaptiveWorkflow(generator, service, method);
 
             Console.WriteLine($"Adaptive ready (method={method}, workflow=mini-insurance-posneg).");
+            AdaptiveDemo.RunDemo(wf);
             // Example usage (later):
             // var best = wf.Run(queries[0], refs);
 
@@ -421,6 +422,17 @@ switch (args[0].ToLowerInvariant())
         {
             // Generic inspector for file-based shift training results under /results/<domainKey>.
             await ShiftTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
+            break;
+        }
+    case "shift-training-history":
+        {
+            await ShiftTrainingHistoryCommand.RunAsync(args.Skip(1).ToArray());
+            break;
+        }
+
+    case "shift-training-best":
+        {
+            await ShiftTrainingBestCommand.RunAsync(args.Skip(1).ToArray());
             break;
         }
     case "mini-insurance-first-delta-train":
@@ -814,6 +826,8 @@ static class Helpers
         Console.WriteLine("  mini-insurance-shift-training-history  list recent generic shift training results for mini-insurance");
         Console.WriteLine("  mini-insurance-shift-training-best     show best generic shift training result for mini-insurance");
         Console.WriteLine("  shift-training-inspect <workflowName> [domainKey]  inspect latest shift training result");
+        Console.WriteLine("  shift-training-history <workflowName> [maxItems] [domainKey]  list recent shift training results");
+        Console.WriteLine("  shift-training-best <workflowName> [domainKey]                show best shift training result");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");
