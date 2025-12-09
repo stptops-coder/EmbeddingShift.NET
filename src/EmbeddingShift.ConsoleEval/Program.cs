@@ -183,24 +183,60 @@ switch (args[0].ToLowerInvariant())
             break;
         }
 
-        case "adaptive":
+    case "adaptive":
         {
+            // Default workflow/domain for convenience.
+            var workflowName = "mini-insurance-posneg";
+            var domainKey = "insurance";
+
+            // Optional arguments:
+            //   adaptive [workflowName] [domainKey] [--baseline]
+            // Flags (like --baseline) are ignored here and handled separately.
+            if (args.Length > 1)
+            {
+                var position = 0;
+
+                for (var i = 1; i < args.Length; i++)
+                {
+                    var token = args[i];
+
+                    if (string.IsNullOrWhiteSpace(token))
+                        continue;
+
+                    // Keep compatibility with flag-style arguments (e.g. --baseline).
+                    if (token.StartsWith("-", StringComparison.Ordinal))
+                        continue;
+
+                    if (position == 0)
+                    {
+                        workflowName = token;
+                    }
+                    else if (position == 1)
+                    {
+                        domainKey = token;
+                    }
+
+                    position++;
+                }
+            }
+
             // Use a training-backed shift generator that reads the latest
-            // shift training result (e.g. from mini-insurance-posneg) and
-            // exposes it as a learned additive shift. This is the bridge
-            // between the statistics/training layer and the adaptive layer.
-            var resultsRoot = DirectoryLayout.ResolveResultsRoot("insurance");
-            var repository = new EmbeddingShift.ConsoleEval.Repositories.FileSystemShiftTrainingResultRepository(resultsRoot);
+            // shift training result and exposes it as a learned additive shift.
+            var resultsRoot = DirectoryLayout.ResolveResultsRoot(domainKey);
+            var repository =
+                new EmbeddingShift.ConsoleEval.Repositories.FileSystemShiftTrainingResultRepository(resultsRoot);
 
             IShiftGenerator generator = new TrainingBackedShiftGenerator(
                 repository,
-                workflowName: "mini-insurance-posneg");
+                workflowName: workflowName);
 
             var service = new ShiftEvaluationService(generator, EvaluatorCatalog.Defaults);
 
             var wf = new AdaptiveWorkflow(generator, service, method);
 
-            Console.WriteLine($"Adaptive ready (method={method}, workflow=mini-insurance-posneg).");
+            Console.WriteLine(
+                $"Adaptive ready (method={method}, workflow={workflowName}, domain={domainKey}).");
+
             AdaptiveDemo.RunDemo(wf);
             // Example usage (later):
             // var best = wf.Run(queries[0], refs);
