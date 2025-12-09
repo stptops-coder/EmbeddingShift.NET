@@ -183,7 +183,7 @@ switch (args[0].ToLowerInvariant())
             break;
         }
 
-    case "adaptive":
+            case "adaptive":
         {
             // Default workflow/domain for convenience.
             var workflowName = "mini-insurance-posneg";
@@ -242,6 +242,15 @@ switch (args[0].ToLowerInvariant())
             // var best = wf.Run(queries[0], refs);
 
             break;
+        }
+
+    case "mini-insurance-adaptive":
+    case "mini-insurance-adaptive-demo":
+        {
+            // Alias for the adaptive command with implicit Mini-Insurance defaults.
+            // We simply jump to the "adaptive" case; workflow/domain defaults
+            // are already set to mini-insurance-posneg / insurance there.
+            goto case "adaptive";
         }
 
     case "--help":
@@ -852,6 +861,8 @@ static class Helpers
         Console.WriteLine("  demo --shift <Name> [--dataset X]   run tiny demo (e.g., NoShift.IngestBased)");
         Console.WriteLine("  ingest-refs <path> <dataset>        ingest reference vectors");
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
+        Console.WriteLine("  mini-insurance-adaptive             adaptive selection for Mini-Insurance (alias for 'adaptive')");
+        Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
         Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
         Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
         Console.WriteLine("  mini-insurance-first-delta-pipeline run full Mini-Insurance First+Delta pipeline (baseline/First/First+Delta/LearnedDelta)");
