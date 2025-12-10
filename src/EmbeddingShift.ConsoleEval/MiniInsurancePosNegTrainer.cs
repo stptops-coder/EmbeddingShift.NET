@@ -220,11 +220,11 @@ namespace EmbeddingShift.ConsoleEval
 
         private static string ResolveDomainRoot()
         {
-            // Centralized layout: repo-root/samples/insurance
-            // (shared with FileBasedInsuranceMiniWorkflow and MiniInsurancePosNegRunner).
-            return EmbeddingShift.Workflows.Domains.MiniInsuranceDataset.ResolveDatasetRoot();
+            // Use the domain descriptor to locate the Mini-Insurance samples.
+            // The actual layout (samples/insurance/...) is centralized in
+            // MiniInsuranceDataset, which MiniInsuranceDomain delegates to.
+            return MiniInsurance.MiniInsuranceDomain.GetSamplesRoot();
         }
-
 
         private sealed record QueryDefinition(string Id, string Text, string RelevantDocId);
     }
