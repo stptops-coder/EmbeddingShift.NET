@@ -154,15 +154,9 @@ namespace EmbeddingShift.Workflows
 
         private static string ResolveDomainRoot()
         {
-            // go from bin/Debug/net8.0 back to the repo root and into samples/insurance
-            var baseDir = AppContext.BaseDirectory;
-
-            // go up one more level (.. x 5), because the tests are located under
-            // src/EmbeddingShift.Tests/bin/Debug/net8.0
-            var root = Path.GetFullPath(
-                Path.Combine(baseDir, "..", "..", "..", "..", ".."));
-
-            return Path.Combine(root, "samples", "insurance");
+            // Centralized layout: repo-root/samples/insurance
+            // (shared with pos/neg training and runner via MiniInsuranceDataset).
+            return EmbeddingShift.Workflows.Domains.MiniInsuranceDataset.ResolveDatasetRoot();
         }
 
         private static double DcgatK(int rankOfRelevant, int k)

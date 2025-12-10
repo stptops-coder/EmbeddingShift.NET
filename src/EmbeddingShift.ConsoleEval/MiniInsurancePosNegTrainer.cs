@@ -220,14 +220,11 @@ namespace EmbeddingShift.ConsoleEval
 
         private static string ResolveDomainRoot()
         {
-            // Go from bin/Debug/net8.0 back to the repo root and into samples/insurance.
-            var baseDir = AppContext.BaseDirectory;
-
-            var root = Path.GetFullPath(
-                Path.Combine(baseDir, "..", "..", "..", "..", ".."));
-
-            return Path.Combine(root, "samples", "insurance");
+            // Centralized layout: repo-root/samples/insurance
+            // (shared with FileBasedInsuranceMiniWorkflow and MiniInsurancePosNegRunner).
+            return EmbeddingShift.Workflows.Domains.MiniInsuranceDataset.ResolveDatasetRoot();
         }
+
 
         private sealed record QueryDefinition(string Id, string Text, string RelevantDocId);
     }
