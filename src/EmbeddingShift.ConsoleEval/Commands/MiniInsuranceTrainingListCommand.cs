@@ -1,124 +1,37 @@
-﻿using EmbeddingShift.ConsoleEval.MiniInsurance;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
+﻿using System;
+using System.Threading.Tasks;
+using EmbeddingShift.ConsoleEval.Inspector;
+using EmbeddingShift.Core.Infrastructure;
 
 namespace EmbeddingShift.ConsoleEval.Commands
 {
+    /// <summary>
+    /// Legacy alias for listing recent shift-training results.
+    /// Prefer: domain mini-insurance shift-training-history
+    /// </summary>
     internal static class MiniInsuranceTrainingListCommand
     {
         public static Task RunAsync(string[] args)
         {
-            Console.WriteLine();
-            Console.WriteLine("=== Mini-Insurance · Training Runs (history) ===");
-            Console.WriteLine();
+            var workflowName = args.Length >= 1 ? args[0] : "mini-insurance-first-delta";
 
-            // Old:
-            // var basePath = MiniInsurancePaths.GetBasePath();
-            // var historyRoot = Path.Combine(basePath, "training");
+            var maxItems = 20;
+            if (args.Length >= 2 && int.TryParse(args[1], out var parsed) && parsed > 0)
+                maxItems = parsed;
 
-            // New: use dedicated training root from MiniInsurancePaths
-            // Use the MiniInsurancePaths training root.
-            // If a "history" subfolder exists, prefer that (older layouts).
-            var trainingRoot = MiniInsurancePaths.GetTrainingRoot();
-            var historyRoot = Path.Combine(trainingRoot, "history");
-            var effectiveRoot = Directory.Exists(historyRoot) ? historyRoot : trainingRoot;
-
-            var runDirs = new DirectoryInfo(effectiveRoot)
-                .GetDirectories()
-                .OrderByDescending(d => d.CreationTimeUtc)
-                .ToList();
-
-            if (runDirs.Count == 0)
-            {
-                Console.WriteLine("[INFO] No training runs found.");
-                return Task.CompletedTask;
-            }
-
-            int index = 1;
-            foreach (var dir in runDirs)
-            {
-                var jsonFile = dir.GetFiles("*.json")
-                    .OrderByDescending(f => f.LastWriteTimeUtc)
-                    .FirstOrDefault();
-
-                if (jsonFile == null)
-                {
-                    Console.WriteLine($"{index,2}. {dir.Name}   (no JSON file)");
-                    index++;
-                    continue;
-                }
-
-                string metricsSummary;
-                try
-                {
-                    var json = File.ReadAllText(jsonFile.FullName);
-                    using var doc = JsonDocument.Parse(json);
-                    metricsSummary = BuildMetricSummary(doc.RootElement);
-                }
-                catch (Exception ex)
-                {
-                    metricsSummary = $"(failed to read JSON: {ex.Message})";
-                }
-
-                if (string.IsNullOrWhiteSpace(metricsSummary))
-                {
-                    Console.WriteLine($"{index,2}. {dir.Name}");
-                }
-                else
-                {
-                    Console.WriteLine($"{index,2}. {dir.Name}  |  {metricsSummary}");
-                }
-
-                index++;
-            }
+            var domainKey = args.Length >= 3 ? args[2] : "insurance";
 
             Console.WriteLine();
-            Console.WriteLine($"[INFO] Listed {runDirs.Count} training runs from:");
-            Console.WriteLine($"       {historyRoot}");
+            Console.WriteLine("=== Mini-Insurance · Training Runs (legacy alias) ===");
+            Console.WriteLine($"Workflow   : {workflowName}");
+            Console.WriteLine($"DomainKey  : {domainKey}");
+            Console.WriteLine($"MaxItems   : {maxItems}");
             Console.WriteLine();
+
+            var rootDirectory = DirectoryLayout.ResolveResultsRoot(domainKey);
+            ShiftTrainingResultInspector.PrintHistory(workflowName, rootDirectory, maxItems);
 
             return Task.CompletedTask;
-        }
-
-        private static string BuildMetricSummary(JsonElement root)
-        {
-            var parts = new List<string>();
-
-            foreach (var prop in root.EnumerateObject())
-            {
-                var nameLower = prop.Name.ToLowerInvariant();
-
-                // Heuristik: typische Metrik-Namen herausfiltern
-                bool isMetricName =
-                    nameLower.Contains("map") ||
-                    nameLower.Contains("ndcg") ||
-                    nameLower.Contains("score");
-
-                if (!isMetricName)
-                    continue;
-
-                string valueString = prop.Value.ValueKind switch
-                {
-                    JsonValueKind.Number => prop.Value.ToString(),
-                    JsonValueKind.String => prop.Value.GetString() ?? "",
-                    _ => prop.Value.ToString()
-                };
-
-                if (!string.IsNullOrWhiteSpace(valueString))
-                {
-                    parts.Add($"{prop.Name}={valueString}");
-                }
-
-                if (parts.Count >= 4)
-                {
-                    break; // nicht zu viel pro Zeile
-                }
-            }
-
-            return string.Join(", ", parts);
         }
     }
 }

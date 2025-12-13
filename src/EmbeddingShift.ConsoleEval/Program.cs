@@ -457,12 +457,14 @@ switch (args[0].ToLowerInvariant())
             break;
         }
     case "mini-insurance-training-inspect":
-        // Inspect latest Mini-Insurance training result under
-        // results/insurance/training (legacy "history" subfolder is still supported by the command)
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance shift-training-inspect
         await MiniInsuranceTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
         break;
 
     case "mini-insurance-training-list":
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance shift-training-history
         await MiniInsuranceTrainingListCommand.RunAsync(args.Skip(1).ToArray());
         break;
 
