@@ -458,7 +458,7 @@ switch (args[0].ToLowerInvariant())
         }
     case "mini-insurance-training-inspect":
         // Inspect latest Mini-Insurance training result under
-        // local/mini-insurance/training/history
+        // results/insurance/training (legacy "history" subfolder is still supported by the command)
         await MiniInsuranceTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
         break;
 

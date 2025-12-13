@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 namespace EmbeddingShift.ConsoleEval.Commands
 {
     /// <summary>
-    /// Inspects the latest Mini-Insurance training result by scanning
-    /// local/mini-insurance/training/history and printing a compact summary.
+    /// Inspects the latest Mini-Insurance training result by scanning the
+    /// training folder under the stable results layout (results/insurance/training).
     /// </summary>
     internal static class MiniInsuranceTrainingInspectCommand
     {

@@ -10,7 +10,7 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
     /// <summary>
     /// Orchestrates the complete Mini-Insurance First+Delta pipeline:
     /// Baseline -> FirstShift -> First+Delta -> (optional) LearnedDelta
-    /// -> Metrics -> persisted artifacts under a stable local/mini-insurance layout.
+    /// -> Metrics -> persisted artifacts under a stable results/insurance layout.
     /// </summary>
     internal sealed class MiniInsuranceFirstDeltaPipeline
     {

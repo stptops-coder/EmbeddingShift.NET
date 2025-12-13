@@ -1,16 +1,19 @@
 ﻿using System;
 using System.IO;
+using EmbeddingShift.Core.Infrastructure;
 
 namespace EmbeddingShift.ConsoleEval.MiniInsurance;
 
 /// <summary>
-/// Provides a stable base path for all Mini-Insurance artifacts
-/// outside of bin/Debug.
+/// Provides stable base paths for all Mini-Insurance artifacts under:
+///   <repo-root>/results/insurance
+/// This keeps artifacts out of bin/Debug and makes CLI tooling consistent.
 /// </summary>
 internal static class MiniInsurancePaths
 {
-    private const string DomainFolderName = "mini-insurance";
-    private const string LocalFolderName = "local";
+    // Keep this aligned with MiniInsuranceDomainPack.ResultsDomainKey
+    // and with the domain dataset folder name under data/domains.
+    private const string ResultsDomainKey = "insurance";
 
     private const string RunsFolderName = "runs";
     private const string TrainingFolderName = "training";
@@ -26,18 +29,9 @@ internal static class MiniInsurancePaths
     /// </summary>
     public static string GetDomainRoot()
     {
-        // AppContext.BaseDirectory = ...\src\EmbeddingShift.ConsoleEval\bin\Debug\net8.0\
-        // Go up three levels to reach the ConsoleEval project root.
-        var consoleEvalProjectRoot = Path.GetFullPath(
-            Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
-
-        var domainRoot = Path.Combine(
-            consoleEvalProjectRoot,
-            LocalFolderName,
-            DomainFolderName);
-
-        Directory.CreateDirectory(domainRoot);
-        return domainRoot;
+        // Preferred stable layout:
+        //   <repo-root>/results/insurance
+        return DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
     }
 
     /// <summary>
