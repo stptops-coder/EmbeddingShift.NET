@@ -34,31 +34,6 @@ namespace EmbeddingShift.ConsoleEval
 
             var provider = EmbeddingProviderFactory.Create(backend);
 
-
-            // Allow running even if training artifacts are not present yet.
-            // This keeps CLI + tests stable (baseline mode).
-            var shift = trainingResult?.DeltaVector;
-
-            if (shift is null || shift.Length == 0)
-            {
-                Console.WriteLine(
-                    $"[MiniInsurancePosNegRunner] No delta vector found for workflow '{WorkflowName}'. " +
-                    "Running with a zero shift (baseline).");
-
-                // We'll size this once we know the embedding dimension.
-                shift = Array.Empty<float>();
-            }
-
-
-            shift = trainingResult.DeltaVector;
-            if (shift is null || shift.Length == 0)
-            {
-                throw new InvalidOperationException(
-                    $"Training result for '{WorkflowName}' does not contain a valid delta vector.");
-            }
-
-            var provider = EmbeddingProviderFactory.Create(backend);
-
             var domainRoot = ResolveDomainRoot();
             var policiesDir = Path.Combine(domainRoot, "policies");
             var queriesPath = Path.Combine(domainRoot, "queries", "queries.json");
