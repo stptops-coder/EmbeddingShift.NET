@@ -4,21 +4,21 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using EmbeddingShift.ConsoleEval.Commands;
-using EmbeddingShift.ConsoleEval.Inspector;
 using EmbeddingShift.ConsoleEval.MiniInsurance;
-using EmbeddingShift.Core.Infrastructure;
 
 /// <summary>
 /// Domain pack: Mini-Insurance.
 /// This remains a reference "domain pack" while the engine stays domain-neutral.
 /// </summary>
-internal sealed class MiniInsuranceDomainPack : IDomainPack
+internal sealed class MiniInsuranceDomainPack : DomainPackBase
 {
-    public string DomainId => "mini-insurance";
-    public string DisplayName => "Mini-Insurance (reference domain pack)";
-    public string ResultsDomainKey => "insurance";
+    public override string DomainId => "mini-insurance";
+    public override string DisplayName => "Mini-Insurance (reference domain pack)";
+    public override string ResultsDomainKey => "insurance";
 
-    public void PrintHelp(Action<string> log)
+    protected override string DefaultWorkflowName => "mini-insurance-first-delta";
+
+    protected override void PrintDomainHelp(Action<string> log)
     {
         log("Mini-Insurance domain pack");
         log("Usage:");
@@ -34,20 +34,10 @@ internal sealed class MiniInsuranceDomainPack : IDomainPack
         log("  domainKey    = insurance");
     }
 
-    public async Task<int> ExecuteAsync(string[] args, Action<string> log)
+    protected override async Task<int> ExecuteDomainCommandAsync(string sub, string[] args, Action<string> log)
     {
-        const string defaultWorkflow = "mini-insurance-first-delta";
-
-        var sub = args.FirstOrDefault()?.ToLowerInvariant() ?? "help";
-
         switch (sub)
         {
-            case "help":
-            case "--help":
-            case "-h":
-                PrintHelp(log);
-                return 0;
-
             case "pipeline":
             case "run":
                 {
@@ -67,35 +57,9 @@ internal sealed class MiniInsuranceDomainPack : IDomainPack
                 await MiniInsuranceTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
                 return 0;
 
-            case "shift-training-inspect":
-                {
-                    var workflowName = args.Length >= 2 ? args[1] : defaultWorkflow;
-                    await ShiftTrainingInspectCommand.RunAsync(new[] { workflowName, ResultsDomainKey });
-                    return 0;
-                }
-
-            case "shift-training-history":
-                {
-                    var workflowName = args.Length >= 2 ? args[1] : defaultWorkflow;
-                    var maxItems = 20;
-
-                    if (args.Length >= 3 && int.TryParse(args[2], out var parsed) && parsed > 0)
-                        maxItems = parsed;
-
-                    await ShiftTrainingHistoryCommand.RunAsync(new[] { workflowName, maxItems.ToString(), ResultsDomainKey });
-                    return 0;
-                }
-
-            case "shift-training-best":
-                {
-                    var workflowName = args.Length >= 2 ? args[1] : defaultWorkflow;
-                    await ShiftTrainingBestCommand.RunAsync(new[] { workflowName, ResultsDomainKey });
-                    return 0;
-                }
-
             default:
                 log($"Unknown subcommand '{sub}'.");
-                PrintHelp(log);
+                PrintDomainHelp(log);
                 return 1;
         }
     }
