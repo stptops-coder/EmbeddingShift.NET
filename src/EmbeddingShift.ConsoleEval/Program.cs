@@ -70,12 +70,21 @@ var method = args.Any(a => a.Equals("--method=A", StringComparison.OrdinalIgnore
 // Demo ingest components
 IIngestor ingestor = new MinimalTxtIngestor();
 
-// File-based vector store for persistence
-IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(
-    Path.Combine(AppContext.BaseDirectory, "data"));
+// File-based vector store for persistence (kept out of bin/Debug)
+var storeRoot = DirectoryLayout.ResolveDataRoot("vectorstore");
+IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(storeRoot);
 
 var ingestWf = new IngestWorkflow(ingestor, provider, store);
 var evalWf = new EvaluationWorkflow(runner);
+
+static string ResolveSamplesDemoPath()
+{
+    // dataRoot = <repo-root>/data
+    var dataRoot = DirectoryLayout.ResolveDataRoot();
+    var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
+    return Path.Combine(repoRoot, "samples", "demo");
+}
+
 
 // --- CLI ---
 if (args.Length == 0)
@@ -134,8 +143,8 @@ switch (args[0].ToLowerInvariant())
         {
             // usage: ingest <path> <dataset>
             var input = args.Length >= 3
-                ? args[1]
-                : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
+               ? args[1]
+               : ResolveSamplesDemoPath();
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
@@ -169,17 +178,16 @@ switch (args[0].ToLowerInvariant())
 
             else
             {
-                // --- load persisted embeddings for this dataset from FileStore/data ---
-                var dataRoot = Path.Combine(AppContext.BaseDirectory, "data", "embeddings");
-                queries = Helpers.LoadVectorsBySpace(dataRoot, dataset + ":queries");
-                refs = Helpers.LoadVectorsBySpace(dataRoot, dataset + ":refs");
+                // --- load persisted embeddings for this dataset from the stable data layout ---
+                var embeddingsRoot = DirectoryLayout.ResolveDataRoot("embeddings");
+                queries = Helpers.LoadVectorsBySpace(dataset + ":queries");
+                refs = Helpers.LoadVectorsBySpace(dataset + ":refs");
 
                 if (queries.Count == 0 || refs.Count == 0)
                 {
-                    Console.WriteLine($"No persisted embeddings under any configured root for dataset '{dataset}'.");
+                    Console.WriteLine($"No persisted embeddings under '{embeddingsRoot}' for dataset '{dataset}'.");
                     return;
                 }
-
                 Console.WriteLine($"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} queries vs {refs.Count} refs.");
             }
 
@@ -199,7 +207,7 @@ switch (args[0].ToLowerInvariant())
             // usage: ingest-queries <path> <dataset>
             var input = args.Length >= 3
                 ? args[1]
-                : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
+                : ResolveSamplesDemoPath();
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
@@ -212,8 +220,8 @@ switch (args[0].ToLowerInvariant())
         {
             // usage: ingest-refs <path> <dataset>
             var input = args.Length >= 3
-                ? args[1]
-                : Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "samples", "demo");
+              ? args[1]
+              : ResolveSamplesDemoPath();
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
@@ -924,52 +932,35 @@ static class Helpers
     }
 
     // in static class Helpers
-    public static List<ReadOnlyMemory<float>> LoadVectorsBySpace(string embeddingsDir_UNUSED, string space)
+    public static List<ReadOnlyMemory<float>> LoadVectorsBySpace(string space)
     {
-        // Try multiple plausible roots (bin folder, repo root, cwd)
-        var candidates = new[]
-        {
-        Path.Combine(AppContext.BaseDirectory, "data", "embeddings"),
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "data", "embeddings")),
-        Path.Combine(Directory.GetCurrentDirectory(), "data", "embeddings")
-        };
+        var root = DirectoryLayout.ResolveDataRoot("embeddings");
 
         var result = new List<ReadOnlyMemory<float>>();
-        foreach (var root in candidates)
+        if (!Directory.Exists(root))
+            return result;
+
+        foreach (var file in Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories))
         {
-            if (!Directory.Exists(root)) continue;
-
-            foreach (var file in Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories))
+            try
             {
-                try
-                {
-                    var json = File.ReadAllText(file);
-                    var rec = System.Text.Json.JsonSerializer.Deserialize<EmbeddingRec>(json);
-                    if (rec?.vector is null || rec.vector.Length == 0) continue;
+                var json = File.ReadAllText(file);
+                var rec = System.Text.Json.JsonSerializer.Deserialize<EmbeddingRec>(json);
+                if (rec?.vector is null || rec.vector.Length == 0) continue;
 
-                    // Accept exact or substring match of the space (dataset)
-                    if (!string.IsNullOrWhiteSpace(rec.space) &&
-                        (string.Equals(rec.space, space, StringComparison.OrdinalIgnoreCase) ||
-                         rec.space.IndexOf(space, StringComparison.OrdinalIgnoreCase) >= 0))
-                    {
-                        result.Add(rec.vector);
-                    }
-                }
-                catch
+                // Accept exact or substring match of the space (dataset)
+                if (!string.IsNullOrWhiteSpace(rec.space) &&
+                    (string.Equals(rec.space, space, StringComparison.OrdinalIgnoreCase) ||
+                     rec.space.IndexOf(space, StringComparison.OrdinalIgnoreCase) >= 0))
                 {
-                    // ignore unreadable files
+                    result.Add(rec.vector);
                 }
             }
-
-            if (result.Count > 0)
+            catch
             {
-                Console.WriteLine($"Found {result.Count} persisted embeddings for '{space}' under: {root}");
-                break; // stop at first root that yields results
+                // ignore unreadable files
             }
         }
-
-        if (result.Count == 0)
-            Console.WriteLine($"No persisted embeddings under any known root for '{space}'. Checked: {string.Join(" | ", candidates)}");
 
         return result;
     }
