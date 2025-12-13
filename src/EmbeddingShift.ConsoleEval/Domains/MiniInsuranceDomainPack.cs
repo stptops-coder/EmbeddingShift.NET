@@ -25,13 +25,19 @@ internal sealed class MiniInsuranceDomainPack : IDomainPack
         log("  domain mini-insurance pipeline [--no-learned]");
         log("  domain mini-insurance training-list");
         log("  domain mini-insurance training-inspect");
-        log("  domain mini-insurance shift-training-inspect");
-        log("  domain mini-insurance shift-training-history [maxItems]");
-        log("  domain mini-insurance shift-training-best");
+        log("  domain mini-insurance shift-training-inspect [workflowName]");
+        log("  domain mini-insurance shift-training-history [workflowName] [maxItems]");
+        log("  domain mini-insurance shift-training-best [workflowName]");
+        log("");
+        log("Defaults:");
+        log("  workflowName = mini-insurance-first-delta");
+        log("  domainKey    = insurance");
     }
 
     public async Task<int> ExecuteAsync(string[] args, Action<string> log)
     {
+        const string defaultWorkflow = "mini-insurance-first-delta";
+
         var sub = args.FirstOrDefault()?.ToLowerInvariant() ?? "help";
 
         switch (sub)
@@ -63,37 +69,27 @@ internal sealed class MiniInsuranceDomainPack : IDomainPack
 
             case "shift-training-inspect":
                 {
-                    var root = DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
-                    ShiftTrainingResultInspector.PrintLatest(
-                        workflowName: "mini-insurance-first-delta",
-                        rootDirectory: root);
+                    var workflowName = args.Length >= 2 ? args[1] : defaultWorkflow;
+                    await ShiftTrainingInspectCommand.RunAsync(new[] { workflowName, ResultsDomainKey });
                     return 0;
                 }
 
             case "shift-training-history":
                 {
-                    var root = DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
-
+                    var workflowName = args.Length >= 2 ? args[1] : defaultWorkflow;
                     var maxItems = 20;
-                    if (args.Length >= 2 && int.TryParse(args[1], out var parsed) && parsed > 0)
-                    {
+
+                    if (args.Length >= 3 && int.TryParse(args[2], out var parsed) && parsed > 0)
                         maxItems = parsed;
-                    }
 
-                    ShiftTrainingResultInspector.PrintHistory(
-                        workflowName: "mini-insurance-first-delta",
-                        rootDirectory: root,
-                        maxItems: maxItems);
-
+                    await ShiftTrainingHistoryCommand.RunAsync(new[] { workflowName, maxItems.ToString(), ResultsDomainKey });
                     return 0;
                 }
 
             case "shift-training-best":
                 {
-                    var root = DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
-                    ShiftTrainingResultInspector.PrintBest(
-                        workflowName: "mini-insurance-first-delta",
-                        rootDirectory: root);
+                    var workflowName = args.Length >= 2 ? args[1] : defaultWorkflow;
+                    await ShiftTrainingBestCommand.RunAsync(new[] { workflowName, ResultsDomainKey });
                     return 0;
                 }
 

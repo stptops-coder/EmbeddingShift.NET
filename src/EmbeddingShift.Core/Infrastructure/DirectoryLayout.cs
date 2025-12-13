@@ -24,20 +24,30 @@ namespace EmbeddingShift.Core.Infrastructure
 
             string Combine(params string[] parts) => Path.Combine(parts);
 
+            var envRoot = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_ROOT");
+
             var candidates = new[]
             {
-                // bin/Debug/.../results or /data (AppContext)
-                Combine(AppContext.BaseDirectory, rootFolderName),
+                // Optional override (lets CI or users pin a stable location)
+                string.IsNullOrWhiteSpace(envRoot)
+                    ? null
+                    : Path.GetFullPath(Combine(envRoot, rootFolderName)),
 
                 // repo-root/results or /data (typical dev layout)
-                Path.GetFullPath(Combine(AppContext.BaseDirectory, "..", "..", "..", "..", rootFolderName)),
+                Path.GetFullPath(Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", rootFolderName)),
 
                 // current working directory/results or /data (fallback)
-                Combine(Directory.GetCurrentDirectory(), rootFolderName)
+                Combine(Directory.GetCurrentDirectory(), rootFolderName),
+
+                // bin/Debug/.../results or /data (last resort only)
+                Combine(AppContext.BaseDirectory, rootFolderName),
             };
 
             foreach (var candidate in candidates)
             {
+                if (string.IsNullOrWhiteSpace(candidate))
+                    continue;
+
                 try
                 {
                     var path = domainSubfolder is null
@@ -52,6 +62,7 @@ namespace EmbeddingShift.Core.Infrastructure
                     // try next candidate, keep this silent and robust
                 }
             }
+
 
             // Last-resort fallback: current directory (+ optional subfolder)
             var fallback = domainSubfolder is null

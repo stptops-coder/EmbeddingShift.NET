@@ -904,7 +904,6 @@ static class Helpers
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
         Console.WriteLine("  mini-insurance-adaptive             adaptive selection for Mini-Insurance (alias for 'adaptive')");
         Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
-        Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
         Console.WriteLine("  mini-insurance-first-delta          compare baseline vs First/First+Delta (mini insurance)");
         Console.WriteLine("  mini-insurance-first-delta-pipeline run full Mini-Insurance First+Delta pipeline (baseline/First/First+Delta/LearnedDelta)");
         Console.WriteLine("  mini-insurance-first-delta-aggregate aggregate metrics over all comparison runs");
