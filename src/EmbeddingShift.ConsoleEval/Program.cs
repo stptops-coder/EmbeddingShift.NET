@@ -84,6 +84,20 @@ static string ResolveSamplesDemoPath()
     var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
     return Path.Combine(repoRoot, "samples", "demo");
 }
+static async Task ExecuteDomainPackAsync(string domainId, string[] subArgs)
+{
+    var pack = DomainPackRegistry.TryGet(domainId);
+    if (pack is null)
+    {
+        Console.WriteLine($"Unknown domain pack '{domainId}'.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    var exitCode = await pack.ExecuteAsync(subArgs, msg => Console.WriteLine(msg));
+    if (exitCode != 0)
+        Environment.ExitCode = exitCode;
+}
 
 
 // --- CLI ---
@@ -466,14 +480,18 @@ switch (args[0].ToLowerInvariant())
         }
     case "mini-insurance-training-inspect":
         // Legacy alias (kept for compatibility).
-        // Prefer: domain mini-insurance shift-training-inspect
-        await MiniInsuranceTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
+        // Prefer: domain mini-insurance training-inspect
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "training-inspect" }.Concat(args.Skip(1)).ToArray());
         break;
 
     case "mini-insurance-training-list":
         // Legacy alias (kept for compatibility).
-        // Prefer: domain mini-insurance shift-training-history
-        await MiniInsuranceTrainingListCommand.RunAsync(args.Skip(1).ToArray());
+        // Prefer: domain mini-insurance training-list
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "training-list" }.Concat(args.Skip(1)).ToArray());
         break;
 
     case "mini-insurance-first-delta-aggregate":
@@ -767,32 +785,30 @@ switch (args[0].ToLowerInvariant())
             break;
         }
     case "mini-insurance-shift-training-inspect":
-        {
-            var root = DirectoryLayout.ResolveResultsRoot("insurance");
-            ShiftTrainingResultInspector.PrintLatest(
-                workflowName: "mini-insurance-first-delta",
-                rootDirectory: root);
-            break;
-        }
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance shift-training-inspect
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "shift-training-inspect" }.Concat(args.Skip(1)).ToArray());
+        break;
+
     case "mini-insurance-shift-training-history":
-        {
-            var root = DirectoryLayout.ResolveResultsRoot("insurance");
-            ShiftTrainingResultInspector.PrintHistory(
-                workflowName: "mini-insurance-first-delta",
-                rootDirectory: root,
-                maxItems: 20);
-            break;
-        }
-        case "mini-insurance-shift-training-best":
-        {
-            var root = DirectoryLayout.ResolveResultsRoot("insurance");
-            ShiftTrainingResultInspector.PrintBest(
-                workflowName: "mini-insurance-first-delta",
-                rootDirectory: root);
-            break;
-        }
- 
-case "mini-insurance-posneg-train":
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance shift-training-history
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "shift-training-history" }.Concat(args.Skip(1)).ToArray());
+        break;
+
+    case "mini-insurance-shift-training-best":
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance shift-training-best
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "shift-training-best" }.Concat(args.Skip(1)).ToArray());
+        break;
+
+    case "mini-insurance-posneg-train":
         {
             Console.WriteLine("[MiniInsurance] Training pos-neg learned global Delta shift (simulation backend)...");
             Console.WriteLine();
