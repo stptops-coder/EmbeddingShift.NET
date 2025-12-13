@@ -796,6 +796,7 @@ switch (args[0].ToLowerInvariant())
             Console.WriteLine("[MiniInsurance] Candidate inspection done.");
             break;
         }
+
     case "mini-insurance-shift-training-inspect":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance shift-training-inspect
@@ -821,73 +822,44 @@ switch (args[0].ToLowerInvariant())
         break;
 
     case "mini-insurance-posneg-train":
-        {
-            Console.WriteLine("[MiniInsurance] Training pos-neg learned global Delta shift (simulation backend)...");
-            Console.WriteLine();
-
-            var result = await MiniInsurancePosNegTrainer.TrainAsync(EmbeddingBackend.Sim);
-
-            Console.WriteLine("[MiniInsurance] Pos-neg training finished.");
-            Console.WriteLine($"  Workflow    : {result.WorkflowName}");
-            Console.WriteLine($"  Runs        : {result.ComparisonRuns}");
-            Console.WriteLine($"  Vector dim  : {result.DeltaVector?.Length ?? 0}");
-            Console.WriteLine();
-            Console.WriteLine($"  Results root: {result.BaseDirectory}");
-            Console.WriteLine("  A generic shift training inspector wired to this workflow");
-            Console.WriteLine("  can be used later to inspect the learned Delta vector in detail.");
-            Console.WriteLine();
-            Console.WriteLine("  Use one of the following commands to inspect the training result:");
-            Console.WriteLine("    mini-insurance-posneg-training-inspect  - show latest training result");
-            Console.WriteLine("    mini-insurance-posneg-training-history  - list recent training results");
-            Console.WriteLine("    mini-insurance-posneg-training-best     - show best training result");
-            Console.WriteLine();
-
-            break;
-        }
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance posneg-train
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "posneg-train" }.Concat(args.Skip(1)).ToArray());
+        break;
 
     case "mini-insurance-posneg-training-inspect":
-        {
-            var root = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            ShiftTrainingResultInspector.PrintLatest(
-                workflowName: "mini-insurance-posneg",
-                rootDirectory: root);
-
-            break;
-        }
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance posneg-inspect
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "posneg-inspect" }.Concat(args.Skip(1)).ToArray());
+        break;
 
     case "mini-insurance-posneg-training-history":
-        {
-            var root = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            ShiftTrainingResultInspector.PrintHistory(
-                workflowName: "mini-insurance-posneg",
-                rootDirectory: root,
-                maxItems: 20);
-
-            break;
-        }
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance posneg-history
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "posneg-history" }.Concat(args.Skip(1)).ToArray());
+        break;
 
     case "mini-insurance-posneg-training-best":
-        {
-            var root = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            ShiftTrainingResultInspector.PrintBest(
-                workflowName: "mini-insurance-posneg",
-                rootDirectory: root);
-
-            break;
-        }
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance posneg-best
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "posneg-best" }.Concat(args.Skip(1)).ToArray());
+        break;
 
     case "mini-insurance-posneg-run":
-        {
-            Console.WriteLine("[MiniInsurance] Running baseline vs pos-neg shift (simulation backend)...");
-            Console.WriteLine();
-
-            await MiniInsurancePosNegRunner.RunAsync(EmbeddingBackend.Sim);
-
-            break;
-        }
+        // Legacy alias (kept for compatibility).
+        // Prefer: domain mini-insurance posneg-run
+        await ExecuteDomainPackAsync(
+            "mini-insurance",
+            new[] { "posneg-run" }.Concat(args.Skip(1)).ToArray());
+        break;
 
     case "--version":
         {
