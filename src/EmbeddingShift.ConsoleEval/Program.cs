@@ -264,11 +264,11 @@ switch (args[0].ToLowerInvariant())
         {
             Console.WriteLine("[MiniInsurance] Running file-based insurance workflow using sample policies and queries...");
 
-            // Workflow-Instanz wie im Test
+            // Workflow instance as in the tests.
             IWorkflow workflow = new FileBasedInsuranceMiniWorkflow();
             var wfRunner = new StatsAwareWorkflowRunner();
 
-            // Läuft wie im FileBasedInsuranceMiniWorkflowTests, nur mit anderem Namen.
+            // Runs like in FileBasedInsuranceMiniWorkflowTests, just under a different run name.
             var result = await wfRunner.ExecuteAsync("FileBased-Insurance-Mini-Console", workflow);
 
             // Use the central layout helper: /results/insurance (with safe fallbacks).
@@ -582,7 +582,7 @@ switch (args[0].ToLowerInvariant())
                 break;
             }
 
-            // Persist runs + comparison so sie wieder in die Aggregation einfließen können.
+            // Persist runs + comparison so they can be picked up again by the aggregation step.
             string? baselineRunDir = null;
             string? firstRunDir = null;
             string? learnedRunDir = null;

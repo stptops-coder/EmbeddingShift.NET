@@ -262,10 +262,9 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
         private Task PersistArtifactsAsync(CancellationToken cancellationToken)
         {
-            // Noch keine zusätzlichen Schritte nötig: die Layout-Entscheidungen
-            // laufen bereits über MiniInsurancePaths (runs/aggregates/...).
-            // Hier könnte später z.B. ein Manifest oder eine „latest“-Symlinkstruktur
-            // ergänzt werden.
+            // No additional steps needed yet: layout decisions already go through
+            // MiniInsurancePaths (runs/aggregates/...).
+            // We could later add a manifest or a "latest" pointer structure here.
             return Task.CompletedTask;
         }
     }

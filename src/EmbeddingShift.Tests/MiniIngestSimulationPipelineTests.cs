@@ -6,17 +6,17 @@ using Xunit;
 namespace EmbeddingShift.Tests
 {
     /// <summary>
-    /// Mini ingest pipeline (pure simulation, ohne AbhÃ¤ngigkeit von SimpleTextChunker):
+    /// Mini ingest pipeline (pure simulation, without a dependency on SimpleTextChunker):
     /// - documents (strings)
     /// - simple chunking by length
-    /// - simulated embeddings (kleine Float-Vektoren)
+    /// - simulated embeddings (small float vectors)
     /// </summary>
     public class MiniIngestSimulationPipelineTests
     {
         [Fact]
         public void Documents_are_chunked_and_mapped_to_simulated_embeddings()
         {
-            // 1) Mini-Dokumentkorpus
+            // 1) Mini document corpus
             var docs = new Dictionary<string, string>
             {
                 ["policy-1"] =
@@ -29,7 +29,7 @@ namespace EmbeddingShift.Tests
 
             const int maxChunkLength = 80;
 
-            // 2) Pipeline: Doc -> Chunks -> simulierte Embeddings
+            // 2) Pipeline: doc -> chunks -> simulated embeddings
             var allEmbeddings = new List<(string DocId, string ChunkText, float[] Embedding)>();
 
             foreach (var kvp in docs)
@@ -47,13 +47,13 @@ namespace EmbeddingShift.Tests
                 }
             }
 
-            // 3) Einfache Assertions auf Pipeline-Ergebnis
+            // 3) Basic assertions on the pipeline result
             Assert.NotEmpty(allEmbeddings);
 
-            // Wir erwarten pro Embedding einen fixen Vektor mit 3 Dimensionen.
+            // We expect each embedding to have a fixed vector with 3 dimensions.
             Assert.All(allEmbeddings, e => Assert.Equal(3, e.Embedding.Length));
 
-            // Mindestens ein Dokument sollte >1 Chunk haben.
+            // At least one document should have >1 chunk.
             var chunksPerDoc = allEmbeddings
                 .GroupBy(e => e.DocId)
                 .ToDictionary(g => g.Key, g => g.Count());
@@ -74,10 +74,10 @@ namespace EmbeddingShift.Tests
         }
 
         /// <summary>
-        /// Sehr einfache "Simulation" eines Embeddings:
-        /// - Dimension 0: LÃ¤nge des Chunks
-        /// - Dimension 1: Anzahl Whitespace-Zeichen
-        /// - Dimension 2: Whitespace-Anteil
+        /// Very simple "embedding" simulation:
+        /// - Dimension 0: chunk length
+        /// - Dimension 1: whitespace count
+        /// - Dimension 2: whitespace ratio
         /// </summary>
         private static float[] SimulateEmbedding(string text)
         {

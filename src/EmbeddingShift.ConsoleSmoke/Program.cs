@@ -50,7 +50,7 @@ internal class Program
     {
         var vec = new float[DIM];
         for (int i = 0; i < DIM; i++)
-            vec[i] = (float)(rnd.NextDouble() * 2.0 - 1.0); // Werte in [-1, 1]
+            vec[i] = (float)(rnd.NextDouble() * 2.0 - 1.0); // Values in [-1, 1]
         return vec;
     }
 }

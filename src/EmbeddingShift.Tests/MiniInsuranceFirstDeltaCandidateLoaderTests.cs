@@ -24,13 +24,13 @@ namespace EmbeddingShift.Tests
 
             try
             {
-                // Älterer Run
+                // Older run
                 CreateTrainingRun(
                     baseDir,
                     "mini-insurance-first-delta-training_20250101_000000_000",
                     new float[] { 0f, 0f, 0.3f });
 
-                // Neuerer Run
+                // Newer run
                 CreateTrainingRun(
                     baseDir,
                     "mini-insurance-first-delta-training_20250102_000000_000",

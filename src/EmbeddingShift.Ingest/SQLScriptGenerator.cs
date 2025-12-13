@@ -44,7 +44,7 @@ namespace EmbeddingShift.Ingest
 
         private static string BracketIfNeeded(string identifier)
         {
-            // einfache Absicherung für evtl. reservierte Wörter/Spaces
+            // Simple guard for potential reserved words or identifiers with spaces/symbols.
             if (identifier.Any(ch => !char.IsLetterOrDigit(ch) && ch != '_'))
                 return $"[{identifier}]";
             return identifier;

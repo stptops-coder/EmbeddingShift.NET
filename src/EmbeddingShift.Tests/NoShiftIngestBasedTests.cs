@@ -25,13 +25,13 @@ namespace EmbeddingShift.Tests
 
             var output = s.Apply(input);
 
-            // Zugriff auf das zugrundeliegende Array der ReadOnlyMemory-Ausgabe:
+            // Access the underlying array of the ReadOnlyMemory output:
             Assert.True(MemoryMarshal.TryGetArray(output, out ArraySegment<float> seg));
 
-            // Referenzen dürfen NICHT identisch sein (muss Kopie sein)
+            // References must NOT be identical (must be a copy)
             Assert.NotSame(input, seg.Array);
 
-            // Werte müssen identisch sein
+            // Values must be identical
             seg.Array!.Should().BeEquivalentTo(input);
         }
         [Fact]
@@ -43,7 +43,7 @@ namespace EmbeddingShift.Tests
             var outputBefore = s.Apply(input).ToArray(); // Materialize BEFORE mutation
             input[0] = 99f; // mutate input after Apply
 
-            // Ausgabe bleibt unverändert
+            // Output remains unchanged
             outputBefore.Should().BeEquivalentTo(new float[] { 1f, 2f, 3f });
         }
 

@@ -51,10 +51,10 @@ namespace EmbeddingShift.Tests
             using var doc = JsonDocument.Parse(json);
             var root1 = doc.RootElement;
 
-            // WorkflowName prüfen
+            // Check WorkflowName
             Assert.Equal("TestWorkflow", root1.GetProperty("WorkflowName").GetString());
 
-            // Metric prüfen
+            // Check metric payload
             var metrics1 = root1.GetProperty("Metrics");
             Assert.Equal(1.23, metrics1.GetProperty("test_metric").GetDouble());
         }

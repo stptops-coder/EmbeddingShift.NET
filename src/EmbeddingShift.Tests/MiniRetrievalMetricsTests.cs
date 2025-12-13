@@ -6,10 +6,10 @@ using Xunit;
 namespace EmbeddingShift.Tests
 {
     /// <summary>
-    /// Mini-Metrik-Layer auf Retrieval:
-    /// - zwei Policies
-    /// - zwei Queries
-    /// - Precision@1 und Mean Precision Ã¼ber beide Queries
+    /// Mini metrics layer on retrieval:
+    /// - two policies
+    /// - two queries
+    /// - Precision@1 and mean precision across both queries
     /// </summary>
     public class MiniRetrievalMetricsTests
     {
@@ -26,7 +26,7 @@ namespace EmbeddingShift.Tests
                     "Claims must be reported within 14 days after the incident."
             };
 
-            // Dokument-Embeddings (sehr einfache Keyword-ZÃ¤hlung)
+            // Document embeddings (simple keyword counts)
             var docEmbeddings = docs.ToDictionary(
                 kvp => kvp.Key,
                 kvp => SemanticEmbedding(kvp.Value));
@@ -61,12 +61,12 @@ namespace EmbeddingShift.Tests
 
             var meanPrecisionAt1 = precisionsAt1.Average();
 
-            // Beide Queries treffen das richtige Dokument an erster Stelle.
+            // Both queries hit the correct document at rank 1.
             Assert.Equal(1.0, meanPrecisionAt1, precision: 3);
         }
 
         /// <summary>
-        /// Mini-"Semantik": Vektor zÃ¤hlt Keywords:
+        /// Toy semantics: vector counts keywords:
         /// [0] fire, [1] water, [2] damage, [3] claims
         /// </summary>
         private static float[] SemanticEmbedding(string text)

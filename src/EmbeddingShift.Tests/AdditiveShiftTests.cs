@@ -18,7 +18,7 @@ public class AdditiveShiftTests
 
         var shift = new AdditiveShift(b);
         var yMem = shift.Apply(x);           // ReadOnlyMemory<float>
-        var y = yMem.Span;                // ReadOnlySpan<float> für Indexing
+        var y = yMem.Span;                // ReadOnlySpan<float> for Indexing
 
         Assert.Equal(1f + 0.5f, (double)y[0], 5);
         Assert.Equal(2f - 1f, (double)y[10], 5);

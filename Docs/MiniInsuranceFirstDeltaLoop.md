@@ -2,8 +2,7 @@
 
 This document summarizes the end-to-end mini-insurance workflow around
 FirstShift / DeltaShift and the learned Delta candidate. It is meant as
-a reference for future database integration and for porting the pattern
-to other domains.
+a reference implementation and a template that can be ported to other domains.
 
 ---
 
@@ -15,9 +14,8 @@ to other domains.
 
   > Runs → Metrics → Aggregation → Training → Candidate → Inspect → Learned run
 
-- Keep all artifacts **file-based and JSON/Markdown-based**, but
-  structurally close to a future database schema.
-
+- Keep all artifacts **file-based and JSON/Markdown-based**, with clean abstractions
+  so alternative storage can be added later if needed (out of scope for now).
 ---
 
 ## 2. Data & Embedding Space
@@ -175,9 +173,9 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- mini-insurance-first-lear
   - Metrics comparison written again as `MiniInsuranceFirstDeltaComparison`
     under `mini-insurance-first-delta_<timestamp>/`.
 
-In der aktuellen Mini-Insurance-Welt verhält sich der learned Delta sehr
-ähnlich zum handgebauten Delta, aber der **Pipeline-Weg von Metrik →
-Delta-Amplitude** ist jetzt vorhanden.
+In the current Mini-Insurance demo, the learned Delta behaves similarly
+to the hand-crafted Delta. The key point is now implemented: the **pipeline
+from metrics → learned Delta amplitude**.
 
 ---
 
@@ -188,41 +186,39 @@ Delta-Amplitude** ist jetzt vorhanden.
   - `FileSystemMetricsRepository` inside `ConsoleEval`.
   - Writes JSON + Markdown side by side.
 
-Design ist bewusst nahe an einer späteren DB-Variante:
+The design intentionally stays storage-agnostic:
 
 - `MiniInsuranceFirstDeltaComparison`
-  - → Vergleichstabelle (+ optionale Detailtabelle).
+  - → comparison table (+ optional details).
 - `MiniInsuranceFirstDeltaAggregate`
-  - → Aggregat-Tabelle.
+  - → aggregate table.
 - `MiniInsuranceShiftTrainingResult`
-  - → Kandidaten-Tabelle (+ Vektor-Tabelle).
+  - → candidate record (+ vector payload).
 
-Ein späterer Schritt wäre ein `DbMetricsRepository`, das
-`IMetricsRepository` implementiert und dieselben Objekte in einer
-relationalen oder NoSQL-Datenbank speichert.
+If we ever need a database later, we can implement `IMetricsRepository`
+accordingly. For now, the project intentionally stays file-based.
 
 ---
 
 ## 6. Extension Points
 
 1. **Real embeddings**
-   - Embedding-Provider tauschen (sim → OpenAI oder anderer Backend).
-   - Workflow- und Metrikstruktur bleiben gleich.
+   - Swap the embedding provider (sim → OpenAI or other backend).
+   - Workflow and metrics structure remain unchanged.
 
-2. **Database storage**
-   - `IMetricsRepository` gegen eine Datenbank implementieren.
-   - Optional zusätzlich ein Repository für Shift-Kandidaten.
+2. **Alternative storage (optional)**
+   - Keep `IMetricsRepository` and provide a different implementation if needed.
+   - Out of scope for the current phase (file-based is the default).
 
 3. **Additional metrics**
-   - `WorkflowResult.Metrics` um weitere Kennzahlen erweitern
-     (z. B. `recall@k`).
-   - Sie fließen automatisch in Comparison- und Aggregate-Layer ein.
+   - Extend `WorkflowResult.Metrics` with more KPIs
+     (e.g. `recall@k`).
+   - They automatically flow into comparison and aggregation.
 
 4. **Multiple domains**
-   - Diesen Mini-Loop für andere Domänen klonen (z. B. medical, finance).
-   - Nur Daten und Teile der Shift-Logik ändern; das Muster bleibt gleich.
+   - Clone this mini-loop for other domains (e.g. medical, finance).
+   - Only data and parts of the shift logic change; the pattern remains stable.
 
----
 
 ## 7. Summary
 

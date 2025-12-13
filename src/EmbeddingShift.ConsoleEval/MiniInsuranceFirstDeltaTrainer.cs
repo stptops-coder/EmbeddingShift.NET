@@ -11,7 +11,7 @@ namespace EmbeddingShift.ConsoleEval
 {
     /// <summary>
     /// Result of a simple training step for the mini-insurance First/Delta
-    /// configuration. This is designed to be DB-ready: it contains only
+    /// configuration. This is designed to be storage-ready: it contains only
     /// primitive fields plus the proposed delta vector.
     /// </summary>
     public sealed class MiniInsuranceShiftTrainingResult
@@ -49,7 +49,7 @@ namespace EmbeddingShift.ConsoleEval
     /// <summary>
     /// Simple trainer that looks at aggregated mini-insurance metrics
     /// and proposes a new delta vector. This is intentionally naive,
-    /// but illustrates "Delta über Delta": metrics drive the next shift.
+    /// but illustrates a "delta-on-delta" idea: metrics drive the next shift.
     /// </summary>
     internal static class MiniInsuranceFirstDeltaTrainer
     {

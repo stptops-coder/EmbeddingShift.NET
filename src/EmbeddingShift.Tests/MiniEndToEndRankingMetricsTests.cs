@@ -6,19 +6,19 @@ using Xunit;
 namespace EmbeddingShift.Tests
 {
     /// <summary>
-    /// Mini End-to-End-Szenario:
-    /// - 3 Versicherungs-Policies
-    /// - 3 Queries
-    /// - Semantische "Embeddings" via Keyword-ZÃ¤hlung
-    /// - Cosine-Retrieval
-    /// - MAP und nDCG@3 Ã¼ber alle Queries
+    /// Mini end-to-end scenario:
+    /// - 3 insurance policies
+    /// - 3 queries
+    /// - keyword-count "embeddings"
+    /// - cosine retrieval
+    /// - MAP and nDCG@3 across all queries
     /// </summary>
     public class MiniEndToEndRankingMetricsTests
     {
         [Fact]
         public void Three_query_scenario_has_perfect_map_and_ndcg()
         {
-            // 1) Dokumente (Policies)
+            // 1) Documents (policies)
             var docs = new Dictionary<string, string>
             {
                 ["policy-fire-water"] =
@@ -29,12 +29,12 @@ namespace EmbeddingShift.Tests
                     "This policy covers flood and storm damage after heavy rain or storms."
             };
 
-            // 2) Dokument-Embeddings (einfache Keyword-ZÃ¤hlung)
+            // 2) Document embeddings (simple keyword counts)
             var docEmbeddings = docs.ToDictionary(
                 kvp => kvp.Key,
                 kvp => SemanticEmbedding(kvp.Value));
 
-            // 3) Queries mit Relevanz (immer genau 1 relevantes Dokument)
+            // AP for a single relevant answer = 1 / rank
             var queries = new[]
             {
                 new { Id = "q1", Text = "fire and water damage to the house",      RelevantDoc = "policy-fire-water"   },
@@ -61,20 +61,20 @@ namespace EmbeddingShift.Tests
 
                 Assert.True(ranked.Count == docs.Count);
 
-                // Rang des relevanten Dokuments ermitteln (1-basiert)
+                // Find the rank of the relevant document (1-based).
                 var rankIndex = ranked.FindIndex(r => r.DocId == q.RelevantDoc);
                 Assert.True(rankIndex >= 0);
 
                 var rank = rankIndex + 1;
 
-                // AP fÃ¼r eine einzelne relevante Antwort = 1 / rank
+                // AP for a single relevant answer = 1 / rank
                 var ap = 1.0 / rank;
                 apValues.Add(ap);
 
-                // nDCG@3: nur binÃ¤re Relevanz (1 fÃ¼r relevantes Doc, 0 sonst)
+                // nDCG@3: binary relevance only (1 for relevant doc, 0 otherwise)
                 var k = 3;
                 var dcg = DcgatK(rank, k);
-                var idcg = DcgatK(1, k); // ideales Ranking: relevantes Doc auf Platz 1
+                var idcg = DcgatK(1, k); // Ideal ranking: relevant doc at position 1
                 var ndcg = idcg == 0.0 ? 0.0 : dcg / idcg;
 
                 ndcgValues.Add(ndcg);
@@ -83,14 +83,14 @@ namespace EmbeddingShift.Tests
             var meanAp   = apValues.Average();
             var meanNdcg = ndcgValues.Average();
 
-            // In diesem konstruierten Szenario ist das relevante Dokument immer auf Rang 1:
+            // In this constructed scenario, the relevant document is always ranked #1:
             // -> MAP = 1.0, nDCG@3 = 1.0
             Assert.Equal(1.0, meanAp,   precision: 3);
             Assert.Equal(1.0, meanNdcg, precision: 3);
         }
 
         /// <summary>
-        /// Mini-"Semantik": Vektor zÃ¤hlt Keywords:
+        /// Toy semantics: vector counts keywords:
         /// [0] fire, [1] water, [2] damage, [3] theft, [4] claims, [5] flood, [6] storm
         /// </summary>
         private static float[] SemanticEmbedding(string text)
@@ -150,8 +150,8 @@ namespace EmbeddingShift.Tests
             if (rankOfRelevant <= 0 || rankOfRelevant > k)
                 return 0.0;
 
-            // BinÃ¤re Relevanz: relevanter Treffer an Position "rankOfRelevant" mit Gain 1.
-            // DCG-Formel: rel / log2(rank+1); rel = 1
+            // Binary relevance: relevant hit at position "rankOfRelevant" with gain 1.
+            // DCG formula: rel / log2(rank+1); rel = 1
             var denom = Math.Log(rankOfRelevant + 1, 2.0);
             return 1.0 / denom;
         }

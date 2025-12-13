@@ -10,7 +10,7 @@ namespace EmbeddingShift.Tests
     /// - documents (strings)
     /// - simple chunking by length
     /// - very simple semantic-ish embeddings
-    /// - nearest-neighbour retrieval Ã¼ber Cosine Similarity
+    /// - nearest-neighbour retrieval via cosine similarity
     /// </summary>
     public class MiniRetrievalSimulationTests
     {
@@ -29,7 +29,7 @@ namespace EmbeddingShift.Tests
 
             const int maxChunkLength = 120;
 
-            // 1) Index aufbauen: Chunks + Embeddings
+            // 1) Build an index: chunks + embeddings
             var index = new List<(string DocId, string Chunk, float[] Embedding)>();
 
             foreach (var kvp in docs)
@@ -50,7 +50,7 @@ namespace EmbeddingShift.Tests
             var query = "fire and water damage to the insured property";
             var queryEmb = SemanticEmbedding(query);
 
-            // 3) Ã„hnlichkeiten berechnen (Cosine) und sortieren
+            // 3) Compute similarities (cosine) and sort
             var ranked = index
                 .Select(item => new
                 {
@@ -85,9 +85,9 @@ namespace EmbeddingShift.Tests
         }
 
         /// <summary>
-        /// Mini-"Semantik": Vektor zÃ¤hlt Keywords:
+        /// Toy semantics: vector counts keywords:
         /// [0] fire, [1] water, [2] damage, [3] claims
-        /// </summary>
+        /// /// </summary>
         private static float[] SemanticEmbedding(string text)
         {
             text = text?.ToLowerInvariant() ?? string.Empty;
