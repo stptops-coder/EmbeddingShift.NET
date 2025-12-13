@@ -1,6 +1,7 @@
 using EmbeddingShift.Abstractions;           // ShiftMethod
 using EmbeddingShift.Adaptive;               // ShiftEvaluationService
 using EmbeddingShift.ConsoleEval;
+using EmbeddingShift.ConsoleEval.Domains;
 using EmbeddingShift.ConsoleEval.Commands;
 using EmbeddingShift.ConsoleEval.Inspector;
 using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
@@ -45,13 +46,8 @@ if (!string.IsNullOrWhiteSpace(simNoiseArg))
     Environment.SetEnvironmentVariable("EMBEDDING_SIM_NOISE_AMPLITUDE", simNoiseArg);
 }
 
-var embeddingProvider = EmbeddingProviderFactory.FromEnvironment();
-EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
-
-
 // base provider used by all modes (still the existing SimEmbeddingProvider)
 IEmbeddingProvider baseProvider = EmbeddingProviderFactory.FromEnvironment();
-EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
 EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
 
 IEmbeddingProvider provider = providerArg.ToLowerInvariant() switch
@@ -91,6 +87,49 @@ if (args.Length == 0)
 
 switch (args[0].ToLowerInvariant())
 {
+    case "domain":
+        {
+            // Entry point for domain packs (towards multi-domain ConsoleEval).
+            //
+            // Usage:
+            //   domain list
+            //   domain <domainId> <subcommand> [...]
+
+            var sub = args.Length >= 2 ? args[1] : "list";
+
+            if (string.Equals(sub, "list", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(sub, "--list", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Available domain packs:");
+                foreach (var pack in DomainPackRegistry.All)
+                {
+                    Console.WriteLine($"  {pack.DomainId,-18} {pack.DisplayName}");
+                }
+                Console.WriteLine();
+                Console.WriteLine("Example:");
+                Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pipeline");
+                break;
+            }
+
+            var packById = DomainPackRegistry.TryGet(sub);
+            if (packById is null)
+            {
+                Console.WriteLine($"Unknown domain pack '{sub}'.");
+                Console.WriteLine();
+                Console.WriteLine("Use:");
+                Console.WriteLine("  domain list");
+                break;
+            }
+
+            var subArgs = args.Skip(2).ToArray();
+            var exitCode = await packById.ExecuteAsync(subArgs, msg => Console.WriteLine(msg));
+            if (exitCode != 0)
+            {
+                Environment.ExitCode = exitCode;
+            }
+
+            break;
+        }
     case "ingest":
         {
             // usage: ingest <path> <dataset>
@@ -858,6 +897,8 @@ static class Helpers
         Console.WriteLine();
         Console.WriteLine("  --help | -h                         show this help");
         Console.WriteLine("  --version                           print version");
+        Console.WriteLine("  domain list                         list available domain packs");
+        Console.WriteLine("  domain <id> <subcommand>            run a domain pack command");
         Console.WriteLine("  demo --shift <Name> [--dataset X]   run tiny demo (e.g., NoShift.IngestBased)");
         Console.WriteLine("  ingest-refs <path> <dataset>        ingest reference vectors");
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");

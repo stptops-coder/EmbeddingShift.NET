@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using EmbeddingShift.ConsoleEval.MiniInsurance;
 using System.Threading.Tasks;
 
 namespace EmbeddingShift.ConsoleEval.Commands
@@ -17,18 +18,13 @@ namespace EmbeddingShift.ConsoleEval.Commands
             Console.WriteLine("[Mini-Insurance · Training Inspect]");
             Console.WriteLine();
 
-            var basePath = Path.Combine(AppContext.BaseDirectory, "local", "mini-insurance");
-            Console.WriteLine($"Base path:       {basePath}");
+            var trainingRoot = MiniInsurancePaths.GetTrainingRoot();
+            var historyRoot = Path.Combine(trainingRoot, "history");
+            var effectiveRoot = Directory.Exists(historyRoot) ? historyRoot : trainingRoot;
 
-            var historyRoot = Path.Combine(basePath, "training", "history");
-            Console.WriteLine($"History folder:  {historyRoot}");
+            Console.WriteLine($"Training root:   {trainingRoot}");
+            Console.WriteLine($"History folder:  {effectiveRoot}");
             Console.WriteLine();
-
-            if (!Directory.Exists(historyRoot))
-            {
-                Console.WriteLine("No training history found (folder does not exist).");
-                return Task.CompletedTask;
-            }
 
             var historyDir = new DirectoryInfo(historyRoot);
             var latestDir = historyDir

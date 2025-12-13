@@ -20,16 +20,13 @@ namespace EmbeddingShift.ConsoleEval.Commands
             // var historyRoot = Path.Combine(basePath, "training");
 
             // New: use dedicated training root from MiniInsurancePaths
-            var historyRoot = MiniInsurancePaths.GetTrainingRoot();
+            // Use the MiniInsurancePaths training root.
+            // If a "history" subfolder exists, prefer that (older layouts).
+            var trainingRoot = MiniInsurancePaths.GetTrainingRoot();
+            var historyRoot = Path.Combine(trainingRoot, "history");
+            var effectiveRoot = Directory.Exists(historyRoot) ? historyRoot : trainingRoot;
 
-            if (!Directory.Exists(historyRoot))
-            {
-                Console.WriteLine($"[WARN] No training history folder found at:");
-                Console.WriteLine($"  {historyRoot}");
-                return Task.CompletedTask;
-            }
-
-            var runDirs = new DirectoryInfo(historyRoot)
+            var runDirs = new DirectoryInfo(effectiveRoot)
                 .GetDirectories()
                 .OrderByDescending(d => d.CreationTimeUtc)
                 .ToList();
