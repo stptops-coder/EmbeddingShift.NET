@@ -469,15 +469,27 @@ switch (args[0].ToLowerInvariant())
             Console.WriteLine("[MiniInsurance] Done.");
             break;
         }
+
     case "mini-insurance-first-delta-pipeline":
         {
-            // Full end-to-end pipeline for Mini-Insurance (baseline, First, First+Delta, LearnedDelta).
-            var pipeline = new EmbeddingShift.ConsoleEval.MiniInsurance.MiniInsuranceFirstDeltaPipeline(
-                msg => Console.WriteLine(msg));
+            // Legacy alias (kept for compatibility).
+            // Prefer: domain mini-insurance pipeline [--no-learned]
+            var pack = DomainPackRegistry.TryGet("mini-insurance");
+            if (pack is null)
+            {
+                Console.WriteLine("Unknown domain pack 'mini-insurance'.");
+                Environment.ExitCode = 1;
+                break;
+            }
 
-            await pipeline.RunAsync(includeLearnedDelta: true);
+            var subArgs = new[] { "pipeline" }.Concat(args.Skip(1)).ToArray();
+            var exitCode = await pack.ExecuteAsync(subArgs, msg => Console.WriteLine(msg));
+            if (exitCode != 0)
+                Environment.ExitCode = exitCode;
+
             break;
         }
+
     case "mini-insurance-training-inspect":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance training-inspect
