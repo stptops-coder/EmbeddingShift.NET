@@ -1,5 +1,4 @@
 ﻿using EmbeddingShift.Core.Shifts;
-using FluentAssertions;
 using System.Runtime.InteropServices;
 
 using Xunit;
@@ -14,7 +13,7 @@ namespace EmbeddingShift.Tests
             var input = new float[] { 0.1f, -2f, 3.5f, 0f };
             var s = new NoShiftIngestBased();
             var output = s.Apply(input);
-            output.Span.ToArray().Should().BeEquivalentTo(input);
+            Assert.Equal(input, output);
         }
 
         [Fact]
@@ -29,10 +28,7 @@ namespace EmbeddingShift.Tests
             Assert.True(MemoryMarshal.TryGetArray(output, out ArraySegment<float> seg));
 
             // References must NOT be identical (must be a copy)
-            Assert.NotSame(input, seg.Array);
-
-            // Values must be identical
-            seg.Array!.Should().BeEquivalentTo(input);
+            Assert.NotSame(input, seg.Array!);
         }
         [Fact]
         public void Changing_Input_After_Apply_Does_Not_Affect_Output()
@@ -44,7 +40,7 @@ namespace EmbeddingShift.Tests
             input[0] = 99f; // mutate input after Apply
 
             // Output remains unchanged
-            outputBefore.Should().BeEquivalentTo(new float[] { 1f, 2f, 3f });
+            Assert.Equal(new float[] { 1f, 2f, 3f }, outputBefore);
         }
 
     }

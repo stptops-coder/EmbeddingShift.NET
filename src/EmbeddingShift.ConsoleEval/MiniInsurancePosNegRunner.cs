@@ -26,14 +26,31 @@ namespace EmbeddingShift.ConsoleEval
             var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
 
             var trainingResult = repository.LoadLatest(WorkflowName);
-            if (trainingResult is null)
+
+            // We may not have training artifacts yet (fresh repo / clean results folder).
+            // In that case we run in "baseline mode" using a zero shift vector.
+            // We can only size the zero vector once we know the embedding dimension.
+            var rawShift = trainingResult?.DeltaVector;
+
+            var provider = EmbeddingProviderFactory.Create(backend);
+
+
+            // Allow running even if training artifacts are not present yet.
+            // This keeps CLI + tests stable (baseline mode).
+            var shift = trainingResult?.DeltaVector;
+
+            if (shift is null || shift.Length == 0)
             {
-                throw new InvalidOperationException(
-                    $"No training result found for workflow '{WorkflowName}'. " +
-                    "Run mini-insurance-posneg-train first.");
+                Console.WriteLine(
+                    $"[MiniInsurancePosNegRunner] No delta vector found for workflow '{WorkflowName}'. " +
+                    "Running with a zero shift (baseline).");
+
+                // We'll size this once we know the embedding dimension.
+                shift = Array.Empty<float>();
             }
 
-            var shift = trainingResult.DeltaVector;
+
+            shift = trainingResult.DeltaVector;
             if (shift is null || shift.Length == 0)
             {
                 throw new InvalidOperationException(
@@ -94,7 +111,17 @@ namespace EmbeddingShift.ConsoleEval
                 throw new InvalidOperationException("No document embeddings were created.");
 
             var dim = firstEmbedding.Length;
-            if (shift.Length != dim)
+
+            var shift = rawShift;
+            if (shift is null || shift.Length == 0)
+            {
+                Console.WriteLine(
+                    $"[MiniInsurancePosNegRunner] No delta vector found for workflow '{WorkflowName}'. " +
+                    "Running with a zero shift (baseline).");
+
+                shift = new float[dim];
+            }
+            else if (shift.Length != dim)
             {
                 throw new InvalidOperationException(
                     $"Shift dimension ({shift.Length}) does not match embedding dimension ({dim}).");

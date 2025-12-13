@@ -1,6 +1,5 @@
 ﻿using System;
 using EmbeddingShift.Core.Shifts;   // MultiplicativeShift
-using FluentAssertions;
 using Xunit;
 
 namespace EmbeddingShift.Tests
@@ -14,7 +13,8 @@ namespace EmbeddingShift.Tests
             var s = new MultiplicativeShift(new[] { 2f, 0.5f, 1f });
 
             var outV = s.Apply(v).ToArray();
-            outV.Should().BeEquivalentTo(new[] { 2f, 1f, -3f });
+            Assert.Equal(new[] { 2f, 1f, -3f }, outV);
+
             BeFinite(outV);
         }
 
@@ -25,7 +25,8 @@ namespace EmbeddingShift.Tests
             var s = new MultiplicativeShift(new[] { 100f, 0.01f, 0f }, clampAndGuard: true); // clamp + guard→1
 
             var outV = s.Apply(v).ToArray();
-            outV.Should().BeEquivalentTo(new[] { 4f, 0.25f, 1f });
+            Assert.Equal(new[] { 4f, 0.25f, 1f }, outV);
+
             BeFinite(outV);
         }
 
@@ -55,15 +56,19 @@ namespace EmbeddingShift.Tests
         {
             for (int i = 0; i < v.Length; i++)
             {
-                float.IsNaN(v[i]).Should().BeFalse($"NaN at {i}");
-                float.IsInfinity(v[i]).Should().BeFalse($"Inf at {i}");
+                Assert.False(float.IsNaN(v[i]), $"NaN at {i}");
+                Assert.False(float.IsInfinity(v[i]), $"Inf at { i}");
             }
         }
         private static void ApproxEqual(ReadOnlySpan<float> a, ReadOnlySpan<float> b, float tol = 1e-6f)
         {
-            a.Length.Should().Be(b.Length);
+            Assert.Equal(b.Length, a.Length);
+
             for (int i = 0; i < a.Length; i++)
-                Math.Abs(a[i] - b[i]).Should().BeLessThan(tol, $"dim {i}");
+            {
+                var diff = MathF.Abs(a[i] - b[i]);
+                Assert.True(diff < tol, $"dim {i}: diff={diff} >= tol={tol} (a={a[i]}, b={b[i]})");
+            }
         }
     }
 }

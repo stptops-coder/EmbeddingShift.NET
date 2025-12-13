@@ -1,7 +1,6 @@
 ﻿using System;
 using EmbeddingShift.Abstractions;   // EmbeddingHelper
 using EmbeddingShift.Core.Utils;
-using FluentAssertions;
 using Xunit;
 using VectorOps = EmbeddingShift.Core.Utils.VectorOps;
 
@@ -32,9 +31,10 @@ namespace EmbeddingShift.Tests
             var postToTarget = VectorOps.Cosine(qPrime, target);
 
             // Expect a clear improvement
-            (postToTarget - baseToTarget).Should().BeGreaterThan(0.40f,
-                $"base={baseToTarget:F6}, post={postToTarget:F6}");
-            postToTarget.Should().BeGreaterThan(0.70f);
+            Assert.True((postToTarget - baseToTarget) > 0.40f,
+                "blend should move us significantly closer to the target direction");
+
+            Assert.True(postToTarget > 0.70f);
 
             // Diagnostics
             System.Diagnostics.Debug.WriteLine(

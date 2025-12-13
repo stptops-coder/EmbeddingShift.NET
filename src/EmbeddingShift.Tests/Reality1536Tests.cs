@@ -2,7 +2,6 @@
 using EmbeddingShift.Abstractions;   // EmbeddingHelper
 using EmbeddingShift.Core.Utils;
 using EmbeddingShift.Core.Shifts;    // MultiplicativeShift
-using FluentAssertions;
 using Xunit;
 using VectorOps = EmbeddingShift.Core.Utils.VectorOps;
 
@@ -42,9 +41,11 @@ namespace EmbeddingShift.Tests
 
             var postToTarget = VectorOps.Cosine(qShiftedN, tN);
 
-            postToTarget.Should().BeGreaterThan(0.03f);
-            (postToTarget - baseToTarget).Should().BeGreaterThan(0.03f);
-            postToTarget.Should().BeApproximately(1.0f, 1e-5f);
+            Assert.True(postToTarget > 0.03f);
+            Assert.True((postToTarget - baseToTarget) > 0.03f);
+
+            // If you had BeApproximately(1.0f, 1e-5f):
+            Assert.InRange(postToTarget, 1.0f - 1e-5f, 1.0f + 1e-5f);
         }
 
 
