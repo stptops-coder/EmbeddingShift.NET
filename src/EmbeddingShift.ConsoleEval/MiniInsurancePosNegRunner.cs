@@ -30,8 +30,9 @@ namespace EmbeddingShift.ConsoleEval
             // We may not have training artifacts yet (fresh repo / clean results folder).
             // In that case we run in "baseline mode" using a zero shift vector.
             // We can only size the zero vector once we know the embedding dimension.
-            var rawShift = trainingResult?.DeltaVector;
-
+            var rawShift = trainingResult?.IsCancelled == true
+                ? null
+                : trainingResult?.DeltaVector;
             var provider = EmbeddingProviderFactory.Create(backend);
 
             var domainRoot = ResolveDomainRoot();

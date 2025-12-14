@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.ConsoleEval.Repositories;
+using EmbeddingShift.Core.Training;
+using EmbeddingShift.Core.Training.CancelOut;
 using EmbeddingShift.Core.Training.PosNeg;
 using EmbeddingShift.Core.Infrastructure;
 
@@ -24,7 +26,20 @@ namespace EmbeddingShift.ConsoleEval
     {
         private const string WorkflowName = "mini-insurance-posneg";
 
-        public static async Task<ShiftTrainingResult> TrainAsync(EmbeddingBackend backend)
+        public static Task<ShiftTrainingResult> TrainAsync(EmbeddingBackend backend)
+        {
+            // Backwards-compatible default behavior.
+            return TrainAsync(
+                backend,
+                mode: TrainingMode.Production,
+                cancelOutEpsilon: 1e-3f);
+        }
+
+        public static async Task<ShiftTrainingResult> TrainAsync(
+            EmbeddingBackend backend,
+            TrainingMode mode,
+            float cancelOutEpsilon)
+
         {
             var provider = EmbeddingProviderFactory.Create(backend);
 
@@ -115,6 +130,12 @@ namespace EmbeddingShift.ConsoleEval
             var deltaVector = learn.DeltaVector;
             var stats = learn.Stats;
 
+            var cancel = CancelOutEvaluator.Evaluate(deltaVector, cancelOutEpsilon);
+            if (cancel.IsCancelled)
+            {
+                Console.WriteLine($"[PosNeg] Cancel-out gate triggered: {cancel.Reason}");
+            }
+
             Console.WriteLine(
                 $"[PosNeg] Summary: cases={stats.Cases}, uniquePairs={stats.UniquePairs}, avg|dir|={stats.AvgDirectionNorm:0.000000}, min|dir|={stats.MinDirectionNorm:0.000000}, max|dir|={stats.MaxDirectionNorm:0.000000}, zeroDirs={stats.ZeroDirections}");
 
@@ -144,6 +165,11 @@ namespace EmbeddingShift.ConsoleEval
                 ImprovementFirstPlusDelta = 0.0,
                 DeltaImprovement = 0.0,
                 DeltaVector = learn.DeltaVector,
+                TrainingMode = mode.ToString(),
+                CancelOutEpsilon = cancelOutEpsilon,
+                IsCancelled = cancel.IsCancelled,
+                CancelReason = cancel.Reason,
+                DeltaNorm = cancel.DeltaNorm,
                 ScopeId = MiniInsuranceScopes.DefaultScopeId
             };
 

@@ -52,6 +52,33 @@ public sealed record ShiftTrainingResult
     /// </summary>
     public float[] DeltaVector { get; init; } = Array.Empty<float>();
 
+    /// <summary>
+    /// Operational mode of the training run (e.g. "Micro" or "Production").
+    /// Stored as a string to keep this abstraction layer free of higher-level dependencies.
+    /// </summary>
+    public string? TrainingMode { get; init; }
+
+    /// <summary>
+    /// L2-norm threshold below which the delta is considered cancelled.
+    /// </summary>
+    public float CancelOutEpsilon { get; init; }
+
+    /// <summary>
+    /// Indicates that the learned delta was gated as cancelled (e.g. near-zero magnitude).
+    /// Cancelled results should not be promoted for production use.
+    /// </summary>
+    public bool IsCancelled { get; init; }
+
+    /// <summary>
+    /// Human-readable reason why the result was cancelled, if applicable.
+    /// </summary>
+    public string? CancelReason { get; init; }
+
+    /// <summary>
+    /// L2 norm of the learned delta vector (post-aggregation).
+    /// </summary>
+    public float DeltaNorm { get; init; }
+
     public string ScopeId { get; init; } = "default";
 
 }
