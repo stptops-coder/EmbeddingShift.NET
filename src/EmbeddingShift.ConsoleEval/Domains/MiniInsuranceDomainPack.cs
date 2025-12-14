@@ -108,8 +108,8 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                     log("");
                     log("Next:");
                     log("  domain mini-insurance posneg-inspect");
-                    log("  domain mini-insurance posneg-history [maxItems]");
-                    log("  domain mini-insurance posneg-best");
+                    log("  domain mini-insurance posneg-history [maxItems] [--include-cancelled]");
+                    log("  domain mini-insurance posneg-best [--include-cancelled]");
                     log("");
                     log("Or (generic):");
                     log("  domain mini-insurance shift-training-inspect mini-insurance-posneg");
@@ -136,16 +136,29 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                     if (args.Length >= 2 && int.TryParse(args[1], out var parsed) && parsed > 0)
                         maxItems = parsed;
 
+                    var includeCancelled =
+                        args.Any(a => string.Equals(a, "--include-cancelled", StringComparison.OrdinalIgnoreCase));
+
                     await ShiftTrainingHistoryCommand.RunAsync(
-                        new[] { "mini-insurance-posneg", maxItems.ToString(), ResultsDomainKey });
+                        includeCancelled
+                            ? new[] { "mini-insurance-posneg", maxItems.ToString(), ResultsDomainKey, "--include-cancelled" }
+                            : new[] { "mini-insurance-posneg", maxItems.ToString(), ResultsDomainKey });
+
 
                     return 0;
                 }
 
             case "posneg-best":
-                await ShiftTrainingBestCommand.RunAsync(new[] { "mini-insurance-posneg", ResultsDomainKey });
-                return 0;
+                { 
+                var includeCancelled =
+                    args.Any(a => string.Equals(a, "--include-cancelled", StringComparison.OrdinalIgnoreCase));
 
+                await ShiftTrainingBestCommand.RunAsync(
+                    includeCancelled
+                        ? new[] { "mini-insurance-posneg", ResultsDomainKey, "--include-cancelled" }
+                        : new[] { "mini-insurance-posneg", ResultsDomainKey });
+                return 0;
+                }
             default:
                 log($"Unknown subcommand '{sub}'.");
                 PrintDomainHelp(log);

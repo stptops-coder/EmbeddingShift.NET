@@ -121,7 +121,8 @@ internal static class ShiftTrainingResultInspector
     /// <param name="workflowName">Logical workflow name, e.g. "mini-insurance-first-delta".</param>
     /// <param name="rootDirectory">Root directory where training results are stored.</param>
     /// <param name="maxItems">Maximum number of results to print.</param>
-    public static void PrintHistory(string workflowName, string rootDirectory, int maxItems = 20)
+    public static void PrintHistory(string workflowName, string rootDirectory, int maxItems = 20, bool includeCancelled = false)
+
     {
         if (string.IsNullOrWhiteSpace(workflowName))
             throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
@@ -183,6 +184,9 @@ internal static class ShiftTrainingResultInspector
             if (result is null)
                 continue;
 
+            if (!includeCancelled && result.IsCancelled)
+                continue;
+
             var created = result.CreatedUtc;
             var runs = result.ComparisonRuns;
             var dFirst = result.ImprovementFirst;
@@ -191,8 +195,14 @@ internal static class ShiftTrainingResultInspector
 
             var scopeId = string.IsNullOrWhiteSpace(result.ScopeId) ? "-" : result.ScopeId;
 
+            var createdText = created.ToString("yyyy-MM-ddTHH:mm:ss.fff");
+
+            if (includeCancelled && result.IsCancelled)
+                scopeId += " [C]";
+
             Console.WriteLine(
-                $"{printed,3} | {created:yyyy-MM-ddTHH:mm:ss}   | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,9:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000} | {scopeId}");
+                $"{printed,3} | {createdText} | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,8:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000} | {scopeId}");
+
 
             printed++;
         }
@@ -214,7 +224,7 @@ internal static class ShiftTrainingResultInspector
     /// </summary>
     /// <param name="workflowName">Logical workflow name, e.g. "mini-insurance-first-delta".</param>
     /// <param name="rootDirectory">Root directory where training results are stored.</param>
-    public static void PrintBest(string workflowName, string rootDirectory)
+    public static void PrintBest(string workflowName, string rootDirectory, bool includeCancelled = false)
     {
         if (string.IsNullOrWhiteSpace(workflowName))
             throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
@@ -270,6 +280,9 @@ internal static class ShiftTrainingResultInspector
             }
 
             if (result is null)
+                continue;
+
+            if (!includeCancelled && result.IsCancelled)
                 continue;
 
             // Score: primarily ImprovementFirstPlusDelta, fallback to ImprovementFirst.
