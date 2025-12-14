@@ -86,6 +86,19 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
         sb.AppendLine($"| Created (UTC)             | `{result.CreatedUtc:O}` |");
         sb.AppendLine($"| Base directory            | `{result.BaseDirectory}` |");
         sb.AppendLine($"| Comparison runs           | `{result.ComparisonRuns}` |");
+
+        var modeText = string.IsNullOrWhiteSpace(result.TrainingMode) ? "-" : result.TrainingMode;
+        var epsText = result.CancelOutEpsilon > 0 ? result.CancelOutEpsilon.ToString("0.000000E+0") : "-";
+        var normText = result.DeltaNorm > 0 ? result.DeltaNorm.ToString("0.000000E+0") : "-";
+        var cancelReason = (result.CancelReason ?? string.Empty).Replace("|", "\\|").Replace("\r", " ").Replace("\n", " ");
+
+        sb.AppendLine($"| Training mode             | `{modeText}` |");
+        sb.AppendLine($"| Cancel-out epsilon        | `{epsText}` |");
+        sb.AppendLine($"| Cancelled                 | `{result.IsCancelled}` |");
+        if (result.IsCancelled && !string.IsNullOrWhiteSpace(cancelReason))
+            sb.AppendLine($"| Cancel reason             | `{cancelReason}` |");
+        sb.AppendLine($"| Delta L2 norm             | `{normText}` |");
+
         sb.AppendLine($"| Improvement First         | `{result.ImprovementFirst:+0.000;-0.000;0.000}` |");
         sb.AppendLine($"| Improvement First+Delta   | `{result.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}` |");
         sb.AppendLine($"| Delta improvement vs First| `{result.DeltaImprovement:+0.000;-0.000;0.000}` |");

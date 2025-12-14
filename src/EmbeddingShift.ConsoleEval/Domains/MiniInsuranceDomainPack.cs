@@ -1,11 +1,14 @@
 ﻿namespace EmbeddingShift.ConsoleEval.Domains;
 
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using EmbeddingShift.ConsoleEval.Commands;
 using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.ConsoleEval;
+using EmbeddingShift.Core.Training;
+
 
 /// <summary>
 /// Domain pack: Mini-Insurance.
@@ -26,7 +29,7 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
         log("  domain mini-insurance pipeline [--no-learned]");
         log("  domain mini-insurance training-list");
         log("  domain mini-insurance training-inspect");
-        log("  domain mini-insurance posneg-train");
+        log("  domain mini-insurance posneg-train [--mode=micro|production] [--cancel-epsilon=<float>]");
         log("  domain mini-insurance posneg-run");
         log("  domain mini-insurance posneg-inspect");
         log("  domain mini-insurance posneg-history [maxItems]");
@@ -69,7 +72,32 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                     log("[MiniInsurance] Training pos-neg learned global Delta shift (simulation backend)...");
                     log("");
 
-                    var result = await MiniInsurancePosNegTrainer.TrainAsync(EmbeddingBackend.Sim);
+                    var mode = TrainingMode.Production;
+                    var cancelEpsilon = 1e-3f;
+
+                    foreach (var a in args.Skip(1))
+                    {
+                        if (a.StartsWith("--mode=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var value = a.Split('=', 2)[1].Trim();
+                            if (value.Equals("micro", StringComparison.OrdinalIgnoreCase))
+                                mode = TrainingMode.Micro;
+                            else if (value.Equals("prod", StringComparison.OrdinalIgnoreCase) || value.Equals("production", StringComparison.OrdinalIgnoreCase))
+                                mode = TrainingMode.Production;
+                        }
+                        else if (a.StartsWith("--cancel-epsilon=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var value = a.Split('=', 2)[1].Trim();
+                            if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
+                                cancelEpsilon = parsed;
+                        }
+                    }
+
+                    log($"  Mode        : {mode}");
+                    log($"  Cancel eps  : {cancelEpsilon:0.000000E+0}");
+                    log("");
+
+                    var result = await MiniInsurancePosNegTrainer.TrainAsync(EmbeddingBackend.Sim, mode, cancelEpsilon);
 
                     log("[MiniInsurance] Pos-neg training finished.");
                     log($"  Workflow    : {result.WorkflowName}");

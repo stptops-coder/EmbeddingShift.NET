@@ -301,6 +301,18 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine($"Base directory : {bestResult.BaseDirectory}");
         Console.WriteLine($"Runs           : {bestResult.ComparisonRuns}");
         Console.WriteLine($"ScopeId        : {bestResult.ScopeId}");
+
+        if (!string.IsNullOrWhiteSpace(bestResult.TrainingMode))
+            Console.WriteLine($"Mode           : {bestResult.TrainingMode}");
+        if (bestResult.CancelOutEpsilon > 0)
+            Console.WriteLine($"Cancel epsilon : {bestResult.CancelOutEpsilon:0.000000E+0}");
+        if (bestResult.IsCancelled)
+            Console.WriteLine($"Cancelled      : true");
+        if (bestResult.IsCancelled && !string.IsNullOrWhiteSpace(bestResult.CancelReason))
+            Console.WriteLine($"Cancel reason  : {bestResult.CancelReason}");
+        if (bestResult.DeltaNorm > 0)
+            Console.WriteLine($"Delta norm     : {bestResult.DeltaNorm:0.000000E+0}");
+
         Console.WriteLine($"Improvement First         : {bestResult.ImprovementFirst:+0.000;-0.000;0.000}");
         Console.WriteLine($"Improvement First+Delta   : {bestResult.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
         Console.WriteLine($"Delta improvement vs First: {bestResult.DeltaImprovement:+0.000;-0.000;0.000}");
