@@ -107,4 +107,11 @@ public interface IShiftTrainingResultRepository
     /// </param>
     /// <returns>The latest training result or null.</returns>
     ShiftTrainingResult? LoadLatest(string workflowName);
+
+    /// <summary>
+    /// Loads the best available training result for the given workflow name,
+    /// optionally including cancelled results.
+    /// </summary>
+    ShiftTrainingResult? LoadBest(string workflowName, bool includeCancelled = false);
 }
+

@@ -121,6 +121,26 @@ namespace EmbeddingShift.Tests
 
                 return _result;
             }
+
+            public ShiftTrainingResult? LoadBest(string workflowName, bool includeCancelled = false)
+            {
+                if (string.IsNullOrWhiteSpace(workflowName))
+                    throw new ArgumentException("Workflow name must not be null or whitespace.", nameof(workflowName));
+
+                var result = _result;
+                if (result is null)
+                    return null;
+
+                if (!string.Equals(result.WorkflowName, workflowName, StringComparison.OrdinalIgnoreCase))
+                    return null;
+
+                if (!includeCancelled && result.IsCancelled)
+                    return null;
+
+                return result;
+            }
+
+
         }
     }
 }

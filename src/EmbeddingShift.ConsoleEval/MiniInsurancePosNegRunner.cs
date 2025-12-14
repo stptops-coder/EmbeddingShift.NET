@@ -25,7 +25,7 @@ namespace EmbeddingShift.ConsoleEval
             var resultsRoot = DirectoryLayout.ResolveResultsRoot("insurance");
             var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
 
-            var trainingResult = repository.LoadLatest(WorkflowName);
+            var trainingResult = repository.LoadBest(WorkflowName);
 
             // We may not have training artifacts yet (fresh repo / clean results folder).
             // In that case we run in "baseline mode" using a zero shift vector.
@@ -92,7 +92,7 @@ namespace EmbeddingShift.ConsoleEval
             if (shift is null || shift.Length == 0)
             {
                 Console.WriteLine(
-                    $"[MiniInsurancePosNegRunner] No delta vector found for workflow '{WorkflowName}'. " +
+                    $"[MiniInsurancePosNegRunner] No usable (non-cancelled) delta vector found for workflow '{WorkflowName}'. " +
                     "Running with a zero shift (baseline).");
 
                 shift = new float[dim];

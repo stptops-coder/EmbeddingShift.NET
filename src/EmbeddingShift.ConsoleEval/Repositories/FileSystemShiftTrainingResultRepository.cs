@@ -189,4 +189,68 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
 
         return null;
     }
+
+    /// <inheritdoc />
+    public ShiftTrainingResult? LoadBest(string workflowName, bool includeCancelled = false)
+    {
+        if (string.IsNullOrWhiteSpace(workflowName))
+            throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
+
+        if (!Directory.Exists(_rootDirectory))
+            return null;
+
+        // Pattern: {workflowName}-training_*
+        var candidates = Directory.GetDirectories(
+            _rootDirectory,
+            $"{workflowName}-training_*",
+            SearchOption.TopDirectoryOnly);
+
+        if (candidates.Length == 0)
+            return null;
+
+        ShiftTrainingResult? best = null;
+        double bestScore = double.NegativeInfinity;
+        DateTime bestCreatedUtc = DateTime.MinValue;
+
+        foreach (var dir in candidates)
+        {
+            var jsonPath = Path.Combine(dir, "result.json");
+            if (!File.Exists(jsonPath))
+                continue;
+
+            try
+            {
+                var json = File.ReadAllText(jsonPath, _utf8NoBom);
+                var result = JsonSerializer.Deserialize<ShiftTrainingResult>(json, _jsonOptions);
+                if (result is null)
+                    continue;
+
+                if (!includeCancelled && result.IsCancelled)
+                    continue;
+
+                // Primary score: First+Delta improvement; fallback: First improvement.
+                var score = (double)result.ImprovementFirstPlusDelta;
+                if (Math.Abs(score) < 1e-12)
+                    score = (double)result.ImprovementFirst;
+
+                var createdUtc = result.CreatedUtc;
+
+                // Prefer higher score; break ties by most recent creation time.
+                if (best is null ||
+                    score > bestScore + 1e-12 ||
+                    (Math.Abs(score - bestScore) < 1e-12 && createdUtc > bestCreatedUtc))
+                {
+                    best = result;
+                    bestScore = score;
+                    bestCreatedUtc = createdUtc;
+                }
+            }
+            catch
+            {
+                // Ignore malformed entries and continue.
+            }
+        }
+
+        return best;
+    }
 }

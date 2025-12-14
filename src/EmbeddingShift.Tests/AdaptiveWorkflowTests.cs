@@ -105,6 +105,24 @@ namespace EmbeddingShift.Tests
                     .OrderByDescending(r => r.CreatedUtc)
                     .FirstOrDefault();
             }
+
+            public ShiftTrainingResult? LoadBest(string workflowName, bool includeCancelled = false)
+            {
+                if (string.IsNullOrWhiteSpace(workflowName))
+                    throw new ArgumentException("Workflow name must not be null or whitespace.", nameof(workflowName));
+
+                var query = _results
+                    .Where(r => string.Equals(r.WorkflowName, workflowName, StringComparison.OrdinalIgnoreCase));
+
+                if (!includeCancelled)
+                    query = query.Where(r => !r.IsCancelled);
+
+                return query
+                    .OrderByDescending(r => Math.Abs(r.ImprovementFirstPlusDelta) > 1e-12 ? r.ImprovementFirstPlusDelta : r.ImprovementFirst)
+                    .ThenByDescending(r => r.CreatedUtc)
+                    .FirstOrDefault();
+            }
+
         }
     }
 }
