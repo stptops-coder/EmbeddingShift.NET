@@ -82,8 +82,30 @@ namespace EmbeddingShift.ConsoleEval
                 throw new InvalidOperationException("No embeddings were created for the policy documents.");
 
             var dim = firstEmbedding.Length;
+
+            // TODO (Production-scale / real domains):
+            // 1) Hard negatives: do NOT score against all docs. Use candidate set from ANN / Top-K retrieval (e.g., K=50..200).
+            //    Learn only from "hard" negatives (high score, wrong top-1) to keep training efficient and signal strong.
+            // 2) Safety / gating: train on one split, validate on held-out split; promote only if improves and does not regress
+            //    key queries. Keep rollback path and store "best" result per scope/workflow.
+            // 3) Weighting modes (optional later): uniform vs margin vs damped-margin (log1p/sqrt) for robustness across
+            //    deterministic/stochastic/real backends.
+            // 4) Metadata + reproducibility: persist weighting mode, K, clip settings, provider(sim/stochastic/real), run-id,
+            //    timestamps, and metrics next to the learned delta.
+            // 5) Diagnostics: if |Δ| is tiny, detect potential cancel-out cycles and log a hint (debug mode already exists).
             var sumDirection = new float[dim];
             var trainingCases = 0;
+
+            // Diagnostics via env flags (off by default).
+            var debug = IsEnvEnabled("EMBEDDINGSHIFT_POSNEG_DEBUG");
+            var disableNormClip = IsEnvEnabled("EMBEDDINGSHIFT_POSNEG_NOCLIP");
+
+            double sumCaseNorm = 0.0;
+            double minCaseNorm = double.MaxValue;
+            double maxCaseNorm = 0.0;
+            var zeroCaseCount = 0;
+
+            var uniquePairs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var q in queries)
             {
@@ -132,12 +154,30 @@ namespace EmbeddingShift.ConsoleEval
                 if (pos.Length != dim || neg.Length != dim)
                     throw new InvalidOperationException("Positive/negative embeddings have inconsistent dimensions.");
 
+                uniquePairs.Add($"{q.Id}|{q.RelevantDocId}|{negCandidate.DocId}");
+
+                var caseNormSquared = 0.0;
                 for (var i = 0; i < dim; i++)
                 {
-                    sumDirection[i] += pos[i] - neg[i];
+                    var d = pos[i] - neg[i];
+                    sumDirection[i] += d;
+                    caseNormSquared += d * d;
+                }
+
+                var caseNorm = Math.Sqrt(caseNormSquared);
+                sumCaseNorm += caseNorm;
+                if (caseNorm < 1e-9) zeroCaseCount++;
+                if (caseNorm < minCaseNorm) minCaseNorm = caseNorm;
+                if (caseNorm > maxCaseNorm) maxCaseNorm = caseNorm;
+
+                if (debug)
+                {
+                    Console.WriteLine(
+                        $"[PosNeg] Case {trainingCases + 1}: q={q.Id}, pos={q.RelevantDocId}, neg={negCandidate.DocId}, posRank={posIndex}, |dir|={caseNorm:0.000000}");
                 }
 
                 trainingCases++;
+
             }
 
             if (trainingCases == 0)
@@ -150,6 +190,7 @@ namespace EmbeddingShift.ConsoleEval
             }
 
             // Optional L2 norm clipping to keep the learned shift in a safe range.
+            // Can be disabled via: EMBEDDINGSHIFT_POSNEG_NOCLIP=1
             const double MaxL2Norm = 1.5;
             var normSquared = 0.0;
             for (var i = 0; i < dim; i++)
@@ -159,13 +200,35 @@ namespace EmbeddingShift.ConsoleEval
             }
 
             var norm = Math.Sqrt(normSquared);
-            if (norm > MaxL2Norm && norm > 0.0)
+            var clipped = false;
+
+            if (!disableNormClip && norm > MaxL2Norm && norm > 0.0)
             {
                 var scale = MaxL2Norm / norm;
                 for (var i = 0; i < dim; i++)
                 {
                     shift[i] = (float)(shift[i] * scale);
                 }
+
+                clipped = true;
+            }
+
+            var postNorm = clipped ? MaxL2Norm : norm;
+
+            if (debug || postNorm < 1e-6)
+            {
+                var avgCaseNorm = trainingCases > 0 ? (sumCaseNorm / trainingCases) : 0.0;
+                if (minCaseNorm == double.MaxValue) minCaseNorm = 0.0;
+
+                Console.WriteLine(
+                    $"[PosNeg] Summary: cases={trainingCases}, uniquePairs={uniquePairs.Count}, avg|dir|={avgCaseNorm:0.000000}, min|dir|={minCaseNorm:0.000000}, max|dir|={maxCaseNorm:0.000000}, zeroDirs={zeroCaseCount}");
+
+                var clipState = disableNormClip ? "disabled" : (clipped ? "applied" : "none");
+                Console.WriteLine(
+                    $"[PosNeg] Learned delta: |Δ|={postNorm:0.000000} (preClip={norm:0.000000}, clip={clipState}, max={MaxL2Norm:0.0})");
+
+                if (!debug && postNorm < 1e-6)
+                    Console.WriteLine("[PosNeg] Hint: set EMBEDDINGSHIFT_POSNEG_DEBUG=1 to print per-case details.");
             }
 
             var resultsRoot = DirectoryLayout.ResolveResultsRoot("insurance");
@@ -224,6 +287,18 @@ namespace EmbeddingShift.ConsoleEval
             // The actual layout (samples/insurance/...) is centralized in
             // MiniInsuranceDataset, which MiniInsuranceDomain delegates to.
             return MiniInsurance.MiniInsuranceDomain.GetSamplesRoot();
+        }
+
+        private static bool IsEnvEnabled(string name)
+        {
+            var v = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(v))
+                return false;
+
+            return v.Equals("1", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                || v.Equals("on", StringComparison.OrdinalIgnoreCase);
         }
 
         private sealed record QueryDefinition(string Id, string Text, string RelevantDocId);
