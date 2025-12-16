@@ -11,6 +11,8 @@ using System.IO;
 /// </summary>
 public static class MiniInsuranceDataset
 {
+    private const string DatasetRootEnvVar = "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT";
+
     /// <summary>
     /// Returns the root directory of the Mini-Insurance sample dataset
     /// (repo-root/samples/insurance).
@@ -22,6 +24,17 @@ public static class MiniInsuranceDataset
 
         var repoRoot = Path.GetFullPath(
             Path.Combine(baseDir, "..", "..", "..", "..", ".."));
+
+        // Optional override (absolute or repo-relative), e.g.:
+        //   results/insurance/datasets/<name>/stage-00
+        var overrideValue = Environment.GetEnvironmentVariable(DatasetRootEnvVar);
+        if (!string.IsNullOrWhiteSpace(overrideValue))
+        {
+            var trimmed = overrideValue.Trim();
+            return Path.IsPathRooted(trimmed)
+                ? Path.GetFullPath(trimmed)
+                : Path.GetFullPath(Path.Combine(repoRoot, trimmed));
+        }
 
         return Path.Combine(repoRoot, "samples", "insurance");
     }

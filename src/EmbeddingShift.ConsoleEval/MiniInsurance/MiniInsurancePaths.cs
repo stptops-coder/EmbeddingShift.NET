@@ -19,6 +19,8 @@ internal static class MiniInsurancePaths
     private const string TrainingFolderName = "training";
     private const string AggregatesFolderName = "aggregates";
     private const string InspectFolderName = "inspect";
+    private const string DatasetsFolderName = "datasets";
+
 
     /// <summary>
     /// Returns the stable Mini-Insurance domain root directory and
@@ -57,6 +59,37 @@ internal static class MiniInsurancePaths
     /// </summary>
     public static string GetInspectRoot()
         => EnsureSubFolder(InspectFolderName);
+
+    /// <summary>
+    /// Root for generated datasets (staged corpora) under results/insurance/datasets.
+    /// </summary>
+    public static string GetDatasetsRoot()
+        => EnsureSubFolder(DatasetsFolderName);
+
+    /// <summary>
+    /// Root directory for a named dataset (contains stage-00, stage-01, ...).
+    /// </summary>
+    public static string GetDatasetRoot(string datasetName)
+    {
+        if (string.IsNullOrWhiteSpace(datasetName))
+            throw new ArgumentException("Dataset name must not be empty.", nameof(datasetName));
+
+        var root = Path.Combine(GetDatasetsRoot(), datasetName.Trim());
+        Directory.CreateDirectory(root);
+        return root;
+    }
+
+    /// <summary>
+    /// Root directory for a specific stage within a dataset.
+    /// </summary>
+    public static string GetStageRoot(string datasetName, int stageIndex)
+    {
+        if (stageIndex < 0) throw new ArgumentOutOfRangeException(nameof(stageIndex));
+        var stage = $"stage-{stageIndex:00}";
+        var root = Path.Combine(GetDatasetRoot(datasetName), stage);
+        Directory.CreateDirectory(root);
+        return root;
+    }
 
     private static string EnsureSubFolder(string folderName)
     {

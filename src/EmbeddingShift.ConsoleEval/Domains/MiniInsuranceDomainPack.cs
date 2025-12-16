@@ -34,6 +34,11 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
         log("  domain mini-insurance posneg-inspect");
         log("  domain mini-insurance posneg-history [maxItems]");
         log("  domain mini-insurance posneg-best");
+        log("");
+        log("  domain mini-insurance dataset-generate <name> [--stages=N] [--policies=N] [--queries=N] [--seed=N] [--overwrite]");
+        log("    Writes staged datasets under: results/insurance/datasets/<name>/stage-00 ...");
+        log("    Use env var to switch the workflow input:");
+        log("      EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT=<full-or-repo-relative-stage-path>");
         log("  domain mini-insurance shift-training-inspect [workflowName]");
         log("  domain mini-insurance shift-training-history [workflowName] [maxItems]");
         log("  domain mini-insurance shift-training-best [workflowName]");
@@ -159,6 +164,52 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                         : new[] { "mini-insurance-posneg", ResultsDomainKey });
                 return 0;
                 }
+
+            case "dataset-generate":
+                {
+                    if (args.Length < 2 || string.IsNullOrWhiteSpace(args[1]))
+                    {
+                        log("Missing dataset name.");
+                        PrintDomainHelp(log);
+                        return 1;
+                    }
+
+                    var name = args[1].Trim();
+
+                    int ReadIntOpt(string key, int @default)
+                    {
+                        // supports: --key=123  OR  --key 123
+                        for (var i = 0; i < args.Length; i++)
+                        {
+                            var a = args[i];
+                            if (a.StartsWith(key + "=", StringComparison.OrdinalIgnoreCase) &&
+                                int.TryParse(a[(key.Length + 1)..], out var v)) return v;
+
+                            if (string.Equals(a, key, StringComparison.OrdinalIgnoreCase) &&
+                                i + 1 < args.Length &&
+                                int.TryParse(args[i + 1], out var v2)) return v2;
+                        }
+                        return @default;
+                    }
+
+                    var stages = ReadIntOpt("--stages", 3);
+                    var policies = ReadIntOpt("--policies", 40);
+                    var queries = ReadIntOpt("--queries", 80);
+                    var seed = ReadIntOpt("--seed", 1337);
+                    var overwrite = args.Any(a => string.Equals(a, "--overwrite", StringComparison.OrdinalIgnoreCase));
+
+                    MiniInsuranceStagedDatasetGenerator.Generate(
+                        datasetName: name,
+                        stages: stages,
+                        basePolicies: policies,
+                        baseQueries: queries,
+                        seed: seed,
+                        overwrite: overwrite,
+                        log: log);
+
+                    return 0;
+                }
+
             default:
                 log($"Unknown subcommand '{sub}'.");
                 PrintDomainHelp(log);
