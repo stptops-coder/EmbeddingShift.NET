@@ -10,8 +10,12 @@ namespace EmbeddingShift.ConsoleEval;
 
 /// <summary>
 /// Simulated embedding provider used when EMBEDDING_BACKEND = "sim".
-/// By default it behaves deterministically, but it can optionally apply
-/// additional random noise when configured in Noisy mode.
+/// Default algorithm is legacy SHA-256 mapping (deterministic, but no semantic locality).
+///
+/// To enable a more "embedding-like" simulation:
+///   EMBEDDING_SIM_ALGO=semantic-hash
+/// Optional:
+///   EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS=1
 /// </summary>
 public sealed class SimEmbeddingProvider : IEmbeddingProvider
 {
@@ -23,31 +27,22 @@ public sealed class SimEmbeddingProvider : IEmbeddingProvider
     private readonly float _noiseAmplitude;
     private readonly Random _rng;
 
-    /// <summary>
-    /// Creates a simulated embedding provider using options derived from
-    /// environment variables. This preserves the existing behavior:
-    ///
-    /// - EMBEDDING_SIM_MODE not set or not "noisy"  -> Deterministic
-    /// - EMBEDDING_SIM_MODE = "noisy"               -> Noisy mode with
-    ///   amplitude taken from EMBEDDING_SIM_NOISE_AMPLITUDE (or a default).
-    /// </summary>
+    private readonly EmbeddingSimulationAlgorithm _algorithm;
+    private readonly bool _semanticIncludeCharNGrams;
+
     public SimEmbeddingProvider()
         : this(CreateOptionsFromEnvironment())
     {
     }
 
-    /// <summary>
-    /// Creates a simulated embedding provider using explicit simulation options.
-    /// This is the preferred entry point for code and UI-driven configuration.
-    /// </summary>
     public SimEmbeddingProvider(EmbeddingSimulationOptions options)
     {
-        if (options is null)
-        {
-            throw new ArgumentNullException(nameof(options));
-        }
+        if (options is null) throw new ArgumentNullException(nameof(options));
 
         _rng = Random.Shared;
+
+        _algorithm = options.Algorithm;
+        _semanticIncludeCharNGrams = options.SemanticIncludeCharacterNGrams;
 
         if (options.Mode == EmbeddingSimulationMode.Noisy && options.NoiseAmplitude > 0f)
         {
@@ -61,38 +56,19 @@ public sealed class SimEmbeddingProvider : IEmbeddingProvider
         }
     }
 
-    /// <summary>
-    /// Factory for deterministic simulation (no additional noise).
-    /// Useful for explicit code / UI configuration without environment variables.
-    /// </summary>
-    public static SimEmbeddingProvider CreateDeterministic()
-        => new SimEmbeddingProvider(new EmbeddingSimulationOptions
-        {
-            Mode = EmbeddingSimulationMode.Deterministic,
-            NoiseAmplitude = 0f
-        });
-
-    /// <summary>
-    /// Factory for noisy simulation. Noise amplitude should typically
-    /// stay in a small range, e.g. 0.01 - 0.1, to mimic realistic variation.
-    /// </summary>
-    public static SimEmbeddingProvider CreateNoisy(float noiseAmplitude = 0.05f)
-        => new SimEmbeddingProvider(new EmbeddingSimulationOptions
-        {
-            Mode = EmbeddingSimulationMode.Noisy,
-            NoiseAmplitude = noiseAmplitude
-        });
-
     public Task<float[]> GetEmbeddingAsync(string text)
     {
-        using var sha = SHA256.Create();
-        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(text ?? string.Empty));
+        var input = text ?? string.Empty;
 
-        var vec = new float[Dim];
-        for (int i = 0; i < Dim; i++)
+        float[] vec = _algorithm switch
         {
-            vec[i] = (bytes[i % bytes.Length] / 255f) - 0.5f;
-        }
+            EmbeddingSimulationAlgorithm.SemanticHash => SemanticHashEmbedding.Create(
+                text: input,
+                embeddingSize: Dim,
+                includeCharNGrams: _semanticIncludeCharNGrams),
+
+            _ => CreateLegacySha256Embedding(input)
+        };
 
         if (_useNoise && _noiseAmplitude > 0f)
         {
@@ -103,41 +79,72 @@ public sealed class SimEmbeddingProvider : IEmbeddingProvider
         return Task.FromResult(vec);
     }
 
+    private static float[] CreateLegacySha256Embedding(string text)
+    {
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(text));
+
+        var vec = new float[Dim];
+        for (int i = 0; i < Dim; i++)
+        {
+            vec[i] = (bytes[i % bytes.Length] / 255f) - 0.5f;
+        }
+
+        return vec;
+    }
+
     private static EmbeddingSimulationOptions CreateOptionsFromEnvironment()
     {
         var modeEnv = Environment.GetEnvironmentVariable("EMBEDDING_SIM_MODE");
+
+        var algorithm = ParseAlgorithmFromEnvironment();
+        var includeCharNGrams = ParseTruthyEnvironment("EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS");
 
         if (string.Equals(modeEnv, "noisy", StringComparison.OrdinalIgnoreCase))
         {
             var amplitudeEnv = Environment.GetEnvironmentVariable("EMBEDDING_SIM_NOISE_AMPLITUDE");
 
-            if (!float.TryParse(
-                    amplitudeEnv,
-                    NumberStyles.Float,
-                    CultureInfo.InvariantCulture,
-                    out var amplitude))
-            {
-                // Sensible default for noisy simulation if parsing fails or is not set.
+            if (!float.TryParse(amplitudeEnv, NumberStyles.Float, CultureInfo.InvariantCulture, out var amplitude))
                 amplitude = 0.05f;
-            }
-
-            if (amplitude < 0f)
-            {
-                amplitude = 0f;
-            }
 
             return new EmbeddingSimulationOptions
             {
                 Mode = EmbeddingSimulationMode.Noisy,
-                NoiseAmplitude = amplitude
+                NoiseAmplitude = amplitude,
+                Algorithm = algorithm,
+                SemanticIncludeCharacterNGrams = includeCharNGrams
             };
         }
 
-        // Default: deterministic simulation with no additional noise.
         return new EmbeddingSimulationOptions
         {
             Mode = EmbeddingSimulationMode.Deterministic,
-            NoiseAmplitude = 0f
+            NoiseAmplitude = 0f,
+            Algorithm = algorithm,
+            SemanticIncludeCharacterNGrams = includeCharNGrams
         };
+    }
+
+    private static EmbeddingSimulationAlgorithm ParseAlgorithmFromEnvironment()
+    {
+        var algoEnv = (Environment.GetEnvironmentVariable("EMBEDDING_SIM_ALGO") ?? "sha256").Trim();
+        if (string.IsNullOrWhiteSpace(algoEnv)) algoEnv = "sha256";
+
+        return algoEnv.ToLowerInvariant() switch
+        {
+            "semantic" or "semhash" or "semantic-hash" or "semantichash" => EmbeddingSimulationAlgorithm.SemanticHash,
+            _ => EmbeddingSimulationAlgorithm.Sha256
+        };
+    }
+
+    private static bool ParseTruthyEnvironment(string variableName)
+    {
+        var v = (Environment.GetEnvironmentVariable(variableName) ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(v)) return false;
+
+        return v.Equals("1", StringComparison.OrdinalIgnoreCase)
+               || v.Equals("true", StringComparison.OrdinalIgnoreCase)
+               || v.Equals("yes", StringComparison.OrdinalIgnoreCase)
+               || v.Equals("on", StringComparison.OrdinalIgnoreCase);
     }
 }

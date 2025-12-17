@@ -171,8 +171,16 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
         foreach (var dir in candidates)
         {
             var jsonPath = Path.Combine(dir, "shift-training-result.json");
+
+            // Legacy fallback (older runs might have used a different filename).
             if (!File.Exists(jsonPath))
-                continue;
+            {
+                var legacyPath = Path.Combine(dir, "result.json");
+                if (!File.Exists(legacyPath))
+                    continue;
+
+                jsonPath = legacyPath;
+            }
 
             try
             {

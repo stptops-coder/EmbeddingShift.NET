@@ -27,12 +27,26 @@ namespace EmbeddingShift.ConsoleEval
 
             var trainingResult = repository.LoadBest(WorkflowName);
 
-            // We may not have training artifacts yet (fresh repo / clean results folder).
-            // In that case we run in "baseline mode" using a zero shift vector.
-            // We can only size the zero vector once we know the embedding dimension.
-            var rawShift = trainingResult?.IsCancelled == true
-                ? null
-                : trainingResult?.DeltaVector;
+            if (trainingResult is null)
+            {
+                Console.WriteLine(
+                    $"[MiniInsurancePosNegRunner] No training result found for workflow '{WorkflowName}' under '{resultsRoot}'.");
+            }
+            else
+            {
+                var len = trainingResult.DeltaVector?.Length ?? 0;
+                Console.WriteLine(
+                    $"[MiniInsurancePosNegRunner] Loaded best training result: CreatedUtc={trainingResult.CreatedUtc:O}, " +
+                    $"Cancelled={trainingResult.IsCancelled}, |Δ|={trainingResult.DeltaNorm:E3}, Δlen={len}, " +
+                    $"dFirst+Δ={trainingResult.ImprovementFirstPlusDelta:0.000}");
+            }
+
+            var rawShift =
+                (trainingResult is not null &&
+                 trainingResult.IsCancelled == false &&
+                 trainingResult.DeltaVector is { Length: > 0 })
+                    ? trainingResult.DeltaVector
+                    : null;
             var provider = EmbeddingProviderFactory.Create(backend);
 
             var domainRoot = ResolveDomainRoot();

@@ -20,9 +20,27 @@ using System.Linq;
 string providerArg = args.FirstOrDefault(a => a.StartsWith("--provider=", StringComparison.OrdinalIgnoreCase))
                     ?.Split('=', 2)[1] ?? "sim";
 
-// CLI-level override of simulation environment options (if present)
+// CLI-level override of embedding/simulation environment options (if present)
+// Note: args[0] must remain the command (e.g., "domain"), so place these flags AFTER the command.
+//
+// Flags:
+//   --sim-mode=deterministic|noisy
+//   --sim-noise=<float>
+//   --sim-algo=sha256|semantic-hash
+//   --sim-char-ngrams=0|1
+//   --semantic-cache | --no-semantic-cache
+//   --cache-max=<int>
+//   --cache-hamming=<int>
+//   --cache-approx=0|1
 string? simModeArg = null;
 string? simNoiseArg = null;
+string? simAlgoArg = null;
+string? simCharNGramsArg = null;
+
+bool? semanticCacheArg = null;
+string? cacheMaxArg = null;
+string? cacheHammingArg = null;
+string? cacheApproxArg = null;
 
 foreach (var arg in args)
 {
@@ -34,6 +52,34 @@ foreach (var arg in args)
     {
         simNoiseArg = arg.Substring("--sim-noise=".Length);
     }
+    else if (arg.StartsWith("--sim-algo=", StringComparison.OrdinalIgnoreCase))
+    {
+        simAlgoArg = arg.Substring("--sim-algo=".Length);
+    }
+    else if (arg.StartsWith("--sim-char-ngrams=", StringComparison.OrdinalIgnoreCase))
+    {
+        simCharNGramsArg = arg.Substring("--sim-char-ngrams=".Length);
+    }
+    else if (arg.Equals("--semantic-cache", StringComparison.OrdinalIgnoreCase))
+    {
+        semanticCacheArg = true;
+    }
+    else if (arg.Equals("--no-semantic-cache", StringComparison.OrdinalIgnoreCase))
+    {
+        semanticCacheArg = false;
+    }
+    else if (arg.StartsWith("--cache-max=", StringComparison.OrdinalIgnoreCase))
+    {
+        cacheMaxArg = arg.Substring("--cache-max=".Length);
+    }
+    else if (arg.StartsWith("--cache-hamming=", StringComparison.OrdinalIgnoreCase))
+    {
+        cacheHammingArg = arg.Substring("--cache-hamming=".Length);
+    }
+    else if (arg.StartsWith("--cache-approx=", StringComparison.OrdinalIgnoreCase))
+    {
+        cacheApproxArg = arg.Substring("--cache-approx=".Length);
+    }
 }
 
 if (!string.IsNullOrWhiteSpace(simModeArg))
@@ -44,6 +90,36 @@ if (!string.IsNullOrWhiteSpace(simModeArg))
 if (!string.IsNullOrWhiteSpace(simNoiseArg))
 {
     Environment.SetEnvironmentVariable("EMBEDDING_SIM_NOISE_AMPLITUDE", simNoiseArg);
+}
+
+if (!string.IsNullOrWhiteSpace(simAlgoArg))
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SIM_ALGO", simAlgoArg);
+}
+
+if (!string.IsNullOrWhiteSpace(simCharNGramsArg))
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS", simCharNGramsArg);
+}
+
+if (semanticCacheArg.HasValue)
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE", semanticCacheArg.Value ? "1" : "0");
+}
+
+if (!string.IsNullOrWhiteSpace(cacheMaxArg))
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_MAX", cacheMaxArg);
+}
+
+if (!string.IsNullOrWhiteSpace(cacheHammingArg))
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_HAMMING", cacheHammingArg);
+}
+
+if (!string.IsNullOrWhiteSpace(cacheApproxArg))
+{
+    Environment.SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_APPROX", cacheApproxArg);
 }
 
 // base provider used by all modes (still the existing SimEmbeddingProvider)
