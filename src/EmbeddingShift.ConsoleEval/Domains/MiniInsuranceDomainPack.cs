@@ -115,6 +115,7 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                     log("  domain mini-insurance posneg-inspect");
                     log("  domain mini-insurance posneg-history [maxItems] [--include-cancelled]");
                     log("  domain mini-insurance posneg-best [--include-cancelled]");
+                    log("  domain mini-insurance runroot-summarize [--runroot=<path>] [--out=<path>]");
                     log("");
                     log("Or (generic):");
                     log("  domain mini-insurance shift-training-inspect mini-insurance-posneg");
@@ -207,6 +208,18 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                         overwrite: overwrite,
                         log: log);
 
+                    return 0;
+                }
+
+            case "runroot-summarize":
+                {
+                    // Creates stable standard folders under:
+                    //   <runroot>\results\insurance\{datasets,training,runs,reports,experiments,aggregates,inspect}
+                    // and writes:
+                    //   <runroot>\results\insurance\reports\summary.txt
+                    //
+                    // Uses --runroot=<path> or ENV:EMBEDDINGSHIFT_ROOT
+                    await MiniInsuranceRunRootSummarizeCommand.RunAsync(args);
                     return 0;
                 }
 
