@@ -11,6 +11,10 @@ using EmbeddingShift.Core.Runs;        // RunPersistor
 using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
 using EmbeddingShift.Workflows;              // AdaptiveWorkflow
+using EmbeddingShift.Preprocessing;
+using EmbeddingShift.Preprocessing.Chunking;
+using EmbeddingShift.Preprocessing.Loading;
+using EmbeddingShift.Preprocessing.Transform;
 using System.Linq;
 
 
@@ -150,7 +154,8 @@ IIngestor ingestor = new MinimalTxtIngestor();
 var storeRoot = DirectoryLayout.ResolveDataRoot();
 IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(storeRoot);
 
-var ingestWf = new IngestWorkflow(ingestor, provider, store);
+var ingestWf = new IngestWorkflow(new MinimalTxtIngestor(), provider, store);
+var ingestJsonWf = new IngestWorkflow(new JsonQueryIngestor(), provider, store);
 var evalWf = new EvaluationWorkflow(runner);
 
 static string ResolveSamplesDemoPath()
@@ -302,7 +307,17 @@ switch (args[0].ToLowerInvariant())
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
             Helpers.ClearEmbeddingsForSpace(dataset + ":queries");
-            await ingestWf.RunAsync(input, dataset + ":queries");
+
+            // Auto-detect queries.json (folder) or explicit .json file
+            var useJson =
+                (Directory.Exists(input) && File.Exists(Path.Combine(input, "queries.json"))) ||
+                (File.Exists(input) && string.Equals(Path.GetExtension(input), ".json", StringComparison.OrdinalIgnoreCase));
+
+            if (useJson)
+                await ingestJsonWf.RunAsync(input, dataset + ":queries");
+            else
+                await ingestWf.RunAsync(input, dataset + ":queries");
+
             Console.WriteLine("Ingest (queries) finished.");
             break;
         }
@@ -319,6 +334,57 @@ switch (args[0].ToLowerInvariant())
             Helpers.ClearEmbeddingsForSpace(dataset + ":refs");
             await ingestWf.RunAsync(input, dataset + ":refs");
             Console.WriteLine("Ingest (refs) finished.");
+            break;
+        }
+
+          
+    case "ingest-refs-chunked":
+        {
+            // usage: ingest-refs-chunked <path> <dataset> [--chunk-size=1000] [--chunk-overlap=100] [--no-recursive]
+            var input = args.Length >= 3
+                ? args[1]
+                : ResolveSamplesDemoPath();
+
+            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
+
+            var chunkSize = 1000;
+            var chunkOverlap = 100;
+            var recursive = true;
+
+            foreach (var a in args)
+            {
+                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
+                    chunkSize = cs;
+
+                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
+                    chunkOverlap = co;
+
+                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
+                    recursive = false;
+            }
+
+            // Build a canonical preprocess pipeline for text artifacts:
+            // Load (.txt/.log/.md) -> normalize -> fixed chunks (size/overlap).
+            var pipeline = new PreprocessPipeline(
+                loaders: new IDocumentLoader[] { new TxtLoader() },
+                transformer: new Normalizer(),
+                chunker: new FixedChunker(size: chunkSize, overlap: chunkOverlap));
+
+            var wf = new ChunkFirstIngestWorkflow(pipeline, provider, store);
+
+            Helpers.ClearEmbeddingsForSpace(dataset + ":refs");
+            var manifest = await wf.RunAsync(
+                inputPath: input,
+                space: dataset + ":refs",
+                options: new ChunkFirstIngestOptions(
+                    InputRoot: input,
+                    ChunkSize: chunkSize,
+                    ChunkOverlap: chunkOverlap,
+                    Recursive: recursive));
+
+            Console.WriteLine($"Ingest (refs, chunked) finished. Manifest: {manifest}");
             break;
         }
 
