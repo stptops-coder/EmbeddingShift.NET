@@ -1,0 +1,155 @@
+﻿using EmbeddingShift.ConsoleEval;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Xunit;
+
+namespace EmbeddingShift.Tests.Acceptance
+{
+    /// <summary>
+    /// Acceptance gate for the demo ingest commands:
+    /// ingest-queries + ingest-refs (persisted) -> eval (loads persisted embeddings).
+    ///
+    /// Goal: keep the ingest stream stable and reproducible as we evolve the canonical
+    /// data layout and chunk-first ingest pipeline.
+    /// </summary>
+    public sealed class DemoIngestEvalCliAcceptanceTests
+    {
+        [Fact]
+        public async Task DemoIngestThenEval_LoadsPersistedEmbeddings()
+        {
+            var consoleEvalDll = typeof(EmbeddingBackend).Assembly.Location;
+            Assert.True(File.Exists(consoleEvalDll), $"ConsoleEval assembly not found: {consoleEvalDll}");
+
+            var tempRoot = Path.Combine(
+                Path.GetTempPath(),
+                "EmbeddingShift.Acceptance",
+                DateTime.UtcNow.ToString("yyyyMMdd_HHmmss"),
+                Guid.NewGuid().ToString("N"));
+
+            Directory.CreateDirectory(tempRoot);
+            Console.WriteLine($"Acceptance TempRoot: {tempRoot}");
+
+            var keepArtifacts =
+                Debugger.IsAttached ||
+                IsTruthy(Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_ACCEPTANCE_KEEP_ARTIFACTS"));
+
+            try
+            {
+                var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["EMBEDDINGSHIFT_ROOT"] = tempRoot,
+                    ["EMBEDDING_BACKEND"] = "sim",
+                    ["EMBEDDING_SIM_MODE"] = "deterministic",
+                };
+
+                var dataset = "DemoDataset";
+
+                var qPath = Path.Combine(tempRoot, "q.txt");
+                var rPath = Path.Combine(tempRoot, "r.txt");
+
+                await File.WriteAllTextAsync(qPath, "query one\nquery two\nquery three\n");
+                await File.WriteAllTextAsync(rPath, "answer one\nanswer two\nanswer three\n");
+
+                var ingestQ = await RunDotnetAsync(env, consoleEvalDll, "ingest-queries", qPath, dataset);
+                Assert.True(ingestQ.ExitCode == 0, BuildFailureMessage("ingest-queries failed", tempRoot, ingestQ));
+
+                var ingestR = await RunDotnetAsync(env, consoleEvalDll, "ingest-refs", rPath, dataset);
+                Assert.True(ingestR.ExitCode == 0, BuildFailureMessage("ingest-refs failed", tempRoot, ingestR));
+
+                var eval = await RunDotnetAsync(env, consoleEvalDll, "eval", dataset);
+                Assert.True(eval.ExitCode == 0, BuildFailureMessage("eval failed", tempRoot, eval));
+
+                Assert.Contains("Eval mode: persisted embeddings", eval.StdOut);
+
+                var qDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "queries");
+                var rDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "refs");
+
+                Assert.True(Directory.Exists(qDir), $"Missing queries dir: {qDir}");
+                Assert.True(Directory.Exists(rDir), $"Missing refs dir: {rDir}");
+
+                var qFiles = Directory.GetFiles(qDir, "*.json", SearchOption.TopDirectoryOnly);
+                var rFiles = Directory.GetFiles(rDir, "*.json", SearchOption.TopDirectoryOnly);
+
+                Assert.True(qFiles.Length >= 3, $"Expected >= 3 query embeddings, found {qFiles.Length}");
+                Assert.True(rFiles.Length >= 3, $"Expected >= 3 ref embeddings, found {rFiles.Length}");
+            }
+            finally
+            {
+                if (!keepArtifacts)
+                {
+                    try { Directory.Delete(tempRoot, recursive: true); }
+                    catch { /* best-effort */ }
+                }
+            }
+        }
+
+        private static bool IsTruthy(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return false;
+            return value.Trim().Equals("1", StringComparison.OrdinalIgnoreCase) ||
+                   value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                   value.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static async Task<ProcessRunResult> RunDotnetAsync(
+            IDictionary<string, string> env,
+            string consoleEvalDll,
+            params string[] args)
+        {
+            var psi = new ProcessStartInfo("dotnet")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+
+            psi.ArgumentList.Add(consoleEvalDll);
+            foreach (var a in args) psi.ArgumentList.Add(a);
+
+            foreach (var kv in env) psi.Environment[kv.Key] = kv.Value;
+
+            using var p = Process.Start(psi);
+            if (p is null) throw new InvalidOperationException("Failed to start dotnet process.");
+
+            var stdout = await p.StandardOutput.ReadToEndAsync();
+            var stderr = await p.StandardError.ReadToEndAsync();
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            await p.WaitForExitAsync(cts.Token);
+
+            return new ProcessRunResult(p.ExitCode, stdout, stderr);
+        }
+
+        private static string BuildFailureMessage(string headline, string tempRoot, ProcessRunResult result)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine(headline);
+            sb.AppendLine($"TempRoot={tempRoot}");
+            sb.AppendLine($"ExitCode={result.ExitCode}");
+            sb.AppendLine();
+
+            if (!string.IsNullOrWhiteSpace(result.StdOut))
+            {
+                sb.AppendLine("=== STDOUT ===");
+                sb.AppendLine(result.StdOut.Trim());
+                sb.AppendLine();
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.StdErr))
+            {
+                sb.AppendLine("=== STDERR ===");
+                sb.AppendLine(result.StdErr.Trim());
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
+        }
+
+        private sealed record ProcessRunResult(int ExitCode, string StdOut, string StdErr);
+    }
+}

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using EmbeddingShift.Abstractions;
 
 namespace EmbeddingShift.ConsoleEval
@@ -17,7 +18,8 @@ namespace EmbeddingShift.ConsoleEval
 
             if (Directory.Exists(path))
             {
-                foreach (var file in Directory.EnumerateFiles(path, "*.txt", SearchOption.AllDirectories))
+                foreach (var file in Directory.EnumerateFiles(path, "*.txt", SearchOption.AllDirectories)
+                                             .OrderBy(f => f, System.StringComparer.OrdinalIgnoreCase))
                 {
                     foreach (var line in File.ReadLines(file))
                         yield return (line, order++);

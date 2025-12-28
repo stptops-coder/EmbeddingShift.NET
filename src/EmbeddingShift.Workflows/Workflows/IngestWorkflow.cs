@@ -35,7 +35,9 @@ namespace EmbeddingShift.Workflows
                 var vec = await _provider.GetEmbeddingAsync(text);
 
                 // Persist embedding under the dataset as 'space'
-                var id = Guid.NewGuid();
+                // Persist embedding under the dataset as 'space'
+                // Use a deterministic ID so ingest is reproducible and idempotent.
+                var id = CreateStableId(dataset, order, text);
                 await _store.SaveEmbeddingAsync(
                     id: id,
                     vector: vec.ToArray(),
@@ -45,5 +47,24 @@ namespace EmbeddingShift.Workflows
                 );
             }
         }
+        private static Guid CreateStableId(string space, int order, string text)
+        {
+            // Deterministic RFC4122-ish GUID (version 5 style) based on (space, order, text).
+            // This is intentionally stable across runs so re-ingest overwrites the same files.
+            var payload = $"{space}\n{order}\n{text}";
+            var bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+
+            var hash = System.Security.Cryptography.SHA256.HashData(bytes);
+
+            Span<byte> guidBytes = stackalloc byte[16];
+            hash.AsSpan(0, 16).CopyTo(guidBytes);
+
+            // Set version to 5 (0101) and variant to RFC 4122 (10xx).
+            guidBytes[6] = (byte)((guidBytes[6] & 0x0F) | 0x50);
+            guidBytes[8] = (byte)((guidBytes[8] & 0x3F) | 0x80);
+
+            return new Guid(guidBytes);
+        }
+
     }
 }

@@ -147,7 +147,7 @@ var method = args.Any(a => a.Equals("--method=A", StringComparison.OrdinalIgnore
 IIngestor ingestor = new MinimalTxtIngestor();
 
 // File-based vector store for persistence (kept out of bin/Debug)
-var storeRoot = DirectoryLayout.ResolveDataRoot("vectorstore");
+var storeRoot = DirectoryLayout.ResolveDataRoot();
 IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(storeRoot);
 
 var ingestWf = new IngestWorkflow(ingestor, provider, store);
@@ -301,6 +301,7 @@ switch (args[0].ToLowerInvariant())
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
+            Helpers.ClearEmbeddingsForSpace(dataset + ":queries");
             await ingestWf.RunAsync(input, dataset + ":queries");
             Console.WriteLine("Ingest (queries) finished.");
             break;
@@ -315,12 +316,13 @@ switch (args[0].ToLowerInvariant())
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
+            Helpers.ClearEmbeddingsForSpace(dataset + ":refs");
             await ingestWf.RunAsync(input, dataset + ":refs");
             Console.WriteLine("Ingest (refs) finished.");
             break;
         }
 
-            case "adaptive":
+    case "adaptive":
         {
             // Default workflow/domain for convenience.
             var workflowName = "mini-insurance-posneg";
@@ -1040,6 +1042,33 @@ static class Helpers
 
         return result;
     }
+        public static void ClearEmbeddingsForSpace(string space)
+    {
+        var root = DirectoryLayout.ResolveDataRoot("embeddings");
+        var logicalSpace = string.IsNullOrWhiteSpace(space) ? "default" : space.Trim();
+        var spaceDir = Path.Combine(root, SpaceToPath(logicalSpace));
+
+        if (Directory.Exists(spaceDir))
+            Directory.Delete(spaceDir, recursive: true);
+    }
+
+    private static string SpaceToPath(string space)
+    {
+        var parts = space.Split(new[] { ':', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
+                         .Select(SanitizePathPart);
+        return Path.Combine(parts.ToArray());
+    }
+
+    private static string SanitizePathPart(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var chars = name.ToCharArray();
+        for (int i = 0; i < chars.Length; i++)
+            if (invalid.Contains(chars[i])) chars[i] = '_';
+        var sanitized = new string(chars).Trim();
+        return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized;
+    }
+
     // Mirror of FileStore's record shape
     public sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
 }
