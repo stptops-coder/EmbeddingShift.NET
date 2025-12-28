@@ -12,6 +12,7 @@ using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
 using EmbeddingShift.Workflows;              // AdaptiveWorkflow
 using EmbeddingShift.Workflows.Ingest;       // DatasetIngestEntry (canonical ingest entrypoint)
+using EmbeddingShift.Workflows.Run;
 using EmbeddingShift.Workflows.Eval;
 using EmbeddingShift.Preprocessing;
 using EmbeddingShift.Preprocessing.Chunking;
@@ -163,6 +164,8 @@ var queriesJsonIngestor = new JsonQueryIngestor();
 
 var evalWf = new EvaluationWorkflow(runner);
 var evalEntry = new DatasetEvalEntry(provider, evalWf);
+var runEntry = new DatasetRunEntry(ingestEntry, evalEntry);
+
 
 static string ResolveSamplesDemoPath()
 {
@@ -284,6 +287,138 @@ switch (args[0].ToLowerInvariant())
             }
 
             // EvaluationWorkflow logs metrics/run output via EvaluationRunner + logger.
+            break;
+        }
+    case "run":
+        {
+            // usage:
+            //   run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]
+            if (args.Length < 4)
+            {
+                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]");
+                return;
+            }
+
+            var refsPath = args[1];
+            var queriesPath = args[2];
+            var dataset = args[3];
+
+            var refsMode = args.Any(a => string.Equals(a, "--refs-plain", StringComparison.OrdinalIgnoreCase))
+                ? DatasetIngestMode.Plain
+                : DatasetIngestMode.ChunkFirst;
+
+            var chunkSize = 1000;
+            var chunkOverlap = 100;
+            var recursive = true;
+            var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
+
+            foreach (var a in args)
+            {
+                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
+                    chunkSize = cs;
+
+                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
+                    chunkOverlap = co;
+
+                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
+                    recursive = false;
+            }
+
+            IShift shift = new NullShift();
+
+            var res = await runEntry.RunAsync(
+                shift,
+                new DatasetRunRequest(
+                    Dataset: dataset,
+                    RefsPath: refsPath,
+                    QueriesPath: queriesPath,
+                    RefsMode: refsMode,
+                    ChunkSize: chunkSize,
+                    ChunkOverlap: chunkOverlap,
+                    Recursive: recursive,
+                    EvalUseSim: useSim),
+                txtLineIngestor,
+                queriesJsonIngestor);
+
+            if (res.RefsIngest.Mode == DatasetIngestMode.ChunkFirst && !string.IsNullOrWhiteSpace(res.RefsIngest.ManifestPath))
+                Console.WriteLine($"Refs manifest: {res.RefsIngest.ManifestPath}");
+
+            if (!string.IsNullOrWhiteSpace(res.EvalResult.ModeLine))
+                Console.WriteLine(res.EvalResult.ModeLine);
+
+            if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
+                Console.WriteLine(res.EvalResult.Notes);
+
+            break;
+        }
+
+    case "run-demo":
+        {
+            // usage:
+            //   run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]
+            var dataset = "DemoDataset";
+            var argi = 1;
+
+            if (args.Length >= 2 && !args[1].StartsWith("--", StringComparison.Ordinal))
+            {
+                dataset = args[1];
+                argi = 2;
+            }
+
+            var chunkSize = 900;
+            var chunkOverlap = 120;
+            var recursive = true;
+            var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
+
+            for (var i = argi; i < args.Length; i++)
+            {
+                var a = args[i];
+
+                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
+                    chunkSize = cs;
+
+                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
+                    chunkOverlap = co;
+
+                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
+                    recursive = false;
+            }
+
+            var dataRoot = DirectoryLayout.ResolveDataRoot();
+            var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
+
+            var refsPath = Path.Combine(repoRoot, "samples", "insurance", "policies");
+            var queriesPath = Path.Combine(repoRoot, "samples", "insurance", "queries");
+
+            IShift shift = new NullShift();
+
+            var res = await runEntry.RunAsync(
+                shift,
+                new DatasetRunRequest(
+                    Dataset: dataset,
+                    RefsPath: refsPath,
+                    QueriesPath: queriesPath,
+                    RefsMode: DatasetIngestMode.ChunkFirst,
+                    ChunkSize: chunkSize,
+                    ChunkOverlap: chunkOverlap,
+                    Recursive: recursive,
+                    EvalUseSim: useSim),
+                txtLineIngestor,
+                queriesJsonIngestor);
+
+            if (res.RefsIngest.Mode == DatasetIngestMode.ChunkFirst && !string.IsNullOrWhiteSpace(res.RefsIngest.ManifestPath))
+                Console.WriteLine($"Refs manifest: {res.RefsIngest.ManifestPath}");
+
+            if (!string.IsNullOrWhiteSpace(res.EvalResult.ModeLine))
+                Console.WriteLine(res.EvalResult.ModeLine);
+
+            if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
+                Console.WriteLine(res.EvalResult.Notes);
+
             break;
         }
 
