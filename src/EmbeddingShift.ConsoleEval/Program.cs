@@ -11,6 +11,7 @@ using EmbeddingShift.Core.Runs;        // RunPersistor
 using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
 using EmbeddingShift.Workflows;              // AdaptiveWorkflow
+using EmbeddingShift.Workflows.Ingest;       // DatasetIngestEntry (canonical ingest entrypoint)
 using EmbeddingShift.Preprocessing;
 using EmbeddingShift.Preprocessing.Chunking;
 using EmbeddingShift.Preprocessing.Loading;
@@ -154,8 +155,11 @@ IIngestor ingestor = new MinimalTxtIngestor();
 var storeRoot = DirectoryLayout.ResolveDataRoot();
 IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(storeRoot);
 
-var ingestWf = new IngestWorkflow(new MinimalTxtIngestor(), provider, store);
-var ingestJsonWf = new IngestWorkflow(new JsonQueryIngestor(), provider, store);
+// Canonical ingest entrypoint (domain-neutral; reusable for CLI and future UI).
+var ingestEntry = new DatasetIngestEntry(provider, store);
+var txtLineIngestor = new MinimalTxtIngestor();
+var queriesJsonIngestor = new JsonQueryIngestor();
+
 var evalWf = new EvaluationWorkflow(runner);
 
 static string ResolveSamplesDemoPath()
@@ -243,7 +247,14 @@ switch (args[0].ToLowerInvariant())
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
-            await ingestWf.RunAsync(input, dataset);
+            await ingestEntry.RunAsync(
+    new DatasetIngestRequest(
+        Dataset: dataset,
+        Role: "refs",
+        InputPath: input,
+        Mode: DatasetIngestMode.Plain),
+    textLineIngestor: txtLineIngestor);
+
             Console.WriteLine("Ingest finished.");
             break;
         }
@@ -306,17 +317,14 @@ switch (args[0].ToLowerInvariant())
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
-            Helpers.ClearEmbeddingsForSpace(dataset + ":queries");
-
-            // Auto-detect queries.json (folder) or explicit .json file
-            var useJson =
-                (Directory.Exists(input) && File.Exists(Path.Combine(input, "queries.json"))) ||
-                (File.Exists(input) && string.Equals(Path.GetExtension(input), ".json", StringComparison.OrdinalIgnoreCase));
-
-            if (useJson)
-                await ingestJsonWf.RunAsync(input, dataset + ":queries");
-            else
-                await ingestWf.RunAsync(input, dataset + ":queries");
+            await ingestEntry.RunAsync(
+                new DatasetIngestRequest(
+                    Dataset: dataset,
+                    Role: "queries",
+                    InputPath: input,
+                    Mode: DatasetIngestMode.Plain),
+                textLineIngestor: txtLineIngestor,
+                queriesJsonIngestor: queriesJsonIngestor);
 
             Console.WriteLine("Ingest (queries) finished.");
             break;
@@ -331,13 +339,19 @@ switch (args[0].ToLowerInvariant())
 
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
-            Helpers.ClearEmbeddingsForSpace(dataset + ":refs");
-            await ingestWf.RunAsync(input, dataset + ":refs");
+            await ingestEntry.RunAsync(
+                new DatasetIngestRequest(
+                    Dataset: dataset,
+                    Role: "refs",
+                    InputPath: input,
+                    Mode: DatasetIngestMode.Plain),
+                textLineIngestor: txtLineIngestor);
+
             Console.WriteLine("Ingest (refs) finished.");
             break;
         }
 
-          
+
     case "ingest-refs-chunked":
         {
             // usage: ingest-refs-chunked <path> <dataset> [--chunk-size=1000] [--chunk-overlap=100] [--no-recursive]
@@ -365,28 +379,21 @@ switch (args[0].ToLowerInvariant())
                     recursive = false;
             }
 
-            // Build a canonical preprocess pipeline for text artifacts:
-            // Load (.txt/.log/.md) -> normalize -> fixed chunks (size/overlap).
-            var pipeline = new PreprocessPipeline(
-                loaders: new IDocumentLoader[] { new TxtLoader() },
-                transformer: new Normalizer(),
-                chunker: new FixedChunker(size: chunkSize, overlap: chunkOverlap));
-
-            var wf = new ChunkFirstIngestWorkflow(pipeline, provider, store);
-
-            Helpers.ClearEmbeddingsForSpace(dataset + ":refs");
-            var manifest = await wf.RunAsync(
-                inputPath: input,
-                space: dataset + ":refs",
-                options: new ChunkFirstIngestOptions(
-                    InputRoot: input,
+            var result = await ingestEntry.RunAsync(
+                new DatasetIngestRequest(
+                    Dataset: dataset,
+                    Role: "refs",
+                    InputPath: input,
+                    Mode: DatasetIngestMode.ChunkFirst,
                     ChunkSize: chunkSize,
                     ChunkOverlap: chunkOverlap,
-                    Recursive: recursive));
+                    Recursive: recursive),
+                textLineIngestor: txtLineIngestor);
 
-            Console.WriteLine($"Ingest (refs, chunked) finished. Manifest: {manifest}");
+            Console.WriteLine($"Ingest (refs, chunked) finished. Manifest: {result.ManifestPath}");
             break;
         }
+
 
     case "adaptive":
         {
