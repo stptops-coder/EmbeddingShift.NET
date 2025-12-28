@@ -12,6 +12,7 @@ using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
 using EmbeddingShift.Workflows;              // AdaptiveWorkflow
 using EmbeddingShift.Workflows.Ingest;       // DatasetIngestEntry (canonical ingest entrypoint)
+using EmbeddingShift.Workflows.Eval;
 using EmbeddingShift.Preprocessing;
 using EmbeddingShift.Preprocessing.Chunking;
 using EmbeddingShift.Preprocessing.Loading;
@@ -161,6 +162,7 @@ var txtLineIngestor = new MinimalTxtIngestor();
 var queriesJsonIngestor = new JsonQueryIngestor();
 
 var evalWf = new EvaluationWorkflow(runner);
+var evalEntry = new DatasetEvalEntry(provider, evalWf);
 
 static string ResolveSamplesDemoPath()
 {
@@ -267,44 +269,21 @@ switch (args[0].ToLowerInvariant())
             var dataset = args.Length >= 2 ? args[1] : "DemoDataset";
             var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
 
-            List<ReadOnlyMemory<float>> queries;
-            List<ReadOnlyMemory<float>> refs;
-
-            if (useSim)
-            {
-                // --- simulated embeddings (kept for quick smoke tests) ---
-                var q1 = await provider.GetEmbeddingAsync("query one");
-                var q2 = await provider.GetEmbeddingAsync("query two");
-                var r1 = await provider.GetEmbeddingAsync("answer one");
-                var r2 = await provider.GetEmbeddingAsync("answer two");
-                queries = new() { q1, q2 };
-                refs = new() { r1, r2 };
-                Console.WriteLine("Eval mode: simulated embeddings (--sim).");
-            }
-
-            else
-            {
-                // --- load persisted embeddings for this dataset from the stable data layout ---
-                var embeddingsRoot = DirectoryLayout.ResolveDataRoot("embeddings");
-                queries = Helpers.LoadVectorsBySpace(dataset + ":queries");
-                refs = Helpers.LoadVectorsBySpace(dataset + ":refs");
-
-                if (queries.Count == 0 || refs.Count == 0)
-                {
-                    Console.WriteLine($"No persisted embeddings under '{embeddingsRoot}' for dataset '{dataset}'.");
-                    return;
-                }
-                Console.WriteLine($"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} queries vs {refs.Count} refs.");
-            }
-
             // No real shift yet → identity via NullShift
             IShift shift = new NullShift();
 
-            // TODO [Baseline]: Always include NoShift (Method A) as baseline in evaluation runs.
-            // This ensures all Δ-metrics (e.g., cosine delta, nDCG diff, MRR change) are computed
-            // consistently against the unshifted embeddings.
+            var res = await evalEntry.RunAsync(shift, new DatasetEvalRequest(dataset, UseSim: useSim));
 
-            evalWf.Run(shift, queries, refs, dataset);
+            if (!string.IsNullOrWhiteSpace(res.ModeLine))
+                Console.WriteLine(res.ModeLine);
+
+            if (!res.DidRun)
+            {
+                Console.WriteLine(res.Notes);
+                return;
+            }
+
+            // EvaluationWorkflow logs metrics/run output via EvaluationRunner + logger.
             break;
         }
 
@@ -1061,7 +1040,10 @@ static class Helpers
         Console.WriteLine("  domain list                         list available domain packs");
         Console.WriteLine("  domain <id> <subcommand>            run a domain pack command");
         Console.WriteLine("  demo --shift <Name> [--dataset X]   run tiny demo (e.g., NoShift.IngestBased)");
-        Console.WriteLine("  ingest-refs <path> <dataset>        ingest reference vectors");
+        Console.WriteLine("  ingest-queries <path> <dataset>     ingest query vectors (supports queries.json or *.txt)");
+        Console.WriteLine("  ingest-refs-chunked <path> <dataset> [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]  chunk-first refs ingest");
+        Console.WriteLine("  eval <dataset> [--sim]              evaluate persisted embeddings (or --sim for old behavior)");
+        Console.WriteLine("  ingest <path> <dataset>             alias for ingest-refs");
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
         Console.WriteLine("  mini-insurance-adaptive             adaptive selection for Mini-Insurance (alias for 'adaptive')");
         Console.WriteLine("  mini-insurance                      run mini insurance workflow (baseline)");
@@ -1078,6 +1060,9 @@ static class Helpers
         Console.WriteLine("  shift-training-best <workflowName> [domainKey]                show best shift training result");
         Console.WriteLine();
         Console.WriteLine("Examples:");
+        Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-refs-chunked samples\\insurance\\policies DemoDataset --chunk-size=900 --chunk-overlap=120");
+        Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-queries samples\\insurance\\queries DemoDataset");
+        Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- eval DemoDataset");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- demo --shift NoShift.IngestBased");
         Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- adaptive");
     }
