@@ -14,6 +14,7 @@ using EmbeddingShift.Workflows;              // AdaptiveWorkflow
 using EmbeddingShift.Workflows.Ingest;       // DatasetIngestEntry (canonical ingest entrypoint)
 using EmbeddingShift.Workflows.Run;
 using EmbeddingShift.Workflows.Eval;
+using System.Globalization;
 using EmbeddingShift.Preprocessing;
 using EmbeddingShift.Preprocessing.Chunking;
 using EmbeddingShift.Preprocessing.Loading;
@@ -277,8 +278,28 @@ switch (args[0].ToLowerInvariant())
             var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
             var useBaseline = args.Any(a => string.Equals(a, "--baseline", StringComparison.OrdinalIgnoreCase));
 
-            // No real shift yet → identity via NullShift
-            IShift shift = new NullShift();
+            // eval-only options
+            var shiftArg = args.FirstOrDefault(a => a.StartsWith("--shift=", StringComparison.OrdinalIgnoreCase))
+                ?.Substring("--shift=".Length)
+                ?.Trim();
+
+            var gateEps = 1e-6;
+            var gateEpsArg = args.FirstOrDefault(a => a.StartsWith("--gate-eps=", StringComparison.OrdinalIgnoreCase))
+                ?.Substring("--gate-eps=".Length)
+                ?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(gateEpsArg))
+            {
+                if (double.TryParse(gateEpsArg, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                    gateEps = parsed;
+            }
+
+            // Shift selection for eval (kept intentionally minimal)
+            IShift shift = (shiftArg ?? "identity").ToLowerInvariant() switch
+            {
+                "zero" => new EmbeddingShift.Core.Shifts.MultiplicativeShift(0f, EmbeddingDimensions.DIM),
+                _ => new NullShift()
+            };
 
             var res = await evalEntry.RunAsync(
                 shift,
@@ -291,6 +312,28 @@ switch (args[0].ToLowerInvariant())
             {
                 Console.WriteLine(res.Notes);
                 return;
+            }
+
+            // Acceptance gate is meaningful only in baseline mode (needs *.delta metrics)
+            if (useBaseline)
+            {
+
+                var gateProfile = args.FirstOrDefault(a => a.StartsWith("--gate-profile=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("--gate-profile=".Length)
+                    ?.Trim();
+
+                var gate = EvalAcceptanceGate.CreateFromProfile(gateProfile, gateEps);
+                var gateRes = gate.Evaluate(res.Metrics);
+
+                Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
+                foreach (var note in gateRes.Notes)
+                    Console.WriteLine(note);
+
+                if (!gateRes.Passed)
+                {
+                    Environment.ExitCode = 2;
+                    return;
+                }
             }
 
             break;
@@ -1199,7 +1242,7 @@ static class Helpers
         Console.WriteLine("  demo --shift <Name> [--dataset X]   run tiny demo (e.g., NoShift.IngestBased)");
         Console.WriteLine("  ingest-queries <path> <dataset>     ingest query vectors (supports queries.json or *.txt)");
         Console.WriteLine("  ingest-refs-chunked <path> <dataset> [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]  chunk-first refs ingest");
-        Console.WriteLine("  eval <dataset> [--sim] [--baseline]  evaluate persisted embeddings (or --sim for old behavior)");
+        Console.WriteLine("  eval <dataset> [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=N]  evaluate persisted embeddings (baseline gate optional)");
         Console.WriteLine("  run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]  ingest+eval flow");
         Console.WriteLine("  run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]  run sample insurance flow");
         Console.WriteLine("  ingest <path> <dataset>             alias for ingest-refs");
