@@ -7,6 +7,7 @@ namespace EmbeddingShift.Workflows.Eval
     public sealed record DatasetEvalRequest(
         string Dataset,
         bool UseSim = false,
+        bool UseBaseline = false,
         string QueryRole = "queries",
         string RefRole = "refs");
 
@@ -62,7 +63,9 @@ namespace EmbeddingShift.Workflows.Eval
                 queries = new() { q1, q2 };
                 refs = new() { r1, r2 };
 
-                var summary = _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
+                var summary = request.UseBaseline
+                    ? _evalWorkflow.RunWithBaselineSummary(shift, queries, refs, dataset)
+                    : _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
 
                 return new DatasetEvalResult(
                     Dataset: dataset,
@@ -70,7 +73,9 @@ namespace EmbeddingShift.Workflows.Eval
                     UsedSim: true,
                     QueryCount: queries.Count,
                     RefCount: refs.Count,
-                    ModeLine: "Eval mode: simulated embeddings (--sim).",
+                    ModeLine: request.UseBaseline
+                        ? "Eval mode: simulated embeddings (--sim), baseline=identity (--baseline)."
+                        : "Eval mode: simulated embeddings (--sim).",
                     Notes: "",
                     RunId: summary.RunId,
                     ResultsPath: summary.ResultsPath,
@@ -98,7 +103,9 @@ namespace EmbeddingShift.Workflows.Eval
                     Notes: $"No persisted embeddings under '{embeddingsRoot}' for dataset '{dataset}'.");
             }
 
-            var runSummary = _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
+            var runSummary = request.UseBaseline
+                ? _evalWorkflow.RunWithBaselineSummary(shift, queries, refs, dataset)
+                : _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
 
             return new DatasetEvalResult(
                 Dataset: dataset,
@@ -106,7 +113,9 @@ namespace EmbeddingShift.Workflows.Eval
                 UsedSim: false,
                 QueryCount: queries.Count,
                 RefCount: refs.Count,
-                ModeLine: $"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} queries vs {refs.Count} refs.",
+                ModeLine: request.UseBaseline
+                    ? $"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} queries vs {refs.Count} refs. baseline=identity (--baseline)."
+                    : $"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} queries vs {refs.Count} refs.",
                 Notes: "",
                 RunId: runSummary.RunId,
                 ResultsPath: runSummary.ResultsPath,

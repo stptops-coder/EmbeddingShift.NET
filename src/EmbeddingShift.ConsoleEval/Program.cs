@@ -270,15 +270,19 @@ switch (args[0].ToLowerInvariant())
     case "eval":
         {
             // usage:
-            //   eval <dataset>            -> load persisted embeddings from FileStore
-            //   eval <dataset> --sim      -> use simulated embeddings (old behavior)
+            //   eval <dataset>                 -> load persisted embeddings from FileStore
+            //   eval <dataset> --sim           -> use simulated embeddings (old behavior)
+            //   eval <dataset> --baseline      -> compare against identity baseline (shift vs baseline metrics)
             var dataset = args.Length >= 2 ? args[1] : "DemoDataset";
             var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
+            var useBaseline = args.Any(a => string.Equals(a, "--baseline", StringComparison.OrdinalIgnoreCase));
 
             // No real shift yet → identity via NullShift
             IShift shift = new NullShift();
 
-            var res = await evalEntry.RunAsync(shift, new DatasetEvalRequest(dataset, UseSim: useSim));
+            var res = await evalEntry.RunAsync(
+                shift,
+                new DatasetEvalRequest(dataset, UseSim: useSim, UseBaseline: useBaseline));
 
             if (!string.IsNullOrWhiteSpace(res.ModeLine))
                 Console.WriteLine(res.ModeLine);
@@ -289,16 +293,15 @@ switch (args[0].ToLowerInvariant())
                 return;
             }
 
-            // EvaluationWorkflow logs metrics/run output via EvaluationRunner + logger.
             break;
         }
     case "run":
         {
             // usage:
-            //   run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]
+            //   run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
             if (args.Length < 4)
             {
-                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]");
+                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]");
                 Environment.ExitCode = 1;
                 return;
             }
@@ -315,6 +318,7 @@ switch (args[0].ToLowerInvariant())
             var chunkOverlap = 100;
             var recursive = true;
             var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
+            var useBaseline = args.Any(a => string.Equals(a, "--baseline", StringComparison.OrdinalIgnoreCase));
 
             foreach (var a in args)
             {
@@ -342,7 +346,8 @@ switch (args[0].ToLowerInvariant())
                     ChunkSize: chunkSize,
                     ChunkOverlap: chunkOverlap,
                     Recursive: recursive,
-                    EvalUseSim: useSim),
+                    EvalUseSim: useSim,
+                    EvalUseBaseline: useBaseline),
                 txtLineIngestor,
                 queriesJsonIngestor);
 
@@ -354,15 +359,18 @@ switch (args[0].ToLowerInvariant())
 
             if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
                 Console.WriteLine(res.EvalResult.Notes);
+
             if (!res.EvalResult.DidRun)
                 Environment.ExitCode = 2;
+
             break;
         }
+
 
     case "run-demo":
         {
             // usage:
-            //   run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]
+            //   run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
             var dataset = "DemoDataset";
             var argi = 1;
 
@@ -376,6 +384,7 @@ switch (args[0].ToLowerInvariant())
             var chunkOverlap = 120;
             var recursive = true;
             var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
+            var useBaseline = args.Any(a => string.Equals(a, "--baseline", StringComparison.OrdinalIgnoreCase));
 
             for (var i = argi; i < args.Length; i++)
             {
@@ -414,7 +423,8 @@ switch (args[0].ToLowerInvariant())
                     ChunkSize: chunkSize,
                     ChunkOverlap: chunkOverlap,
                     Recursive: recursive,
-                    EvalUseSim: useSim),
+                    EvalUseSim: useSim,
+                    EvalUseBaseline: useBaseline),
                 txtLineIngestor,
                 queriesJsonIngestor);
 
@@ -432,6 +442,7 @@ switch (args[0].ToLowerInvariant())
 
             break;
         }
+
 
     case "ingest-queries":
         {
@@ -1188,9 +1199,9 @@ static class Helpers
         Console.WriteLine("  demo --shift <Name> [--dataset X]   run tiny demo (e.g., NoShift.IngestBased)");
         Console.WriteLine("  ingest-queries <path> <dataset>     ingest query vectors (supports queries.json or *.txt)");
         Console.WriteLine("  ingest-refs-chunked <path> <dataset> [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]  chunk-first refs ingest");
-        Console.WriteLine("  eval <dataset> [--sim]              evaluate persisted embeddings (or --sim for old behavior)");
-        Console.WriteLine("  run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]  ingest+eval flow");
-        Console.WriteLine("  run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]  run sample insurance flow");
+        Console.WriteLine("  eval <dataset> [--sim] [--baseline]  evaluate persisted embeddings (or --sim for old behavior)");
+        Console.WriteLine("  run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]  ingest+eval flow");
+        Console.WriteLine("  run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]  run sample insurance flow");
         Console.WriteLine("  ingest <path> <dataset>             alias for ingest-refs");
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
         Console.WriteLine("  mini-insurance-adaptive             adaptive selection for Mini-Insurance (alias for 'adaptive')");

@@ -1,8 +1,6 @@
 ﻿using EmbeddingShift.Abstractions;
-using EmbeddingShift.Workflows.Run;
 using EmbeddingShift.Workflows.Ingest;
 using EmbeddingShift.Workflows.Eval;
-
 
 namespace EmbeddingShift.Workflows.Run
 {
@@ -14,7 +12,8 @@ namespace EmbeddingShift.Workflows.Run
         int ChunkSize = 1000,
         int ChunkOverlap = 100,
         bool Recursive = true,
-        bool EvalUseSim = false);
+        bool EvalUseSim = false,
+        bool EvalUseBaseline = false);
 
     public sealed record DatasetRunResult(
         DatasetIngestResult RefsIngest,
@@ -77,7 +76,8 @@ namespace EmbeddingShift.Workflows.Run
                 shift,
                 new DatasetEvalRequest(
                     Dataset: dataset,
-                    UseSim: request.EvalUseSim),
+                    UseSim: request.EvalUseSim,
+                    UseBaseline: request.EvalUseBaseline),
                 ct);
 
             return new DatasetRunResult(

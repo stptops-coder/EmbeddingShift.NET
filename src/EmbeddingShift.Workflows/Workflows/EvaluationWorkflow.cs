@@ -35,5 +35,29 @@ namespace EmbeddingShift.Workflows
         {
             return _runner.RunEvaluationSummary(shift, queries, references, dataset);
         }
+
+        /// <summary>
+        /// Runs evaluation and compares it against a NoShift baseline.
+        /// </summary>
+        public void RunWithBaseline(
+            IShift shift,
+            IReadOnlyList<ReadOnlyMemory<float>> queries,
+            IReadOnlyList<ReadOnlyMemory<float>> references,
+            string dataset)
+        {
+            _runner.RunEvaluationWithBaseline(shift, queries, references, dataset);
+        }
+
+        /// <summary>
+        /// Runs evaluation with a NoShift baseline and returns a structured summary.
+        /// </summary>
+        public EvaluationRunSummary RunWithBaselineSummary(
+            IShift shift,
+            IReadOnlyList<ReadOnlyMemory<float>> queries,
+            IReadOnlyList<ReadOnlyMemory<float>> references,
+            string dataset)
+        {
+            return _runner.RunEvaluationWithBaselineSummary(shift, queries, references, dataset);
+        }
     }
 }
