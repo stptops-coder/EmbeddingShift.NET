@@ -55,16 +55,10 @@ namespace EmbeddingShift.Tests.Acceptance
                 await File.WriteAllTextAsync(qPath, "query one\nquery two\nquery three\n");
                 await File.WriteAllTextAsync(rPath, "answer one\nanswer two\nanswer three\n");
 
-                var ingestQ = await RunDotnetAsync(env, consoleEvalDll, "ingest-queries", qPath, dataset);
-                Assert.True(ingestQ.ExitCode == 0, BuildFailureMessage("ingest-queries failed", tempRoot, ingestQ));
+                var run = await RunDotnetAsync(env, consoleEvalDll, "run", rPath, qPath, dataset);
+                Assert.True(run.ExitCode == 0, BuildFailureMessage("run failed", tempRoot, run));
 
-                var ingestR = await RunDotnetAsync(env, consoleEvalDll, "ingest-refs", rPath, dataset);
-                Assert.True(ingestR.ExitCode == 0, BuildFailureMessage("ingest-refs failed", tempRoot, ingestR));
-
-                var eval = await RunDotnetAsync(env, consoleEvalDll, "eval", dataset);
-                Assert.True(eval.ExitCode == 0, BuildFailureMessage("eval failed", tempRoot, eval));
-
-                Assert.Contains("Eval mode: persisted embeddings", eval.StdOut);
+                Assert.Contains("Eval mode: persisted embeddings", run.StdOut);
 
                 var qDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "queries");
                 var rDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "refs");
@@ -72,11 +66,17 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.True(Directory.Exists(qDir), $"Missing queries dir: {qDir}");
                 Assert.True(Directory.Exists(rDir), $"Missing refs dir: {rDir}");
 
+                var manifestsDir = Path.Combine(tempRoot, "data", "manifests", dataset, "refs");
+                Assert.True(Directory.Exists(manifestsDir), $"Missing manifests dir: {manifestsDir}");
+
+                var manifestFiles = Directory.GetFiles(manifestsDir, "manifest_*.json", SearchOption.TopDirectoryOnly);
+                Assert.True(manifestFiles.Length >= 1, $"Expected >= 1 refs manifest, found {manifestFiles.Length}");
+
                 var qFiles = Directory.GetFiles(qDir, "*.json", SearchOption.TopDirectoryOnly);
                 var rFiles = Directory.GetFiles(rDir, "*.json", SearchOption.TopDirectoryOnly);
 
                 Assert.True(qFiles.Length >= 3, $"Expected >= 3 query embeddings, found {qFiles.Length}");
-                Assert.True(rFiles.Length >= 3, $"Expected >= 3 ref embeddings, found {rFiles.Length}");
+                Assert.True(rFiles.Length >= 1, $"Expected >= 1 ref embedding (chunk-first), found {rFiles.Length}");
             }
             finally
             {
