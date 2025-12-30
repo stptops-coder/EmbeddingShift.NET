@@ -172,6 +172,9 @@ static string ResolveSamplesDemoPath()
     // dataRoot = <repo-root>/data
     var dataRoot = DirectoryLayout.ResolveDataRoot();
     var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
+    if (RepositoryLayout.TryResolveRepoRoot(out var rr))
+        repoRoot = rr;
+
     return Path.Combine(repoRoot, "samples", "demo");
 }
 static async Task ExecuteDomainPackAsync(string domainId, string[] subArgs)
@@ -296,6 +299,7 @@ switch (args[0].ToLowerInvariant())
             if (args.Length < 4)
             {
                 Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]");
+                Environment.ExitCode = 1;
                 return;
             }
 
@@ -350,7 +354,8 @@ switch (args[0].ToLowerInvariant())
 
             if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
                 Console.WriteLine(res.EvalResult.Notes);
-
+            if (!res.EvalResult.DidRun)
+                Environment.ExitCode = 2;
             break;
         }
 
@@ -391,6 +396,9 @@ switch (args[0].ToLowerInvariant())
             var dataRoot = DirectoryLayout.ResolveDataRoot();
             var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
 
+            if (RepositoryLayout.TryResolveRepoRoot(out var rr))
+                repoRoot = rr;
+
             var refsPath = Path.Combine(repoRoot, "samples", "insurance", "policies");
             var queriesPath = Path.Combine(repoRoot, "samples", "insurance", "queries");
 
@@ -418,6 +426,9 @@ switch (args[0].ToLowerInvariant())
 
             if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
                 Console.WriteLine(res.EvalResult.Notes);
+
+            if (!res.EvalResult.DidRun)
+                Environment.ExitCode = 2;
 
             break;
         }
@@ -1178,6 +1189,8 @@ static class Helpers
         Console.WriteLine("  ingest-queries <path> <dataset>     ingest query vectors (supports queries.json or *.txt)");
         Console.WriteLine("  ingest-refs-chunked <path> <dataset> [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]  chunk-first refs ingest");
         Console.WriteLine("  eval <dataset> [--sim]              evaluate persisted embeddings (or --sim for old behavior)");
+        Console.WriteLine("  run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]  ingest+eval flow");
+        Console.WriteLine("  run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim]  run sample insurance flow");
         Console.WriteLine("  ingest <path> <dataset>             alias for ingest-refs");
         Console.WriteLine("  adaptive [--baseline]               adaptive shift selection (baseline = identity)");
         Console.WriteLine("  mini-insurance-adaptive             adaptive selection for Mini-Insurance (alias for 'adaptive')");
