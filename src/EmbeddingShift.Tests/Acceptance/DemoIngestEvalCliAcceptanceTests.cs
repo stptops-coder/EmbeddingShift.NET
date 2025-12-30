@@ -77,6 +77,16 @@ namespace EmbeddingShift.Tests.Acceptance
 
                 Assert.True(qFiles.Length >= 3, $"Expected >= 3 query embeddings, found {qFiles.Length}");
                 Assert.True(rFiles.Length >= 1, $"Expected >= 1 ref embedding (chunk-first), found {rFiles.Length}");
+
+                // Baseline compare mode should run on persisted embeddings and emit baseline/shift/delta metrics.
+                var evalBaseline = await RunDotnetAsync(env, consoleEvalDll, "eval", dataset, "--baseline");
+                Assert.True(evalBaseline.ExitCode == 0, BuildFailureMessage("eval --baseline failed", tempRoot, evalBaseline));
+
+                Assert.Contains("evaluation+baseline", evalBaseline.StdOut);
+                Assert.Contains("CosineSimilarityEvaluator.baseline", evalBaseline.StdOut);
+                Assert.Contains("CosineSimilarityEvaluator.shift", evalBaseline.StdOut);
+                Assert.Contains("CosineSimilarityEvaluator.delta", evalBaseline.StdOut);
+                Assert.Contains("baseline=identity", evalBaseline.StdOut);
             }
             finally
             {
