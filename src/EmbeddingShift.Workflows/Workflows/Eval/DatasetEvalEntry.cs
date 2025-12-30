@@ -17,7 +17,10 @@ namespace EmbeddingShift.Workflows.Eval
         int QueryCount,
         int RefCount,
         string ModeLine,
-        string Notes);
+        string Notes,
+        Guid? RunId = null,
+        string? ResultsPath = null,
+        IReadOnlyDictionary<string, double>? Metrics = null);
 
     /// <summary>
     /// Canonical, domain-neutral evaluation entrypoint.
@@ -59,7 +62,7 @@ namespace EmbeddingShift.Workflows.Eval
                 queries = new() { q1, q2 };
                 refs = new() { r1, r2 };
 
-                _evalWorkflow.Run(shift, queries, refs, dataset);
+                var summary = _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
 
                 return new DatasetEvalResult(
                     Dataset: dataset,
@@ -68,7 +71,10 @@ namespace EmbeddingShift.Workflows.Eval
                     QueryCount: queries.Count,
                     RefCount: refs.Count,
                     ModeLine: "Eval mode: simulated embeddings (--sim).",
-                    Notes: "");
+                    Notes: "",
+                    RunId: summary.RunId,
+                    ResultsPath: summary.ResultsPath,
+                    Metrics: summary.Metrics);
             }
 
             // Persisted embeddings (stable data layout)
@@ -92,7 +98,7 @@ namespace EmbeddingShift.Workflows.Eval
                     Notes: $"No persisted embeddings under '{embeddingsRoot}' for dataset '{dataset}'.");
             }
 
-            _evalWorkflow.Run(shift, queries, refs, dataset);
+            var runSummary = _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
 
             return new DatasetEvalResult(
                 Dataset: dataset,
@@ -101,7 +107,10 @@ namespace EmbeddingShift.Workflows.Eval
                 QueryCount: queries.Count,
                 RefCount: refs.Count,
                 ModeLine: $"Eval mode: persisted embeddings (dataset '{dataset}'): {queries.Count} queries vs {refs.Count} refs.",
-                Notes: "");
+                Notes: "",
+                RunId: runSummary.RunId,
+                ResultsPath: runSummary.ResultsPath,
+                Metrics: runSummary.Metrics);
         }
 
         private static List<ReadOnlyMemory<float>> LoadVectorsForSpace(string embeddingsRoot, string space)

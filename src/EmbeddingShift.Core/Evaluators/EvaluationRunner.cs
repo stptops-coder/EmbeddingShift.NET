@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using EmbeddingShift.Abstractions;
+using EmbeddingShift.Core.Infrastructure;
 
 namespace EmbeddingShift.Core.Evaluators
 {
@@ -46,9 +48,21 @@ namespace EmbeddingShift.Core.Evaluators
 
         /// <summary>
         /// Run all evaluators on the given shift and dataset.
-        /// Logs results persistently with IRunLogger.
+        /// Logs results with <see cref="IRunLogger"/>.
         /// </summary>
         public void RunEvaluation(
+            IShift shift,
+            IReadOnlyList<ReadOnlyMemory<float>> queries,
+            IReadOnlyList<ReadOnlyMemory<float>> references,
+            string datasetName)
+        {
+            _ = RunEvaluationSummary(shift, queries, references, datasetName);
+        }
+
+        /// <summary>
+        /// Runs evaluation and returns a structured summary (UI/automation friendly).
+        /// </summary>
+        public EvaluationRunSummary RunEvaluationSummary(
             IShift shift,
             IReadOnlyList<ReadOnlyMemory<float>> queries,
             IReadOnlyList<ReadOnlyMemory<float>> references,
@@ -59,10 +73,15 @@ namespace EmbeddingShift.Core.Evaluators
                 throw new ArgumentException("Queries must not be empty", nameof(queries));
             if (references == null || references.Count == 0)
                 throw new ArgumentException("References must not be empty", nameof(references));
+
             if (string.IsNullOrWhiteSpace(datasetName))
                 datasetName = "dataset";
 
+            var startedAtUtc = DateTime.UtcNow;
             var runId = _logger.StartRun("evaluation", datasetName);
+
+            var metrics = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
             var overall = Stopwatch.StartNew();
 
             foreach (var evaluator in _evaluators)
@@ -71,17 +90,38 @@ namespace EmbeddingShift.Core.Evaluators
                 var avg = EvaluateAverage(evaluator, shift, queries, references);
                 sw.Stop();
 
+                var name = evaluator.GetType().Name;
+
                 // metric: evaluator average score
-                _logger.LogMetric(runId, evaluator.GetType().Name, avg);
+                _logger.LogMetric(runId, name, avg);
+                metrics[name] = avg;
+
                 // metric: evaluator duration (ms)
-                _logger.LogMetric(runId, $"{evaluator.GetType().Name}.duration_ms", sw.Elapsed.TotalMilliseconds);
+                var durKey = $"{name}.duration_ms";
+                var dur = sw.Elapsed.TotalMilliseconds;
+                _logger.LogMetric(runId, durKey, dur);
+                metrics[durKey] = dur;
             }
 
             overall.Stop();
-            _logger.LogMetric(runId, "evaluation.duration_ms", overall.Elapsed.TotalMilliseconds);
+            var overallKey = "evaluation.duration_ms";
+            var overallMs = overall.Elapsed.TotalMilliseconds;
+            _logger.LogMetric(runId, overallKey, overallMs);
+            metrics[overallKey] = overallMs;
 
-            _logger.CompleteRun(runId,
-                $"./results/{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid()}");
+            var resultsPath = CreateResultsDirectory("evaluation", runId);
+            _logger.CompleteRun(runId, resultsPath);
+
+            var completedAtUtc = DateTime.UtcNow;
+
+            return new EvaluationRunSummary(
+                RunId: runId,
+                Kind: "evaluation",
+                Dataset: datasetName,
+                StartedAtUtc: startedAtUtc,
+                CompletedAtUtc: completedAtUtc,
+                ResultsPath: resultsPath,
+                Metrics: metrics);
         }
 
         /// <summary>
@@ -94,15 +134,31 @@ namespace EmbeddingShift.Core.Evaluators
             IReadOnlyList<ReadOnlyMemory<float>> references,
             string datasetName)
         {
+            _ = RunEvaluationWithBaselineSummary(shift, queries, references, datasetName);
+        }
+
+        /// <summary>
+        /// Runs evaluation with a NoShift baseline and returns a structured summary.
+        /// </summary>
+        public EvaluationRunSummary RunEvaluationWithBaselineSummary(
+            IShift shift,
+            IReadOnlyList<ReadOnlyMemory<float>> queries,
+            IReadOnlyList<ReadOnlyMemory<float>> references,
+            string datasetName)
+        {
             if (shift == null) throw new ArgumentNullException(nameof(shift));
             if (queries == null || queries.Count == 0)
                 throw new ArgumentException("Queries must not be empty", nameof(queries));
             if (references == null || references.Count == 0)
                 throw new ArgumentException("References must not be empty", nameof(references));
+
             if (string.IsNullOrWhiteSpace(datasetName))
                 datasetName = "dataset";
 
+            var startedAtUtc = DateTime.UtcNow;
             var runId = _logger.StartRun("evaluation+baseline", datasetName);
+
+            var metrics = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
             var baseline = new EmbeddingShift.Core.Shifts.NoShiftIngestBased();
 
@@ -113,15 +169,58 @@ namespace EmbeddingShift.Core.Evaluators
                 var delta = avgShift - avgBase;
 
                 var name = evaluator.GetType().Name;
-                _logger.LogMetric(runId, $"{name}.baseline", avgBase);
-                _logger.LogMetric(runId, $"{name}.shift", avgShift);
-                _logger.LogMetric(runId, $"{name}.delta", delta);
+
+                var kBase = $"{name}.baseline";
+                var kShift = $"{name}.shift";
+                var kDelta = $"{name}.delta";
+
+                _logger.LogMetric(runId, kBase, avgBase);
+                _logger.LogMetric(runId, kShift, avgShift);
+                _logger.LogMetric(runId, kDelta, delta);
+
+                metrics[kBase] = avgBase;
+                metrics[kShift] = avgShift;
+                metrics[kDelta] = delta;
             }
 
-            _logger.CompleteRun(runId,
-                $"./results/{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid()}");
+            var resultsPath = CreateResultsDirectory("evaluation+baseline", runId);
+            _logger.CompleteRun(runId, resultsPath);
+
+            var completedAtUtc = DateTime.UtcNow;
+
+            return new EvaluationRunSummary(
+                RunId: runId,
+                Kind: "evaluation+baseline",
+                Dataset: datasetName,
+                StartedAtUtc: startedAtUtc,
+                CompletedAtUtc: completedAtUtc,
+                ResultsPath: resultsPath,
+                Metrics: metrics);
         }
 
+        private static string CreateResultsDirectory(string kind, Guid runId)
+        {
+            var root = DirectoryLayout.ResolveResultsRoot();
+            var safeKind = SanitizePathPart(kind);
+            var dirName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{safeKind}_{runId:N}";
+            var path = Path.Combine(root, dirName);
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        private static string SanitizePathPart(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "run";
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var chars = name.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+                if (Array.IndexOf(invalid, chars[i]) >= 0) chars[i] = '_';
+
+            var sanitized = new string(chars).Trim();
+            return string.IsNullOrWhiteSpace(sanitized) ? "run" : sanitized;
+        }
 
         /// <summary>
         /// Convenience factory with common default evaluators.

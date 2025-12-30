@@ -12,15 +12,28 @@ namespace EmbeddingShift.Workflows
 
         public EvaluationWorkflow(EvaluationRunner runner)
         {
-            _runner = runner;
+            _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         }
 
-        public void Run(IShift shift,
-            IReadOnlyList<ReadOnlyMemory<float>> queries, 
-            IReadOnlyList<ReadOnlyMemory<float>> references, 
+        public void Run(
+            IShift shift,
+            IReadOnlyList<ReadOnlyMemory<float>> queries,
+            IReadOnlyList<ReadOnlyMemory<float>> references,
             string dataset)
         {
             _runner.RunEvaluation(shift, queries, references, dataset);
+        }
+
+        /// <summary>
+        /// Runs evaluation and returns a structured summary (UI/automation friendly).
+        /// </summary>
+        public EvaluationRunSummary RunWithSummary(
+            IShift shift,
+            IReadOnlyList<ReadOnlyMemory<float>> queries,
+            IReadOnlyList<ReadOnlyMemory<float>> references,
+            string dataset)
+        {
+            return _runner.RunEvaluationSummary(shift, queries, references, dataset);
         }
     }
 }
