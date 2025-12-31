@@ -160,32 +160,6 @@ var evalWf = new EvaluationWorkflow(runner);
 var evalEntry = new DatasetEvalEntry(provider, evalWf);
 var runEntry = new DatasetRunEntry(ingestDatasetEntry, evalEntry);
 
-static string ResolveSamplesDemoPath()
-{
-    // dataRoot = <repo-root>/data
-    var dataRoot = DirectoryLayout.ResolveDataRoot();
-    var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
-    if (RepositoryLayout.TryResolveRepoRoot(out var rr))
-        repoRoot = rr;
-
-    return Path.Combine(repoRoot, "samples", "demo");
-}
-static async Task ExecuteDomainPackAsync(string domainId, string[] subArgs)
-{
-    var pack = DomainPackRegistry.TryGet(domainId);
-    if (pack is null)
-    {
-        Console.WriteLine($"Unknown domain pack '{domainId}'.");
-        Environment.ExitCode = 1;
-        return;
-    }
-
-    var exitCode = await pack.ExecuteAsync(subArgs, msg => Console.WriteLine(msg));
-    if (exitCode != 0)
-        Environment.ExitCode = exitCode;
-}
-
-
 // --- CLI ---
 if (args.Length == 0)
 {
@@ -386,152 +360,16 @@ switch (args[0].ToLowerInvariant())
 
     case "mini-insurance":
         {
-            Console.WriteLine("[MiniInsurance] Running file-based insurance workflow using sample policies and queries...");
-
-            // Workflow instance as in the tests.
-            IWorkflow workflow = new FileBasedInsuranceMiniWorkflow();
-            var wfRunner = new StatsAwareWorkflowRunner();
-
-            // Runs like in FileBasedInsuranceMiniWorkflowTests, just under a different run name.
-            var result = await wfRunner.ExecuteAsync("FileBased-Insurance-Mini-Console", workflow);
-
-            // Use the central layout helper: /results/insurance (with safe fallbacks).
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            string? persistedPath = null;
-
-            try
-            {
-                persistedPath = await RunPersistor.Persist(baseDir, result);
-                Console.WriteLine($"[MiniInsurance] Results persisted to: {persistedPath}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MiniInsurance] WARNING: Failed to persist results under '{baseDir}': {ex.Message}");
-            }
-
-            if (persistedPath is null)
-            {
-                Console.WriteLine("[MiniInsurance] WARNING: Could not persist results.");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine(result.ReportMarkdown("Mini Insurance Evaluation"));
+            await MiniInsuranceLegacyCliCommands.RunMiniInsuranceAsync();
             break;
         }
+
     case "mini-insurance-first-delta":
         {
-            Console.WriteLine("[MiniInsurance] Baseline vs FirstShift vs First+Delta (mini workflow)");
-            Console.WriteLine();
-
-            var wfRunner = new StatsAwareWorkflowRunner();
-
-            // Baseline: default pipeline (no shifts)
-            IWorkflow baselineWorkflow = new FileBasedInsuranceMiniWorkflow();
-            var baselineResult = await wfRunner.ExecuteAsync(
-                "FileBased-Insurance-Mini-Baseline",
-                baselineWorkflow);
-
-            if (!baselineResult.Success)
-            {
-                Console.WriteLine("[MiniInsurance] Baseline run failed:");
-                Console.WriteLine(baselineResult.ReportMarkdown("Mini Insurance Baseline"));
-                break;
-            }
-
-            // FirstShift only
-            var firstPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstShiftPipeline();
-            IWorkflow firstWorkflow = new FileBasedInsuranceMiniWorkflow(firstPipeline);
-            var firstResult = await wfRunner.ExecuteAsync(
-                "FileBased-Insurance-Mini-FirstShift",
-                firstWorkflow);
-
-            if (!firstResult.Success)
-            {
-                Console.WriteLine("[MiniInsurance] FirstShift run failed:");
-                Console.WriteLine(firstResult.ReportMarkdown("Mini Insurance FirstShift"));
-                break;
-            }
-
-            // First + Delta
-            var firstDeltaPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline();
-            IWorkflow firstDeltaWorkflow = new FileBasedInsuranceMiniWorkflow(firstDeltaPipeline);
-            var firstDeltaResult = await wfRunner.ExecuteAsync(
-                "FileBased-Insurance-Mini-FirstPlusDelta",
-                firstDeltaWorkflow);
-
-            if (!firstDeltaResult.Success)
-            {
-                Console.WriteLine("[MiniInsurance] First+Delta run failed:");
-                Console.WriteLine(firstDeltaResult.ReportMarkdown("Mini Insurance First+Delta"));
-                break;
-            }
-
-            // Persist individual runs under /results/insurance and build a JSON+Markdown comparison.
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            string? baselineRunDir = null;
-            string? firstRunDir = null;
-            string? firstPlusDeltaRunDir = null;
-            string? comparisonDir = null;
-
-            try
-            {
-                baselineRunDir = await RunPersistor.Persist(baseDir, baselineResult);
-                firstRunDir = await RunPersistor.Persist(baseDir, firstResult);
-                firstPlusDeltaRunDir = await RunPersistor.Persist(baseDir, firstDeltaResult);
-
-                var comparison = MiniInsuranceFirstDeltaArtifacts.CreateComparison(
-                    baselineResult,
-                    firstResult,
-                    firstDeltaResult,
-                    baselineRunDir,
-                    firstRunDir,
-                    firstPlusDeltaRunDir);
-
-                comparisonDir = MiniInsuranceFirstDeltaArtifacts.PersistComparison(baseDir, comparison);
-
-                Console.WriteLine($"[MiniInsurance] Baseline run persisted to:      {baselineRunDir}");
-                Console.WriteLine($"[MiniInsurance] FirstShift run persisted to:   {firstRunDir}");
-                Console.WriteLine($"[MiniInsurance] First+Delta run persisted to: {firstPlusDeltaRunDir}");
-                Console.WriteLine($"[MiniInsurance] Metrics comparison persisted to: {comparisonDir}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MiniInsurance] WARNING: Failed to persist First/Delta artifacts under '{baseDir}': {ex.Message}");
-            }
-
-            var baselineMetrics = baselineResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
-            var firstMetrics = firstResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
-            var firstDeltaMetrics = firstDeltaResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
-
-            var allKeys = new System.Collections.Generic.SortedSet<string>(baselineMetrics.Keys);
-            allKeys.UnionWith(firstMetrics.Keys);
-            allKeys.UnionWith(firstDeltaMetrics.Keys);
-
-            Console.WriteLine();
-            Console.WriteLine("[MiniInsurance] Metrics comparison (Baseline vs First vs First+Delta):");
-            Console.WriteLine();
-            Console.WriteLine("Metric                Baseline    First      First+Delta   ΔFirst-BL   ΔFirst+Delta-BL");
-            Console.WriteLine("-------------------   --------    --------   -----------   ---------   ---------------");
-
-            foreach (var key in allKeys)
-            {
-                baselineMetrics.TryGetValue(key, out var b);
-                firstMetrics.TryGetValue(key, out var f);
-                firstDeltaMetrics.TryGetValue(key, out var fd);
-
-                var df = f - b;
-                var dfd = fd - b;
-
-                Console.WriteLine(
-                    $"{key,-19}   {b,8:F3}    {f,8:F3}   {fd,11:F3}   {df,9:+0.000;-0.000;0.000}   {dfd,15:+0.000;-0.000;0.000}");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("[MiniInsurance] Done.");
+            await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync();
             break;
         }
+
 
     case "mini-insurance-first-delta-pipeline":
         {
@@ -571,39 +409,10 @@ switch (args[0].ToLowerInvariant())
 
     case "mini-insurance-first-delta-aggregate":
         {
-            Console.WriteLine("[MiniInsurance] Aggregating First/Delta metrics from previous comparison runs...");
-            Console.WriteLine();
-
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            try
-            {
-                var aggregate = MiniInsuranceFirstDeltaAggregator.AggregateFromDirectory(baseDir);
-                var aggregateDir = MiniInsuranceFirstDeltaAggregator.PersistAggregate(baseDir, aggregate);
-
-                Console.WriteLine($"[MiniInsurance] Aggregated {aggregate.ComparisonCount} comparison runs.");
-                Console.WriteLine($"[MiniInsurance] Aggregate metrics persisted to: {aggregateDir}");
-                Console.WriteLine();
-
-                Console.WriteLine("Metric                AvgBaseline   AvgFirst    AvgFirst+Delta   AvgΔFirst-BL   AvgΔFirst+Delta-BL");
-                Console.WriteLine("-------------------   -----------   ---------   --------------   ------------   -------------------");
-
-                foreach (var row in aggregate.Metrics)
-                {
-                    Console.WriteLine(
-                        $"{row.Metric,-19}   {row.AverageBaseline,11:0.000}   {row.AverageFirst,9:0.000}   {row.AverageFirstPlusDelta,14:0.000}   {row.AverageDeltaFirstVsBaseline,12:+0.000;-0.000;0.000}   {row.AverageDeltaFirstPlusDeltaVsBaseline,19:+0.000;-0.000;0.000}");
-                }
-
-                Console.WriteLine();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MiniInsurance] ERROR while aggregating metrics: {ex.Message}");
-            }
-
-            Console.WriteLine("[MiniInsurance] Aggregation done.");
+            MiniInsuranceLegacyCliCommands.AggregateFirstDelta();
             break;
         }
+
 
     case "shift-training-inspect":
         {
@@ -624,239 +433,20 @@ switch (args[0].ToLowerInvariant())
         }
     case "mini-insurance-first-delta-train":
         {
-            Console.WriteLine("[MiniInsurance] Training Delta shift candidate from aggregated First/Delta metrics...");
-            Console.WriteLine();
-
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            try
-            {
-                var aggregate = MiniInsuranceFirstDeltaAggregator.AggregateFromDirectory(baseDir);
-                var candidate = MiniInsuranceFirstDeltaTrainer.TrainFromAggregate(baseDir, aggregate);
-                var trainingDir = MiniInsuranceFirstDeltaTrainer.PersistCandidate(baseDir, candidate);
-
-                Console.WriteLine($"[MiniInsurance] Used {aggregate.ComparisonCount} comparison runs.");
-                Console.WriteLine($"[MiniInsurance] Training artifacts persisted to: {trainingDir}");
-                Console.WriteLine();
-
-                Console.WriteLine($"Combined First improvement:       {candidate.ImprovementFirst:+0.000;-0.000;0.000}");
-                Console.WriteLine($"Combined First+Delta improvement: {candidate.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
-                Console.WriteLine($"Delta improvement vs First:       {candidate.DeltaImprovement:+0.000;-0.000;0.000}");
-                Console.WriteLine();
-                Console.WriteLine("Proposed Delta vector (index: value):");
-
-                for (int i = 0; i < candidate.DeltaVector.Length; i++)
-                {
-                    Console.WriteLine($"  [{i}] = {candidate.DeltaVector[i]:+0.000;-0.000;0.000}");
-                }
-
-                Console.WriteLine();
-                Console.WriteLine("[MiniInsurance] Training done.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MiniInsurance] ERROR: Training failed under '{baseDir}': {ex.Message}");
-            }
-
+            MiniInsuranceLegacyCliCommands.TrainFirstDelta();
             break;
         }
+
     case "mini-insurance-first-learned-delta":
         {
-            Console.WriteLine("[MiniInsurance] Baseline vs FirstShift vs First+LearnedDelta (mini workflow)");
-            Console.WriteLine();
-
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-
-            // Load latest trained Delta candidate.
-            var learnedDelta = MiniInsuranceFirstDeltaCandidateLoader
-                .LoadLatestDeltaVectorOrDefault(baseDir, out var found);
-
-            if (!found)
-            {
-                Console.WriteLine("[MiniInsurance] No trained Delta candidate found.");
-                Console.WriteLine($"  Looked under: {baseDir}");
-                Console.WriteLine("  Run 'mini-insurance-first-delta', then");
-                Console.WriteLine("      'mini-insurance-first-delta-aggregate' and");
-                Console.WriteLine("      'mini-insurance-first-delta-train' first.");
-                break;
-            }
-
-            var wfRunner = new StatsAwareWorkflowRunner();
-
-            // Baseline: default pipeline (no shifts).
-            IWorkflow baselineWorkflow = new FileBasedInsuranceMiniWorkflow();
-            var baselineResult = await wfRunner.ExecuteAsync(
-                "FileBased-Insurance-Mini-Baseline-Learned",
-                baselineWorkflow);
-
-            if (!baselineResult.Success)
-            {
-                Console.WriteLine("[MiniInsurance] Baseline run failed:");
-                Console.WriteLine(baselineResult.ReportMarkdown("Mini Insurance Baseline (LearnedDelta)"));
-                break;
-            }
-
-            // FirstShift only.
-            var firstPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstShiftPipeline();
-            IWorkflow firstWorkflow = new FileBasedInsuranceMiniWorkflow(firstPipeline);
-            var firstResult = await wfRunner.ExecuteAsync(
-                "FileBased-Insurance-Mini-FirstShift-Learned",
-                firstWorkflow);
-
-            if (!firstResult.Success)
-            {
-                Console.WriteLine("[MiniInsurance] FirstShift run failed:");
-                Console.WriteLine(firstResult.ReportMarkdown("Mini Insurance FirstShift (LearnedDelta)"));
-                break;
-            }
-
-            // First + learned Delta.
-            var learnedPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline(learnedDelta);
-            IWorkflow learnedWorkflow = new FileBasedInsuranceMiniWorkflow(learnedPipeline);
-            var learnedResult = await wfRunner.ExecuteAsync(
-                "FileBased-Insurance-Mini-FirstPlusLearnedDelta",
-                learnedWorkflow);
-
-            if (!learnedResult.Success)
-            {
-                Console.WriteLine("[MiniInsurance] First+LearnedDelta run failed:");
-                Console.WriteLine(learnedResult.ReportMarkdown("Mini Insurance First+LearnedDelta"));
-                break;
-            }
-
-            // Persist runs + comparison so they can be picked up again by the aggregation step.
-            string? baselineRunDir = null;
-            string? firstRunDir = null;
-            string? learnedRunDir = null;
-            string? comparisonDir = null;
-
-            try
-            {
-                baselineRunDir = await RunPersistor.Persist(baseDir, baselineResult);
-                firstRunDir = await RunPersistor.Persist(baseDir, firstResult);
-                learnedRunDir = await RunPersistor.Persist(baseDir, learnedResult);
-
-                var comparison = MiniInsuranceFirstDeltaArtifacts.CreateComparison(
-                    baselineResult,
-                    firstResult,
-                    learnedResult,
-                    baselineRunDir,
-                    firstRunDir,
-                    learnedRunDir);
-
-                comparisonDir = MiniInsuranceFirstDeltaArtifacts.PersistComparison(baseDir, comparison);
-
-                Console.WriteLine($"[MiniInsurance] Baseline run persisted to:           {baselineRunDir}");
-                Console.WriteLine($"[MiniInsurance] FirstShift run persisted to:        {firstRunDir}");
-                Console.WriteLine($"[MiniInsurance] First+LearnedDelta run persisted to:{learnedRunDir}");
-                Console.WriteLine($"[MiniInsurance] Metrics comparison persisted to:    {comparisonDir}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[MiniInsurance] WARNING: Failed to persist LearnedDelta artifacts under '{baseDir}': {ex.Message}");
-            }
-
-            var baselineMetrics = baselineResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
-            var firstMetrics = firstResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
-            var learnedMetrics = learnedResult.Metrics ?? new System.Collections.Generic.Dictionary<string, double>();
-
-            var allKeys = new System.Collections.Generic.SortedSet<string>(baselineMetrics.Keys);
-            allKeys.UnionWith(firstMetrics.Keys);
-            allKeys.UnionWith(learnedMetrics.Keys);
-
-            Console.WriteLine();
-            Console.WriteLine("[MiniInsurance] Metrics comparison (Baseline vs First vs First+LearnedDelta):");
-            Console.WriteLine();
-            Console.WriteLine("Metric                Baseline    First      First+LearnedΔ   ΔFirst-BL   ΔFirst+LearnedΔ-BL");
-            Console.WriteLine("-------------------   --------    --------   --------------   ---------   -------------------");
-
-            foreach (var key in allKeys)
-            {
-                baselineMetrics.TryGetValue(key, out var b);
-                firstMetrics.TryGetValue(key, out var f);
-                learnedMetrics.TryGetValue(key, out var fl);
-
-                var df = f - b;
-                var dfl = fl - b;
-
-                Console.WriteLine(
-                    $"{key,-19}   {b,8:F3}    {f,8:F3}   {fl,14:F3}   {df,9:+0.000;-0.000;0.000}   {dfl,19:+0.000;-0.000;0.000}");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("[MiniInsurance] LearnedDelta comparison done.");
+            await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstLearnedDeltaAsync();
             break;
         }
+
 
     case "mini-insurance-first-delta-inspect":
         {
-            Console.WriteLine("[MiniInsurance] Inspecting latest trained Delta candidate...");
-            Console.WriteLine("  mini-insurance-shift-training-inspect  inspect latest generic shift training result for mini-insurance");
-            Console.WriteLine("  mini-insurance-shift-training-history  list recent generic shift training results for mini-insurance");
-            Console.WriteLine();
-
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-            var candidate = MiniInsuranceFirstDeltaCandidateLoader
-                .LoadLatestCandidate(baseDir, out var found);
-
-            if (!found || candidate == null)
-            {
-                Console.WriteLine("[MiniInsurance] No shift candidate found.");
-                Console.WriteLine($"  Looked under: {baseDir}");
-                Console.WriteLine("  Run 'mini-insurance-first-delta-aggregate' and");
-                Console.WriteLine("      'mini-insurance-first-delta-train' first.");
-                break;
-            }
-
-            Console.WriteLine($"Created (UTC):            {candidate.CreatedUtc:O}");
-            Console.WriteLine($"Base directory:           {candidate.BaseDirectory}");
-            Console.WriteLine($"Comparison runs:          {candidate.ComparisonRuns}");
-            Console.WriteLine($"Improvement First:        {candidate.ImprovementFirst:+0.000;-0.000;0.000}");
-            Console.WriteLine($"Improvement First+Delta:  {candidate.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
-            Console.WriteLine($"Delta improvement vs First: {candidate.DeltaImprovement:+0.000;-0.000;0.000}");
-            Console.WriteLine();
-
-            var vector = candidate.DeltaVector ?? Array.Empty<float>();
-            if (vector.Length == 0)
-            {
-                Console.WriteLine("Delta vector: (empty)");
-                Console.WriteLine();
-                Console.WriteLine("[MiniInsurance] Candidate inspection done.");
-                break;
-            }
-
-            Console.WriteLine("Top Delta dimensions (by |value|):");
-
-            var used = new bool[vector.Length];
-            const int topN = 8;
-
-            for (int n = 0; n < topN; n++)
-            {
-                var bestIdx = -1;
-                var bestAbs = 0.0f;
-
-                for (int i = 0; i < vector.Length; i++)
-                {
-                    if (used[i]) continue;
-                    var abs = Math.Abs(vector[i]);
-                    if (abs > bestAbs)
-                    {
-                        bestAbs = abs;
-                        bestIdx = i;
-                    }
-                }
-
-                if (bestIdx < 0 || bestAbs <= 0.0f)
-                {
-                    break;
-                }
-
-                used[bestIdx] = true;
-                Console.WriteLine($"  [{bestIdx}] = {vector[bestIdx]:+0.000;-0.000;0.000}");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("[MiniInsurance] Candidate inspection done.");
+            MiniInsuranceLegacyCliCommands.InspectFirstDeltaCandidate();
             break;
         }
 
