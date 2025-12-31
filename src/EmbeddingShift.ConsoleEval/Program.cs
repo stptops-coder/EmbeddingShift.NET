@@ -198,503 +198,99 @@ switch (args[0].ToLowerInvariant())
 {
     case "domain":
         {
-            // Entry point for domain packs (towards multi-domain ConsoleEval).
-            //
-            // Usage:
-            //   domain list
-            //   domain <domainId> <subcommand> [...]
-
-            var sub = args.Length >= 2 ? args[1] : "list";
-
-            if (string.Equals(sub, "list", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(sub, "--list", StringComparison.OrdinalIgnoreCase))
-            {
-                Console.WriteLine("Available domain packs:");
-                foreach (var pack in DomainPackRegistry.All)
-                {
-                    Console.WriteLine($"  {pack.DomainId,-18} {pack.DisplayName}");
-                }
-                Console.WriteLine();
-                Console.WriteLine("Example:");
-                Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pipeline");
-                break;
-            }
-
-            var packById = DomainPackRegistry.TryGet(sub);
-            if (packById is null)
-            {
-                Console.WriteLine($"Unknown domain pack '{sub}'.");
-                Console.WriteLine();
-                Console.WriteLine("Use:");
-                Console.WriteLine("  domain list");
-                break;
-            }
-
-            var subArgs = args.Skip(2).ToArray();
-            var exitCode = await packById.ExecuteAsync(subArgs, msg => Console.WriteLine(msg));
+            var exitCode = await DomainCliCommands.DomainAsync(args);
             if (exitCode != 0)
             {
                 Environment.ExitCode = exitCode;
             }
-
             break;
         }
+
     case "ingest-legacy":
         {
-            // Legacy: ingest refs only (plain). Prefer 'ingest-dataset' / 'ingest' for canonical ingest.
-            var input = args.Length >= 3
-               ? args[1]
-               : ResolveSamplesDemoPath();
-
-            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
-
-            await ingestEntry.RunAsync(
-                new DatasetIngestRequest(
-                    Dataset: dataset,
-                    Role: "refs",
-                    InputPath: input,
-                    Mode: DatasetIngestMode.Plain),
-                textLineIngestor: txtLineIngestor);
-
-            Console.WriteLine("Ingest finished (legacy).");
+            var exitCode = await DatasetCliCommands.IngestLegacyAsync(args, ingestEntry, txtLineIngestor);
+            if (exitCode != 0)
+            {
+                Environment.ExitCode = exitCode;
+            }
             break;
         }
 
     case "eval":
         {
-            // usage:
-            //   eval <dataset>                 -> load persisted embeddings from FileStore
-            //   eval <dataset> --sim           -> use simulated embeddings (old behavior)
-            //   eval <dataset> --baseline      -> compare against identity baseline (shift vs baseline metrics)
-            var dataset = args.Length >= 2 ? args[1] : "DemoDataset";
-            var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
-            var useBaseline = args.Any(a => string.Equals(a, "--baseline", StringComparison.OrdinalIgnoreCase));
-
-            // eval-only options
-            var shiftArg = args.FirstOrDefault(a => a.StartsWith("--shift=", StringComparison.OrdinalIgnoreCase))
-                ?.Substring("--shift=".Length)
-                ?.Trim();
-
-            var gateEps = 1e-6;
-            var gateEpsArg = args.FirstOrDefault(a => a.StartsWith("--gate-eps=", StringComparison.OrdinalIgnoreCase))
-                ?.Substring("--gate-eps=".Length)
-                ?.Trim();
-
-            if (!string.IsNullOrWhiteSpace(gateEpsArg))
+            var exitCode = await DatasetCliCommands.EvalAsync(args, evalEntry);
+            if (exitCode != 0)
             {
-                if (double.TryParse(gateEpsArg, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-                    gateEps = parsed;
-            }
-
-            // Shift selection for eval (kept intentionally minimal)
-            IShift shift = (shiftArg ?? "identity").ToLowerInvariant() switch
-            {
-                "zero" => new EmbeddingShift.Core.Shifts.MultiplicativeShift(0f, EmbeddingDimensions.DIM),
-                _ => new NullShift()
-            };
-
-            var res = await evalEntry.RunAsync(
-                shift,
-                new DatasetEvalRequest(dataset, UseSim: useSim, UseBaseline: useBaseline));
-
-            if (!string.IsNullOrWhiteSpace(res.ModeLine))
-                Console.WriteLine(res.ModeLine);
-
-            if (!res.DidRun)
-            {
-                Console.WriteLine(res.Notes);
+                Environment.ExitCode = exitCode;
                 return;
             }
-
-            // Acceptance gate is meaningful only in baseline mode (needs *.delta metrics)
-            if (useBaseline)
-            {
-
-                var gateProfile = args.FirstOrDefault(a => a.StartsWith("--gate-profile=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("--gate-profile=".Length)
-                    ?.Trim();
-
-                var gate = EvalAcceptanceGate.CreateFromProfile(gateProfile, gateEps);
-                var gateRes = gate.Evaluate(res.Metrics);
-
-                Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
-                foreach (var note in gateRes.Notes)
-                    Console.WriteLine(note);
-
-                if (!gateRes.Passed)
-                {
-                    Environment.ExitCode = 2;
-                    return;
-                }
-            }
-
             break;
         }
+
     case "run":
         {
-            // usage:
-            //   run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
-            if (args.Length < 4)
+            var exitCode = await DatasetCliCommands.RunAsync(args, runEntry, txtLineIngestor, queriesJsonIngestor);
+            if (exitCode != 0)
             {
-                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]");
-                Environment.ExitCode = 1;
+                Environment.ExitCode = exitCode;
                 return;
             }
-
-            var refsPath = args[1];
-            var queriesPath = args[2];
-            var dataset = args[3];
-
-            var refsMode = args.Any(a => string.Equals(a, "--refs-plain", StringComparison.OrdinalIgnoreCase))
-                ? DatasetIngestMode.Plain
-                : DatasetIngestMode.ChunkFirst;
-
-            var chunkSize = 1000;
-            var chunkOverlap = 100;
-            var recursive = true;
-            var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
-            var useBaseline = args.Any(a => string.Equals(a, "--baseline", StringComparison.OrdinalIgnoreCase));
-
-            foreach (var a in args)
-            {
-                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
-                    chunkSize = cs;
-
-                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
-                    chunkOverlap = co;
-
-                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
-                    recursive = false;
-            }
-
-            var shiftArg = args.FirstOrDefault(a => a.StartsWith("--shift=", StringComparison.OrdinalIgnoreCase))
-                ?.Substring("--shift=".Length)
-                ?.Trim();
-
-            // Shift selection for eval (kept intentionally minimal)
-            IShift shift = (shiftArg ?? "identity").ToLowerInvariant() switch
-            {
-                "zero" => new EmbeddingShift.Core.Shifts.MultiplicativeShift(0f, EmbeddingDimensions.DIM),
-                _ => new NullShift()
-            };
-
-            var res = await runEntry.RunAsync(
-                shift,
-                new DatasetRunRequest(
-                    Dataset: dataset,
-                    RefsPath: refsPath,
-                    QueriesPath: queriesPath,
-                    RefsMode: refsMode,
-                    ChunkSize: chunkSize,
-                    ChunkOverlap: chunkOverlap,
-                    Recursive: recursive,
-                    EvalUseSim: useSim,
-                    EvalUseBaseline: useBaseline),
-                txtLineIngestor,
-                queriesJsonIngestor);
-
-            if (res.RefsIngest.Mode == DatasetIngestMode.ChunkFirst && !string.IsNullOrWhiteSpace(res.RefsIngest.ManifestPath))
-                Console.WriteLine($"Refs manifest: {res.RefsIngest.ManifestPath}");
-
-            if (!string.IsNullOrWhiteSpace(res.EvalResult.ModeLine))
-                Console.WriteLine(res.EvalResult.ModeLine);
-
-            if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
-                Console.WriteLine(res.EvalResult.Notes);
-
-            if (useBaseline && res.EvalResult.DidRun)
-            {
-                var gateEps = 1e-6;
-                var gateEpsArg = args.FirstOrDefault(a => a.StartsWith("--gate-eps=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("--gate-eps=".Length)
-                    ?.Trim();
-
-                if (!string.IsNullOrWhiteSpace(gateEpsArg))
-                {
-                    if (double.TryParse(gateEpsArg, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-                        gateEps = parsed;
-                }
-
-                var gateProfile = args.FirstOrDefault(a => a.StartsWith("--gate-profile=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("--gate-profile=".Length)
-                    ?.Trim();
-
-                var gate = EvalAcceptanceGate.CreateFromProfile(gateProfile, gateEps);
-                var gateRes = gate.Evaluate(res.EvalResult.Metrics);
-
-                Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
-                foreach (var note in gateRes.Notes)
-                    Console.WriteLine(note);
-
-                if (!gateRes.Passed)
-                {
-                    Environment.ExitCode = 2;
-                }
-            }
-
             break;
         }
-
 
     case "run-demo":
         {
-            // usage:
-            //   run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
-            var dataset = "DemoDataset";
-            var argi = 1;
-
-            if (args.Length >= 2 && !args[1].StartsWith("--", StringComparison.Ordinal))
+            var exitCode = await DatasetCliCommands.RunDemoAsync(args, runEntry, txtLineIngestor, queriesJsonIngestor);
+            if (exitCode != 0)
             {
-                dataset = args[1];
-                argi = 2;
+                Environment.ExitCode = exitCode;
+                return;
             }
-
-            var chunkSize = 900;
-            var chunkOverlap = 120;
-            var recursive = true;
-            var useSim = args.Any(a => string.Equals(a, "--sim", StringComparison.OrdinalIgnoreCase));
-            var useBaseline = args.Any(a => string.Equals(a, "--baseline", StringComparison.OrdinalIgnoreCase));
-
-            for (var i = argi; i < args.Length; i++)
-            {
-                var a = args[i];
-
-                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
-                    chunkSize = cs;
-
-                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
-                    chunkOverlap = co;
-
-                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
-                    recursive = false;
-            }
-
-            var dataRoot = DirectoryLayout.ResolveDataRoot();
-            var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
-
-            if (RepositoryLayout.TryResolveRepoRoot(out var rr))
-                repoRoot = rr;
-
-            var refsPath = Path.Combine(repoRoot, "samples", "insurance", "policies");
-            var queriesPath = Path.Combine(repoRoot, "samples", "insurance", "queries");
-
-            var shiftArg = args.FirstOrDefault(a => a.StartsWith("--shift=", StringComparison.OrdinalIgnoreCase))
-                ?.Substring("--shift=".Length)
-                ?.Trim();
-
-            // Shift selection for eval (kept intentionally minimal)
-            IShift shift = (shiftArg ?? "identity").ToLowerInvariant() switch
-            {
-                "zero" => new EmbeddingShift.Core.Shifts.MultiplicativeShift(0f, EmbeddingDimensions.DIM),
-                _ => new NullShift()
-            };
-
-            var res = await runEntry.RunAsync(
-                shift,
-                new DatasetRunRequest(
-                    Dataset: dataset,
-                    RefsPath: refsPath,
-                    QueriesPath: queriesPath,
-                    RefsMode: DatasetIngestMode.ChunkFirst,
-                    ChunkSize: chunkSize,
-                    ChunkOverlap: chunkOverlap,
-                    Recursive: recursive,
-                    EvalUseSim: useSim,
-                    EvalUseBaseline: useBaseline),
-                txtLineIngestor,
-                queriesJsonIngestor);
-
-            if (res.RefsIngest.Mode == DatasetIngestMode.ChunkFirst && !string.IsNullOrWhiteSpace(res.RefsIngest.ManifestPath))
-                Console.WriteLine($"Refs manifest: {res.RefsIngest.ManifestPath}");
-
-            if (!string.IsNullOrWhiteSpace(res.EvalResult.ModeLine))
-                Console.WriteLine(res.EvalResult.ModeLine);
-
-            if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
-                Console.WriteLine(res.EvalResult.Notes);
-
-            if (useBaseline && res.EvalResult.DidRun)
-            {
-                var gateEps = 1e-6;
-                var gateEpsArg = args.FirstOrDefault(a => a.StartsWith("--gate-eps=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("--gate-eps=".Length)
-                    ?.Trim();
-
-                if (!string.IsNullOrWhiteSpace(gateEpsArg))
-                {
-                    if (double.TryParse(gateEpsArg, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
-                        gateEps = parsed;
-                }
-
-                var gateProfile = args.FirstOrDefault(a => a.StartsWith("--gate-profile=", StringComparison.OrdinalIgnoreCase))
-                    ?.Substring("--gate-profile=".Length)
-                    ?.Trim();
-
-                var gate = EvalAcceptanceGate.CreateFromProfile(gateProfile, gateEps);
-                var gateRes = gate.Evaluate(res.EvalResult.Metrics);
-
-                Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
-                foreach (var note in gateRes.Notes)
-                    Console.WriteLine(note);
-
-                if (!gateRes.Passed)
-                {
-                    Environment.ExitCode = 2;
-                }
-            }
-
             break;
         }
+
+
 
     case "ingest-queries":
         {
-            // usage: ingest-queries <path> <dataset>
-            var input = args.Length >= 3
-                ? args[1]
-                : ResolveSamplesDemoPath();
-
-            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
-
-            await ingestEntry.RunAsync(
-                new DatasetIngestRequest(
-                    Dataset: dataset,
-                    Role: "queries",
-                    InputPath: input,
-                    Mode: DatasetIngestMode.Plain),
-                textLineIngestor: txtLineIngestor,
-                queriesJsonIngestor: queriesJsonIngestor);
-
-            Console.WriteLine("Ingest (queries) finished.");
+            var exitCode = await DatasetCliCommands.IngestQueriesAsync(args, ingestEntry, txtLineIngestor, queriesJsonIngestor);
+            if (exitCode != 0)
+            {
+                Environment.ExitCode = exitCode;
+            }
             break;
         }
+
     case "ingest-dataset":
     case "ingest":
         {
-            // usage:
-            //   ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]
-            if (args.Length < 4)
+            var exitCode = await DatasetCliCommands.IngestDatasetAsync(args, ingestDatasetEntry, txtLineIngestor, queriesJsonIngestor);
+            if (exitCode != 0)
             {
-                Console.WriteLine("Usage: ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]");
-                Environment.ExitCode = 1;
-                return;
+                Environment.ExitCode = exitCode;
             }
-
-            var refsPath = args[1];
-            var queriesPath = args[2];
-            var dataset = args[3];
-
-            var refsMode = args.Any(a => string.Equals(a, "--refs-plain", StringComparison.OrdinalIgnoreCase))
-                ? DatasetIngestMode.Plain
-                : DatasetIngestMode.ChunkFirst;
-
-            var chunkSize = 1000;
-            var chunkOverlap = 100;
-            var recursive = true;
-
-            foreach (var a in args)
-            {
-                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
-                    chunkSize = cs;
-
-                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
-                    chunkOverlap = co;
-
-                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
-                    recursive = false;
-            }
-
-            var res = await ingestDatasetEntry.RunAsync(
-                new DatasetIngestDatasetRequest(
-                    Dataset: dataset,
-                    RefsPath: refsPath,
-                    QueriesPath: queriesPath,
-                    RefsMode: refsMode,
-                    ChunkSize: chunkSize,
-                    ChunkOverlap: chunkOverlap,
-                    Recursive: recursive),
-                txtLineIngestor,
-                queriesJsonIngestor);
-
-            if (res.RefsIngest.Mode == DatasetIngestMode.ChunkFirst && !string.IsNullOrWhiteSpace(res.RefsIngest.ManifestPath))
-                Console.WriteLine($"Refs manifest: {res.RefsIngest.ManifestPath}");
-
-            if (res.QueriesIngest.UsedJson)
-                Console.WriteLine("Queries ingested from queries.json.");
-
-            Console.WriteLine("Ingest (dataset) finished.");
             break;
         }
 
     case "ingest-refs":
         {
-            // usage: ingest-refs <path> <dataset>
-            var input = args.Length >= 3
-              ? args[1]
-              : ResolveSamplesDemoPath();
-
-            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
-
-            await ingestEntry.RunAsync(
-                new DatasetIngestRequest(
-                    Dataset: dataset,
-                    Role: "refs",
-                    InputPath: input,
-                    Mode: DatasetIngestMode.Plain),
-                textLineIngestor: txtLineIngestor);
-
-            Console.WriteLine("Ingest (refs) finished.");
+            var exitCode = await DatasetCliCommands.IngestRefsAsync(args, ingestEntry, txtLineIngestor);
+            if (exitCode != 0)
+            {
+                Environment.ExitCode = exitCode;
+            }
             break;
         }
-
 
     case "ingest-refs-chunked":
         {
-            // usage: ingest-refs-chunked <path> <dataset> [--chunk-size=1000] [--chunk-overlap=100] [--no-recursive]
-            var input = args.Length >= 3
-                ? args[1]
-                : ResolveSamplesDemoPath();
-
-            var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
-
-            var chunkSize = 1000;
-            var chunkOverlap = 100;
-            var recursive = true;
-
-            foreach (var a in args)
+            var exitCode = await DatasetCliCommands.IngestRefsChunkedAsync(args, ingestEntry, txtLineIngestor);
+            if (exitCode != 0)
             {
-                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
-                    chunkSize = cs;
-
-                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
-                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
-                    chunkOverlap = co;
-
-                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
-                    recursive = false;
+                Environment.ExitCode = exitCode;
             }
-
-            var result = await ingestEntry.RunAsync(
-                new DatasetIngestRequest(
-                    Dataset: dataset,
-                    Role: "refs",
-                    InputPath: input,
-                    Mode: DatasetIngestMode.ChunkFirst,
-                    ChunkSize: chunkSize,
-                    ChunkOverlap: chunkOverlap,
-                    Recursive: recursive),
-                textLineIngestor: txtLineIngestor);
-
-            Console.WriteLine($"Ingest (refs, chunked) finished. Manifest: {result.ManifestPath}");
             break;
         }
-
 
     case "adaptive":
         {
@@ -766,12 +362,27 @@ switch (args[0].ToLowerInvariant())
             goto case "adaptive";
         }
 
+    case "help":
     case "--help":
     case "-h":
         {
-            Helpers.PrintHelp();
-            break;
+            Console.WriteLine("Commands:");
+            Console.WriteLine("  ingest-legacy   ingest refs only (plain) - legacy; prefer ingest-dataset / ingest");
+            Console.WriteLine("  ingest-dataset  ingest refs+queries into FileStore (canonical)");
+            Console.WriteLine("  ingest-refs     ingest refs only (plain)");
+            Console.WriteLine("  ingest-refs-chunked ingest refs only (chunked)");
+            Console.WriteLine("  ingest-queries  ingest queries.json");
+            Console.WriteLine("  eval            evaluate from persisted embeddings (or --sim)");
+            Console.WriteLine("  run             ingest+eval in one go (arbitrary paths)");
+            Console.WriteLine("  run-demo        run the demo insurance dataset");
+            Console.WriteLine("  domain          domain-pack entrypoint (domain list / domain <id> ...)");
+            Console.WriteLine();
+            Console.WriteLine("Common flags:");
+            Console.WriteLine("  --provider=sim|openai   Select embedding provider backend");
+            Console.WriteLine();
+            return;
         }
+
 
     case "mini-insurance":
         {
@@ -945,7 +556,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-training-inspect":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance training-inspect
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "training-inspect" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -953,7 +564,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-training-list":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance training-list
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "training-list" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1252,7 +863,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-shift-training-inspect":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance shift-training-inspect
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "shift-training-inspect" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1260,7 +871,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-shift-training-history":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance shift-training-history
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "shift-training-history" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1268,7 +879,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-shift-training-best":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance shift-training-best
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "shift-training-best" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1276,7 +887,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-posneg-train":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance posneg-train
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "posneg-train" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1284,7 +895,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-posneg-training-inspect":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance posneg-inspect
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "posneg-inspect" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1292,7 +903,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-posneg-training-history":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance posneg-history
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "posneg-history" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1300,7 +911,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-posneg-training-best":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance posneg-best
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "posneg-best" }.Concat(args.Skip(1)).ToArray());
         break;
@@ -1308,7 +919,7 @@ switch (args[0].ToLowerInvariant())
     case "mini-insurance-posneg-run":
         // Legacy alias (kept for compatibility).
         // Prefer: domain mini-insurance posneg-run
-        await ExecuteDomainPackAsync(
+        await DomainCliCommands.ExecuteDomainPackAsync(
             "mini-insurance",
             new[] { "posneg-run" }.Concat(args.Skip(1)).ToArray());
         break;
