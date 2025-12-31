@@ -3,23 +3,15 @@ using EmbeddingShift.Adaptive;               // ShiftEvaluationService
 using EmbeddingShift.ConsoleEval;
 using EmbeddingShift.ConsoleEval.Domains;
 using EmbeddingShift.ConsoleEval.Commands;
-using EmbeddingShift.ConsoleEval.Inspector;
 using EmbeddingShift.Core.Evaluators;        // EvaluatorCatalog
-using EmbeddingShift.Core.Generators;        // DeltaShiftGenerator (example)
 using EmbeddingShift.Core.Infrastructure;    // DirectoryLayout for /data and /results roots
 using EmbeddingShift.Core.Runs;        // RunPersistor
-using EmbeddingShift.Core.Stats;       // InMemoryStatsCollector
 using EmbeddingShift.Core.Workflows;   // StatsAwareWorkflowRunner + ReportMarkdown
 using EmbeddingShift.Workflows;              // AdaptiveWorkflow
 using EmbeddingShift.Workflows.Ingest;       // DatasetIngestEntry (canonical ingest entrypoint)
 using EmbeddingShift.Workflows.Run;
 using EmbeddingShift.Workflows.Eval;
 using System.Globalization;
-using EmbeddingShift.Preprocessing;
-using EmbeddingShift.Preprocessing.Chunking;
-using EmbeddingShift.Preprocessing.Loading;
-using EmbeddingShift.Preprocessing.Transform;
-using System.Linq;
 
 
 // Composition Root (kept simple)
@@ -160,6 +152,7 @@ IVectorStore store = new EmbeddingShift.Core.Persistence.FileStore(storeRoot);
 
 // Canonical ingest entrypoint (domain-neutral; reusable for CLI and future UI).
 var ingestEntry = new DatasetIngestEntry(provider, store);
+var ingestDatasetEntry = new DatasetIngestDatasetEntry(ingestEntry);
 var txtLineIngestor = new MinimalTxtIngestor();
 var queriesJsonIngestor = new JsonQueryIngestor();
 
@@ -247,9 +240,9 @@ switch (args[0].ToLowerInvariant())
 
             break;
         }
-    case "ingest":
+    case "ingest-legacy":
         {
-            // usage: ingest <path> <dataset>
+            // Legacy: ingest refs only (plain). Prefer 'ingest-dataset' / 'ingest' for canonical ingest.
             var input = args.Length >= 3
                ? args[1]
                : ResolveSamplesDemoPath();
@@ -257,14 +250,14 @@ switch (args[0].ToLowerInvariant())
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
             await ingestEntry.RunAsync(
-    new DatasetIngestRequest(
-        Dataset: dataset,
-        Role: "refs",
-        InputPath: input,
-        Mode: DatasetIngestMode.Plain),
-    textLineIngestor: txtLineIngestor);
+                new DatasetIngestRequest(
+                    Dataset: dataset,
+                    Role: "refs",
+                    InputPath: input,
+                    Mode: DatasetIngestMode.Plain),
+                textLineIngestor: txtLineIngestor);
 
-            Console.WriteLine("Ingest finished.");
+            Console.WriteLine("Ingest finished (legacy).");
             break;
         }
 
@@ -577,6 +570,65 @@ switch (args[0].ToLowerInvariant())
                 queriesJsonIngestor: queriesJsonIngestor);
 
             Console.WriteLine("Ingest (queries) finished.");
+            break;
+        }
+    case "ingest-dataset":
+    case "ingest":
+        {
+            // usage:
+            //   ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]
+            if (args.Length < 4)
+            {
+                Console.WriteLine("Usage: ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]");
+                Environment.ExitCode = 1;
+                return;
+            }
+
+            var refsPath = args[1];
+            var queriesPath = args[2];
+            var dataset = args[3];
+
+            var refsMode = args.Any(a => string.Equals(a, "--refs-plain", StringComparison.OrdinalIgnoreCase))
+                ? DatasetIngestMode.Plain
+                : DatasetIngestMode.ChunkFirst;
+
+            var chunkSize = 1000;
+            var chunkOverlap = 100;
+            var recursive = true;
+
+            foreach (var a in args)
+            {
+                if (a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-size=".Length), out var cs) && cs > 0)
+                    chunkSize = cs;
+
+                if (a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase) &&
+                    int.TryParse(a.Substring("--chunk-overlap=".Length), out var co) && co >= 0)
+                    chunkOverlap = co;
+
+                if (a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase))
+                    recursive = false;
+            }
+
+            var res = await ingestDatasetEntry.RunAsync(
+                new DatasetIngestDatasetRequest(
+                    Dataset: dataset,
+                    RefsPath: refsPath,
+                    QueriesPath: queriesPath,
+                    RefsMode: refsMode,
+                    ChunkSize: chunkSize,
+                    ChunkOverlap: chunkOverlap,
+                    Recursive: recursive),
+                txtLineIngestor,
+                queriesJsonIngestor);
+
+            if (res.RefsIngest.Mode == DatasetIngestMode.ChunkFirst && !string.IsNullOrWhiteSpace(res.RefsIngest.ManifestPath))
+                Console.WriteLine($"Refs manifest: {res.RefsIngest.ManifestPath}");
+
+            if (res.QueriesIngest.UsedJson)
+                Console.WriteLine("Queries ingested from queries.json.");
+
+            Console.WriteLine("Ingest (dataset) finished.");
             break;
         }
 

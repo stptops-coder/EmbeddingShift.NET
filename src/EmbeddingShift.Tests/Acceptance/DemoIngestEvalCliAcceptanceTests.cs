@@ -1,15 +1,8 @@
 ﻿using EmbeddingShift.ConsoleEval;
-using System;
 using System.Text;
 using System.Text.Json;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
-
+ 
 namespace EmbeddingShift.Tests.Acceptance
 {
     /// <summary>
@@ -138,6 +131,62 @@ namespace EmbeddingShift.Tests.Acceptance
 
                 Assert.Contains("Acceptance gate: PASS", evalBaseline.StdOut);
 
+            }
+            finally
+            {
+                if (!keepArtifacts)
+                {
+                    try { Directory.Delete(tempRoot, recursive: true); }
+                    catch { /* best-effort */ }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task DemoIngestDatasetThenEval_LoadsPersistedEmbeddings()
+        {
+            var consoleEvalDll = typeof(EmbeddingBackend).Assembly.Location;
+            Assert.True(File.Exists(consoleEvalDll), $"ConsoleEval assembly not found: {consoleEvalDll}");
+
+            var tempRoot = Path.Combine(
+                Path.GetTempPath(),
+                "EmbeddingShift.Acceptance",
+                DateTime.UtcNow.ToString("yyyyMMdd_HHmmss"),
+                Guid.NewGuid().ToString("N"));
+
+            Directory.CreateDirectory(tempRoot);
+            Console.WriteLine($"Acceptance TempRoot: {tempRoot}");
+
+            var keepArtifacts =
+                Debugger.IsAttached ||
+                string.Equals(Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_KEEP_ACCEPTANCE_ARTIFACTS"), "1", StringComparison.OrdinalIgnoreCase);
+
+            try
+            {
+                var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["EMBEDDINGSHIFT_ROOT"] = tempRoot,
+                    ["EMBEDDING_BACKEND"] = "sim",
+                    ["EMBEDDING_SIM_MODE"] = "deterministic",
+                };
+
+                var dataset = "DemoDataset";
+
+                var qPath = Path.Combine(tempRoot, "q.txt");
+                var rPath = Path.Combine(tempRoot, "r.txt");
+
+                await File.WriteAllTextAsync(qPath, "query one\nquery two\nquery three\n");
+                await File.WriteAllTextAsync(rPath, "answer one\nanswer two\nanswer three\n");
+
+                var ingest = await RunDotnetAsync(env, consoleEvalDll, "ingest-dataset", rPath, qPath, dataset);
+                Assert.True(ingest.ExitCode == 0, BuildFailureMessage("ingest-dataset failed", tempRoot, ingest));
+                Assert.Contains("Ingest (dataset) finished.", ingest.StdOut);
+
+                // Now eval must load persisted embeddings.
+                var evalBaseline = await RunDotnetAsync(env, consoleEvalDll, "eval", dataset, "--baseline");
+                Assert.True(evalBaseline.ExitCode == 0, BuildFailureMessage("eval --baseline failed", tempRoot, evalBaseline));
+                Assert.Contains("Eval mode: persisted embeddings", evalBaseline.StdOut);
+                Assert.Contains("baseline=identity", evalBaseline.StdOut);
             }
             finally
             {
