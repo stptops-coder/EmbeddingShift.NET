@@ -158,8 +158,7 @@ var queriesJsonIngestor = new JsonQueryIngestor();
 
 var evalWf = new EvaluationWorkflow(runner);
 var evalEntry = new DatasetEvalEntry(provider, evalWf);
-var runEntry = new DatasetRunEntry(ingestEntry, evalEntry);
-
+var runEntry = new DatasetRunEntry(ingestDatasetEntry, evalEntry);
 
 static string ResolveSamplesDemoPath()
 {

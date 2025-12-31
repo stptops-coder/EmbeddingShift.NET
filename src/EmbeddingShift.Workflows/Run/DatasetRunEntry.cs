@@ -1,6 +1,6 @@
 ﻿using EmbeddingShift.Abstractions;
-using EmbeddingShift.Workflows.Ingest;
 using EmbeddingShift.Workflows.Eval;
+using EmbeddingShift.Workflows.Ingest;
 
 namespace EmbeddingShift.Workflows.Run
 {
@@ -26,12 +26,12 @@ namespace EmbeddingShift.Workflows.Run
     /// </summary>
     public sealed class DatasetRunEntry
     {
-        private readonly DatasetIngestEntry _ingestEntry;
+        private readonly DatasetIngestDatasetEntry _ingestDatasetEntry;
         private readonly DatasetEvalEntry _evalEntry;
 
-        public DatasetRunEntry(DatasetIngestEntry ingestEntry, DatasetEvalEntry evalEntry)
+        public DatasetRunEntry(DatasetIngestDatasetEntry ingestDatasetEntry, DatasetEvalEntry evalEntry)
         {
-            _ingestEntry = ingestEntry ?? throw new ArgumentNullException(nameof(ingestEntry));
+            _ingestDatasetEntry = ingestDatasetEntry ?? throw new ArgumentNullException(nameof(ingestDatasetEntry));
             _evalEntry = evalEntry ?? throw new ArgumentNullException(nameof(evalEntry));
         }
 
@@ -49,29 +49,21 @@ namespace EmbeddingShift.Workflows.Run
 
             var dataset = string.IsNullOrWhiteSpace(request.Dataset) ? "DemoDataset" : request.Dataset.Trim();
 
-            // 1) Ingest refs (plain or chunk-first)
-            var refsIngest = await _ingestEntry.RunAsync(
-                new DatasetIngestRequest(
+            // 1) Ingest refs + queries (canonical path)
+            var ingestRes = await _ingestDatasetEntry.RunAsync(
+                new DatasetIngestDatasetRequest(
                     Dataset: dataset,
-                    Role: "refs",
-                    InputPath: request.RefsPath,
-                    Mode: request.RefsMode,
+                    RefsPath: request.RefsPath,
+                    QueriesPath: request.QueriesPath,
+                    RefsMode: request.RefsMode,
                     ChunkSize: request.ChunkSize,
                     ChunkOverlap: request.ChunkOverlap,
                     Recursive: request.Recursive),
-                textLineIngestor: textLineIngestor);
+                textLineIngestor,
+                queriesJsonIngestor,
+                ct);
 
-            // 2) Ingest queries (plain; supports queries.json automatically)
-            var queriesIngest = await _ingestEntry.RunAsync(
-                new DatasetIngestRequest(
-                    Dataset: dataset,
-                    Role: "queries",
-                    InputPath: request.QueriesPath,
-                    Mode: DatasetIngestMode.Plain),
-                textLineIngestor: textLineIngestor,
-                queriesJsonIngestor: queriesJsonIngestor);
-
-            // 3) Evaluate (persisted by default)
+            // 2) Evaluate (persisted by default)
             var evalRes = await _evalEntry.RunAsync(
                 shift,
                 new DatasetEvalRequest(
@@ -81,8 +73,8 @@ namespace EmbeddingShift.Workflows.Run
                 ct);
 
             return new DatasetRunResult(
-                RefsIngest: refsIngest,
-                QueriesIngest: queriesIngest,
+                RefsIngest: ingestRes.RefsIngest,
+                QueriesIngest: ingestRes.QueriesIngest,
                 EvalResult: evalRes);
         }
     }
