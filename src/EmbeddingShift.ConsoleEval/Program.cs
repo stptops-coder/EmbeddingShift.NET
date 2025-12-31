@@ -344,7 +344,7 @@ switch (args[0].ToLowerInvariant())
             //   run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
             if (args.Length < 4)
             {
-                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]");
+                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]");
                 Environment.ExitCode = 1;
                 return;
             }
@@ -377,7 +377,16 @@ switch (args[0].ToLowerInvariant())
                     recursive = false;
             }
 
-            IShift shift = new NullShift();
+            var shiftArg = args.FirstOrDefault(a => a.StartsWith("--shift=", StringComparison.OrdinalIgnoreCase))
+                ?.Substring("--shift=".Length)
+                ?.Trim();
+
+            // Shift selection for eval (kept intentionally minimal)
+            IShift shift = (shiftArg ?? "identity").ToLowerInvariant() switch
+            {
+                "zero" => new EmbeddingShift.Core.Shifts.MultiplicativeShift(0f, EmbeddingDimensions.DIM),
+                _ => new NullShift()
+            };
 
             var res = await runEntry.RunAsync(
                 shift,
@@ -403,8 +412,35 @@ switch (args[0].ToLowerInvariant())
             if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
                 Console.WriteLine(res.EvalResult.Notes);
 
-            if (!res.EvalResult.DidRun)
-                Environment.ExitCode = 2;
+            if (useBaseline && res.EvalResult.DidRun)
+            {
+                var gateEps = 1e-6;
+                var gateEpsArg = args.FirstOrDefault(a => a.StartsWith("--gate-eps=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("--gate-eps=".Length)
+                    ?.Trim();
+
+                if (!string.IsNullOrWhiteSpace(gateEpsArg))
+                {
+                    if (double.TryParse(gateEpsArg, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                        gateEps = parsed;
+                }
+
+                var gateProfile = args.FirstOrDefault(a => a.StartsWith("--gate-profile=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("--gate-profile=".Length)
+                    ?.Trim();
+
+                var gate = EvalAcceptanceGate.CreateFromProfile(gateProfile, gateEps);
+                var gateRes = gate.Evaluate(res.EvalResult.Metrics);
+
+                Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
+                foreach (var note in gateRes.Notes)
+                    Console.WriteLine(note);
+
+                if (!gateRes.Passed)
+                {
+                    Environment.ExitCode = 2;
+                }
+            }
 
             break;
         }
@@ -454,7 +490,16 @@ switch (args[0].ToLowerInvariant())
             var refsPath = Path.Combine(repoRoot, "samples", "insurance", "policies");
             var queriesPath = Path.Combine(repoRoot, "samples", "insurance", "queries");
 
-            IShift shift = new NullShift();
+            var shiftArg = args.FirstOrDefault(a => a.StartsWith("--shift=", StringComparison.OrdinalIgnoreCase))
+                ?.Substring("--shift=".Length)
+                ?.Trim();
+
+            // Shift selection for eval (kept intentionally minimal)
+            IShift shift = (shiftArg ?? "identity").ToLowerInvariant() switch
+            {
+                "zero" => new EmbeddingShift.Core.Shifts.MultiplicativeShift(0f, EmbeddingDimensions.DIM),
+                _ => new NullShift()
+            };
 
             var res = await runEntry.RunAsync(
                 shift,
@@ -480,12 +525,38 @@ switch (args[0].ToLowerInvariant())
             if (!res.EvalResult.DidRun && !string.IsNullOrWhiteSpace(res.EvalResult.Notes))
                 Console.WriteLine(res.EvalResult.Notes);
 
-            if (!res.EvalResult.DidRun)
-                Environment.ExitCode = 2;
+            if (useBaseline && res.EvalResult.DidRun)
+            {
+                var gateEps = 1e-6;
+                var gateEpsArg = args.FirstOrDefault(a => a.StartsWith("--gate-eps=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("--gate-eps=".Length)
+                    ?.Trim();
+
+                if (!string.IsNullOrWhiteSpace(gateEpsArg))
+                {
+                    if (double.TryParse(gateEpsArg, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+                        gateEps = parsed;
+                }
+
+                var gateProfile = args.FirstOrDefault(a => a.StartsWith("--gate-profile=", StringComparison.OrdinalIgnoreCase))
+                    ?.Substring("--gate-profile=".Length)
+                    ?.Trim();
+
+                var gate = EvalAcceptanceGate.CreateFromProfile(gateProfile, gateEps);
+                var gateRes = gate.Evaluate(res.EvalResult.Metrics);
+
+                Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
+                foreach (var note in gateRes.Notes)
+                    Console.WriteLine(note);
+
+                if (!gateRes.Passed)
+                {
+                    Environment.ExitCode = 2;
+                }
+            }
 
             break;
         }
-
 
     case "ingest-queries":
         {

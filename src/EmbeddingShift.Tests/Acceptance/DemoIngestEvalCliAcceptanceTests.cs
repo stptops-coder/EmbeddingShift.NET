@@ -88,10 +88,19 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.Contains("CosineSimilarityEvaluator.delta", evalBaseline.StdOut);
                 Assert.Contains("baseline=identity", evalBaseline.StdOut);
 
-                // Negative probe: force a deterministic regression using a pathological eval shift.
-                var evalFail = await RunDotnetAsync(env, consoleEvalDll, "eval", dataset, "--baseline", "--shift=zero", "--gate-profile=rank+cosine");
-                Assert.True(evalFail.ExitCode == 2, BuildFailureMessage("eval --baseline --shift=zero should FAIL the acceptance gate", tempRoot, evalFail));
-                Assert.Contains("Acceptance gate: FAIL", evalFail.StdOut);
+                // Negative probe: a pathological shift must be caught by a stricter gate profile.
+                var r2 = await RunDotnetAsync(env, consoleEvalDll,
+                    "eval", dataset, "--baseline", "--shift=zero", "--gate-profile=rank+cosine");
+
+                Assert.Equal(2, r2.ExitCode);
+                Assert.Contains("Acceptance gate: FAIL", r2.StdOut);
+
+                // Same idea end-to-end: run (ingest+eval) should also fail with the same profile.
+                var r3 = await RunDotnetAsync(env, consoleEvalDll,
+                    "run", rPath, qPath, dataset, "--baseline", "--shift=zero", "--gate-profile=rank+cosine");
+
+                Assert.Equal(2, r3.ExitCode);
+                Assert.Contains("Acceptance gate: FAIL", r3.StdOut);
 
                 Assert.Contains("Acceptance gate: PASS", evalBaseline.StdOut);
 
