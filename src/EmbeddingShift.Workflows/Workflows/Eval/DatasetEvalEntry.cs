@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
+using System.Text;
 using EmbeddingShift.Abstractions;
+using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Core.Infrastructure;
 
 namespace EmbeddingShift.Workflows.Eval
@@ -21,12 +23,13 @@ namespace EmbeddingShift.Workflows.Eval
         string Notes,
         Guid? RunId = null,
         string? ResultsPath = null,
-        IReadOnlyDictionary<string, double>? Metrics = null);
+        IReadOnlyDictionary<string, double>? Metrics = null,
+        string? RefsManifestPath = null,
+        EmbeddingShift.Workflows.ChunkFirstIngestManifestSummary? RefsManifest = null);
 
     /// <summary>
-    /// Canonical, domain-neutral evaluation entrypoint.
-    /// Loads persisted embeddings from the stable data layout and runs EvaluationWorkflow.
-    /// Intended to be called by both CLI and future UI (Program.cs should stay thin glue).
+    /// Dataset evaluation entry: loads embeddings (simulated or persisted) and runs eval.
+    /// Adds a small run_manifest.json into the results directory for lineage/repro.
     /// </summary>
     public sealed class DatasetEvalEntry
     {
@@ -54,11 +57,13 @@ namespace EmbeddingShift.Workflows.Eval
 
             if (request.UseSim)
             {
-                // Simulated embeddings (kept for quick smoke tests)
-                var q1 = await _provider.GetEmbeddingAsync("query one").ConfigureAwait(false);
-                var q2 = await _provider.GetEmbeddingAsync("query two").ConfigureAwait(false);
-                var r1 = await _provider.GetEmbeddingAsync("answer one").ConfigureAwait(false);
-                var r2 = await _provider.GetEmbeddingAsync("answer two").ConfigureAwait(false);
+                // Minimal demo vectors via provider; we only need stable, deterministic data for smoke-tests.
+                // Two queries and two refs are sufficient to verify end-to-end behavior.
+                ReadOnlyMemory<float> q1 = await _provider.GetEmbeddingAsync("Query 1");
+                ReadOnlyMemory<float> q2 = await _provider.GetEmbeddingAsync("Query 2");
+
+                ReadOnlyMemory<float> r1 = await _provider.GetEmbeddingAsync("Ref 1");
+                ReadOnlyMemory<float> r2 = await _provider.GetEmbeddingAsync("Ref 2");
 
                 queries = new() { q1, q2 };
                 refs = new() { r1, r2 };
@@ -66,6 +71,18 @@ namespace EmbeddingShift.Workflows.Eval
                 var summary = request.UseBaseline
                     ? _evalWorkflow.RunWithBaselineSummary(shift, queries, refs, dataset)
                     : _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
+
+                await WriteEvalRunManifestAsync(
+                    summary,
+                    dataset,
+                    shift,
+                    request,
+                    queryCount: queries.Count,
+                    refCount: refs.Count,
+                    embeddingsRoot: null,
+                    refsManifestPath: null,
+                    refsManifest: null,
+                    ct);
 
                 return new DatasetEvalResult(
                     Dataset: dataset,
@@ -88,6 +105,10 @@ namespace EmbeddingShift.Workflows.Eval
             var queriesSpace = $"{dataset}:{request.QueryRole}".Trim();
             var refsSpace = $"{dataset}:{request.RefRole}".Trim();
 
+            var manifestsRoot = DirectoryLayout.ResolveDataRoot("manifests");
+            var refsManifestPath = TryResolveLatestManifestPath(manifestsRoot, refsSpace);
+            var refsManifest = TryReadChunkFirstManifest(refsManifestPath);
+
             queries = LoadVectorsForSpace(embeddingsRoot, queriesSpace);
             refs = LoadVectorsForSpace(embeddingsRoot, refsSpace);
 
@@ -107,6 +128,18 @@ namespace EmbeddingShift.Workflows.Eval
                 ? _evalWorkflow.RunWithBaselineSummary(shift, queries, refs, dataset)
                 : _evalWorkflow.RunWithSummary(shift, queries, refs, dataset);
 
+            await WriteEvalRunManifestAsync(
+                runSummary,
+                dataset,
+                shift,
+                request,
+                queryCount: queries.Count,
+                refCount: refs.Count,
+                embeddingsRoot: embeddingsRoot,
+                refsManifestPath: refsManifestPath,
+                refsManifest: refsManifest,
+                ct);
+
             return new DatasetEvalResult(
                 Dataset: dataset,
                 DidRun: true,
@@ -119,7 +152,9 @@ namespace EmbeddingShift.Workflows.Eval
                 Notes: "",
                 RunId: runSummary.RunId,
                 ResultsPath: runSummary.ResultsPath,
-                Metrics: runSummary.Metrics);
+                Metrics: runSummary.Metrics,
+                RefsManifestPath: refsManifestPath,
+                RefsManifest: refsManifest);
         }
 
         private static List<ReadOnlyMemory<float>> LoadVectorsForSpace(string embeddingsRoot, string space)
@@ -130,11 +165,9 @@ namespace EmbeddingShift.Workflows.Eval
             if (!Directory.Exists(spaceDir))
                 return new List<ReadOnlyMemory<float>>();
 
-            var files = Directory.GetFiles(spaceDir, "*.json", SearchOption.TopDirectoryOnly)
-                                 .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
-                                 .ToArray();
-
+            var files = Directory.EnumerateFiles(spaceDir, "*.json", SearchOption.TopDirectoryOnly).ToArray();
             var list = new List<ReadOnlyMemory<float>>(files.Length);
+
             foreach (var file in files)
             {
                 try
@@ -154,6 +187,113 @@ namespace EmbeddingShift.Workflows.Eval
 
         // Mirror of FileStore's record shape (must match persisted JSON)
         private sealed record EmbeddingRec(Guid id, string space, string provider, int dimensions, float[] vector);
+
+        private sealed record DatasetEvalRunManifest(
+            string Kind,
+            string Dataset,
+            Guid RunId,
+            DateTime StartedAtUtc,
+            DateTime CompletedAtUtc,
+            bool UsedSim,
+            bool UseBaseline,
+            string Shift,
+            string QueryRole,
+            string RefRole,
+            int QueryCount,
+            int RefCount,
+            string? EmbeddingsRoot,
+            string? RefsManifestPath,
+            EmbeddingShift.Workflows.ChunkFirstIngestManifestSummary? RefsManifest);
+
+        private static async Task WriteEvalRunManifestAsync(
+            EvaluationRunSummary summary,
+            string dataset,
+            IShift shift,
+            DatasetEvalRequest request,
+            int queryCount,
+            int refCount,
+            string? embeddingsRoot,
+            string? refsManifestPath,
+            EmbeddingShift.Workflows.ChunkFirstIngestManifestSummary? refsManifest,
+            CancellationToken ct)
+        {
+            if (summary is null) return;
+            if (string.IsNullOrWhiteSpace(summary.ResultsPath)) return;
+
+            try
+            {
+                Directory.CreateDirectory(summary.ResultsPath);
+
+                var manifest = new DatasetEvalRunManifest(
+                    Kind: summary.Kind,
+                    Dataset: dataset,
+                    RunId: summary.RunId,
+                    StartedAtUtc: summary.StartedAtUtc,
+                    CompletedAtUtc: summary.CompletedAtUtc,
+                    UsedSim: request.UseSim,
+                    UseBaseline: request.UseBaseline,
+                    Shift: shift.Name,
+                    QueryRole: request.QueryRole,
+                    RefRole: request.RefRole,
+                    QueryCount: queryCount,
+                    RefCount: refCount,
+                    EmbeddingsRoot: embeddingsRoot,
+                    RefsManifestPath: refsManifestPath,
+                    RefsManifest: refsManifest);
+
+                var path = Path.Combine(summary.ResultsPath, "run_manifest.json");
+                var json = JsonSerializer.Serialize(
+                    manifest,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+
+                await File.WriteAllTextAsync(path, json, new UTF8Encoding(false), ct);
+            }
+            catch
+            {
+                // Best-effort: do not fail evaluation for manifest persistence.
+            }
+        }
+
+        private static string? TryResolveLatestManifestPath(string manifestsRoot, string space)
+        {
+            if (string.IsNullOrWhiteSpace(manifestsRoot) || string.IsNullOrWhiteSpace(space))
+                return null;
+
+            try
+            {
+                var dir = Path.Combine(manifestsRoot, SpaceToPath(space.Trim()));
+                if (!Directory.Exists(dir)) return null;
+
+                var latest = Path.Combine(dir, "manifest_latest.json");
+                if (File.Exists(latest)) return latest;
+
+                return Directory.EnumerateFiles(dir, "manifest_*.json", SearchOption.TopDirectoryOnly)
+                    .OrderByDescending(File.GetLastWriteTimeUtc)
+                    .FirstOrDefault();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static EmbeddingShift.Workflows.ChunkFirstIngestManifestSummary? TryReadChunkFirstManifest(string? manifestPath)
+        {
+            if (string.IsNullOrWhiteSpace(manifestPath))
+                return null;
+
+            try
+            {
+                var json = File.ReadAllText(manifestPath);
+                return JsonSerializer.Deserialize<EmbeddingShift.Workflows.ChunkFirstIngestManifestSummary>(
+                    json,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         private static string SpaceToPath(string space)
         {

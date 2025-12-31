@@ -170,7 +170,11 @@ namespace EmbeddingShift.Workflows
 
             var summaryPath = Path.Combine(manifestSpaceDir, $"manifest_{manifestId:N}.json");
             await File.WriteAllTextAsync(summaryPath, JsonSerializer.Serialize(summary, J), new UTF8Encoding(false));
-
+            // Convenience pointer for callers: always keep an overwritable 'latest' manifest alongside versioned ones.
+            // This keeps the ingest stream deterministic for consumers while still retaining history.
+            var latestPath = Path.Combine(manifestSpaceDir, "manifest_latest.json");
+            await File.WriteAllTextAsync(latestPath, JsonSerializer.Serialize(summary, J), new UTF8Encoding(false));
+    
             return summaryPath;
         }
 
