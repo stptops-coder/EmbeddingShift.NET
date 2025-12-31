@@ -1,5 +1,7 @@
 ﻿using EmbeddingShift.ConsoleEval;
 using System;
+using System.Text;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -59,6 +61,35 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.True(run.ExitCode == 0, BuildFailureMessage("run failed", tempRoot, run));
 
                 Assert.Contains("Eval mode: persisted embeddings", run.StdOut);
+                // Lineage: ensure eval persisted a run manifest into the result directory.
+                var marker = "| Results at ";
+                var mi = run.StdOut.LastIndexOf(marker, StringComparison.Ordinal);
+                Assert.True(mi >= 0, "Missing results path marker in stdout.");
+
+                var resultsDir = run.StdOut
+                    .Substring(mi + marker.Length)
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0]
+                    .Trim();
+
+                var runManifestPath = Path.Combine(resultsDir, "run_manifest.json");
+                Assert.True(File.Exists(runManifestPath), $"Missing run manifest: {runManifestPath}");
+
+                var json = await File.ReadAllTextAsync(runManifestPath);
+                using var doc = JsonDocument.Parse(json);
+
+                string? refsManifestPath = null;
+
+                if (doc.RootElement.TryGetProperty("refsManifestPath", out var p1))
+                    refsManifestPath = p1.GetString();
+                else if (doc.RootElement.TryGetProperty("RefsManifestPath", out var p2))
+                    refsManifestPath = p2.GetString();
+
+
+                Assert.False(string.IsNullOrWhiteSpace(refsManifestPath), "RefsManifestPath must be present in run_manifest.json.");
+                Assert.True(
+                    refsManifestPath!.EndsWith("manifest_latest.json", StringComparison.OrdinalIgnoreCase),
+                    $"Expected RefsManifestPath to end with manifest_latest.json, got: {refsManifestPath}"
+                );
 
                 var qDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "queries");
                 var rDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "refs");
@@ -71,6 +102,9 @@ namespace EmbeddingShift.Tests.Acceptance
 
                 var manifestFiles = Directory.GetFiles(manifestsDir, "manifest_*.json", SearchOption.TopDirectoryOnly);
                 Assert.True(manifestFiles.Length >= 1, $"Expected >= 1 refs manifest, found {manifestFiles.Length}");
+
+                var latestManifest = Path.Combine(manifestsDir, "manifest_latest.json");
+                Assert.True(File.Exists(latestManifest), $"Missing latest refs manifest: {latestManifest}");
 
                 var qFiles = Directory.GetFiles(qDir, "*.json", SearchOption.TopDirectoryOnly);
                 var rFiles = Directory.GetFiles(rDir, "*.json", SearchOption.TopDirectoryOnly);
