@@ -211,12 +211,67 @@ namespace EmbeddingShift.Tests.Acceptance
                 var ingest = await RunDotnetAsync(env, consoleEvalDll, "ingest-dataset", rPath, qPath, dataset);
                 Assert.True(ingest.ExitCode == 0, BuildFailureMessage("ingest-dataset failed", tempRoot, ingest));
                 Assert.Contains("Ingest (dataset) finished.", ingest.StdOut);
+                
+                string? chunkFirstManifestPath = null;
+
+                // Space-state must exist for refs and point to the concrete chunk-first manifest.
+                var refsStatePath = Path.Combine(tempRoot, "data", "embeddings", dataset, "refs", "space_state_latest.json");
+                Assert.True(File.Exists(refsStatePath), $"Missing refs space state: {refsStatePath}");
+
+                var refsStateJson = await File.ReadAllTextAsync(refsStatePath);
+                using (var stateDoc = JsonDocument.Parse(refsStateJson))
+                {
+                    if (stateDoc.RootElement.TryGetProperty("chunkFirstManifestPath", out var c1))
+                        chunkFirstManifestPath = c1.GetString();
+                    else if (stateDoc.RootElement.TryGetProperty("ChunkFirstManifestPath", out var c2))
+                        chunkFirstManifestPath = c2.GetString();
+                }
+
+                Assert.False(string.IsNullOrWhiteSpace(chunkFirstManifestPath), "Refs space state must contain ChunkFirstManifestPath.");
+                Assert.True(File.Exists(chunkFirstManifestPath!), $"Chunk-first manifest referenced by state not found: {chunkFirstManifestPath}");
+
+                // Prove that eval does not rely only on manifest_latest.json.
+                var manifestsDir = Path.Combine(tempRoot, "data", "manifests", dataset, "refs");
+                var latestManifest = Path.Combine(manifestsDir, "manifest_latest.json");
+                if (File.Exists(latestManifest))
+                    File.Delete(latestManifest);
 
                 // Now eval must load persisted embeddings.
                 var evalBaseline = await RunDotnetAsync(env, consoleEvalDll, "eval", dataset, "--baseline");
                 Assert.True(evalBaseline.ExitCode == 0, BuildFailureMessage("eval --baseline failed", tempRoot, evalBaseline));
                 Assert.Contains("Eval mode: persisted embeddings", evalBaseline.StdOut);
                 Assert.Contains("baseline=identity", evalBaseline.StdOut);
+
+                // Lineage: eval should resolve refs manifest via the saved space-state.
+                var resultsDir = ExtractResultsDir(evalBaseline.StdOut);
+
+                var runManifestPath = Path.Combine(resultsDir, "run_manifest.json");
+                Assert.True(File.Exists(runManifestPath), $"Missing run manifest: {runManifestPath}");
+
+                var runJson = await File.ReadAllTextAsync(runManifestPath);
+                using var runDoc = JsonDocument.Parse(runJson);
+
+                string? refsManifestPath = null;
+
+                if (runDoc.RootElement.TryGetProperty("refsManifestPath", out var p1))
+                    refsManifestPath = p1.GetString();
+                else if (runDoc.RootElement.TryGetProperty("RefsManifestPath", out var p2))
+                    refsManifestPath = p2.GetString();
+
+                Assert.False(
+                    string.IsNullOrWhiteSpace(refsManifestPath),
+                    "RefsManifestPath must be present in run_manifest.json even if manifest_latest.json was removed.");
+
+                Assert.True(File.Exists(refsManifestPath!), $"Refs manifest not found: {refsManifestPath}");
+
+                Assert.False(string.IsNullOrWhiteSpace(chunkFirstManifestPath));
+                Assert.True(
+                    string.Equals(
+                        Path.GetFullPath(chunkFirstManifestPath!),
+                        Path.GetFullPath(refsManifestPath!),
+                        StringComparison.OrdinalIgnoreCase),
+                    $"Expected eval to use state-linked manifest. State={chunkFirstManifestPath} vs RunManifest={refsManifestPath}");
+
 
                 // Baseline eval must persist a machine-readable acceptance gate manifest.
                 var evalResultsDir2 = ExtractResultsDir(evalBaseline.StdOut);
