@@ -54,15 +54,9 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.True(run.ExitCode == 0, BuildFailureMessage("run failed", tempRoot, run));
 
                 Assert.Contains("Eval mode: persisted embeddings", run.StdOut);
-                // Lineage: ensure eval persisted a run manifest into the result directory.
-                var marker = "| Results at ";
-                var mi = run.StdOut.LastIndexOf(marker, StringComparison.Ordinal);
-                Assert.True(mi >= 0, "Missing results path marker in stdout.");
 
-                var resultsDir = run.StdOut
-                    .Substring(mi + marker.Length)
-                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0]
-                    .Trim();
+                // Lineage: ensure eval persisted a run manifest into the result directory.
+                var resultsDir = ExtractResultsDir(run.StdOut);
 
                 var runManifestPath = Path.Combine(resultsDir, "run_manifest.json");
                 Assert.True(File.Exists(runManifestPath), $"Missing run manifest: {runManifestPath}");
@@ -114,7 +108,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.Contains("CosineSimilarityEvaluator.delta", evalBaseline.StdOut);
                 Assert.Contains("baseline=identity", evalBaseline.StdOut);
 
-                // NEW: the baseline run must persist a machine-readable acceptance gate manifest.
+                // Baseline eval must persist a machine-readable acceptance gate manifest.
                 var evalResultsDir2 = ExtractResultsDir(evalBaseline.StdOut);
                 var evalGatePath = Path.Combine(evalResultsDir2, "acceptance_gate.json");
                 Assert.True(File.Exists(evalGatePath), $"Missing acceptance gate manifest: {evalGatePath}");
@@ -130,7 +124,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.Equal(2, r2.ExitCode);
                 Assert.Contains("Acceptance gate: FAIL", r2.StdOut);
 
-                // NEW: failing gate must still persist the manifest.
+                // Failing gates must still persist the manifest.
                 var r2ResultsDir2 = ExtractResultsDir(r2.StdOut);
                 var r2GatePath = Path.Combine(r2ResultsDir2, "acceptance_gate.json");
                 Assert.True(File.Exists(r2GatePath), $"Missing acceptance gate manifest: {r2GatePath}");
@@ -146,7 +140,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.Equal(2, r3.ExitCode);
                 Assert.Contains("Acceptance gate: FAIL", r3.StdOut);
 
-                // NEW: failing end-to-end run must still persist the manifest.
+                // Failing end-to-end run must also persist the manifest.
                 var r3ResultsDir2 = ExtractResultsDir(r3.StdOut);
                 var r3GatePath = Path.Combine(r3ResultsDir2, "acceptance_gate.json");
                 Assert.True(File.Exists(r3GatePath), $"Missing acceptance gate manifest: {r3GatePath}");
@@ -184,7 +178,7 @@ namespace EmbeddingShift.Tests.Acceptance
 
             var keepArtifacts =
                 Debugger.IsAttached ||
-                string.Equals(Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_KEEP_ACCEPTANCE_ARTIFACTS"), "1", StringComparison.OrdinalIgnoreCase);
+                IsTruthy(Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_ACCEPTANCE_KEEP_ARTIFACTS"));
 
             try
             {
@@ -213,7 +207,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.Contains("Eval mode: persisted embeddings", evalBaseline.StdOut);
                 Assert.Contains("baseline=identity", evalBaseline.StdOut);
 
-                // NEW: acceptance gate manifest must exist for baseline eval runs, too.
+                // Baseline eval must persist a machine-readable acceptance gate manifest.
                 var evalResultsDir2 = ExtractResultsDir(evalBaseline.StdOut);
                 var evalGatePath = Path.Combine(evalResultsDir2, "acceptance_gate.json");
                 Assert.True(File.Exists(evalGatePath), $"Missing acceptance gate manifest: {evalGatePath}");
@@ -239,50 +233,6 @@ namespace EmbeddingShift.Tests.Acceptance
                    value.Trim().Equals("true", StringComparison.OrdinalIgnoreCase) ||
                    value.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase);
         }
-
-        private static string ExtractResultsDir(string stdout)
-        {
-            // Most common marker (current):
-            var marker = "| Results at ";
-            var mi = stdout.LastIndexOf(marker, StringComparison.Ordinal);
-            if (mi >= 0)
-            {
-                return stdout
-                    .Substring(mi + marker.Length)
-                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0]
-                    .Trim();
-            }
-
-            // Fallback markers (avoid brittle acceptance tests):
-            var marker2 = "Results at ";
-            mi = stdout.LastIndexOf(marker2, StringComparison.Ordinal);
-            Assert.True(mi >= 0, "Missing results path marker in stdout.");
-
-            return stdout
-                .Substring(mi + marker2.Length)
-                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0]
-                .Trim();
-        }
-
-        private static async Task<AcceptanceGateInfo> ReadAcceptanceGateAsync(string gatePath)
-        {
-            var json = await File.ReadAllTextAsync(gatePath);
-            using var doc = JsonDocument.Parse(json);
-
-            var root = doc.RootElement;
-
-            var passed = root.TryGetProperty("Passed", out var p) && p.ValueKind is JsonValueKind.True or JsonValueKind.False
-                ? p.GetBoolean()
-                : false;
-
-            var profile = root.TryGetProperty("GateProfile", out var gp)
-                ? gp.GetString()
-                : null;
-
-            return new AcceptanceGateInfo(passed, profile);
-        }
-
-        private sealed record AcceptanceGateInfo(bool Passed, string? GateProfile);
 
         private static async Task<ProcessRunResult> RunDotnetAsync(
             IDictionary<string, string> env,
@@ -338,6 +288,36 @@ namespace EmbeddingShift.Tests.Acceptance
             return sb.ToString();
         }
 
+        private static string ExtractResultsDir(string stdout)
+        {
+            var marker = "| Results at ";
+            var mi = stdout.LastIndexOf(marker, StringComparison.Ordinal);
+            Assert.True(mi >= 0, "Missing results path marker in stdout.");
+
+            return stdout
+                .Substring(mi + marker.Length)
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0]
+                .Trim();
+        }
+
+        private static async Task<AcceptanceGateInfo> ReadAcceptanceGateAsync(string gatePath)
+        {
+            var json = await File.ReadAllTextAsync(gatePath);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var passed = root.TryGetProperty("Passed", out var p) && p.ValueKind is JsonValueKind.True or JsonValueKind.False
+                ? p.GetBoolean()
+                : false;
+
+            var profile = root.TryGetProperty("GateProfile", out var gp)
+                ? gp.GetString()
+                : null;
+
+            return new AcceptanceGateInfo(passed, profile);
+        }
+
+        private sealed record AcceptanceGateInfo(bool Passed, string? GateProfile);
         private sealed record ProcessRunResult(int ExitCode, string StdOut, string StdErr);
     }
 }
