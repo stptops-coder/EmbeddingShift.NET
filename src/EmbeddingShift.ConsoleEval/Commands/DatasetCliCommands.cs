@@ -87,6 +87,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 foreach (var note in gateRes.Notes)
                     Console.WriteLine(note);
 
+                // Best-effort: write a machine-readable gate decision next to the results directory.
+                await EvalAcceptanceGateManifest.TryWriteAsync(res, gateProfile, gateRes);
+
                 if (!gateRes.Passed)
                 {
                     Environment.ExitCode = 2;
@@ -176,6 +179,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
                 foreach (var note in gateRes.Notes)
                     Console.WriteLine(note);
+
+                // Best-effort: write a machine-readable gate decision next to the results directory.
+                await EvalAcceptanceGateManifest.TryWriteAsync(res.EvalResult, gateProfile, gateRes);
 
                 if (!gateRes.Passed)
                 {
@@ -269,6 +275,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 Console.WriteLine($"Acceptance gate: {(gateRes.Passed ? "PASS" : "FAIL")} (eps={gateRes.Epsilon:G}).");
                 foreach (var note in gateRes.Notes)
                     Console.WriteLine(note);
+
+                // Best-effort: write a machine-readable gate decision next to the results directory.
+                await EvalAcceptanceGateManifest.TryWriteAsync(res.EvalResult, gateProfile, gateRes);
 
                 if (!gateRes.Passed)
                 {
