@@ -24,14 +24,16 @@ internal static class ConsoleEvalCli
 {
     private sealed record CommandSpec(string Name, string Summary, Func<string[], Task<int>> Handler);
 
-    public static async Task<int> RunAsync(string[] args, ConsoleEvalServices services)
+    public static async Task<int> RunAsync(string[] args, ConsoleEvalHost host)
     {
-        if (services is null) throw new ArgumentNullException(nameof(services));
+        if (host is null) throw new ArgumentNullException(nameof(host));
+        var services = host.Services;
 
         // Keep CLI runs isolated: some commands set Environment.ExitCode; do not leak across runs.
         Environment.ExitCode = 0;
 
-        var commands = BuildCommands(services);
+        var commands = BuildCommands(host);
+
 
         if (args.Length == 0)
         {
@@ -69,8 +71,10 @@ internal static class ConsoleEvalCli
         return exitCode;
     }
 
-    private static IReadOnlyDictionary<string, CommandSpec> BuildCommands(ConsoleEvalServices services)
+    private static IReadOnlyDictionary<string, CommandSpec> BuildCommands(ConsoleEvalHost host)
     {
+        var services = host.Services;
+
         var method = services.Method;
         var ingestEntry = services.IngestEntry;
         var ingestDatasetEntry = services.IngestDatasetEntry;
@@ -102,32 +106,32 @@ internal static class ConsoleEvalCli
             a => DomainCliCommands.DomainAsync(a));
 
         Add("ingest-legacy", "ingest refs only (plain) - legacy; prefer ingest-dataset / ingest",
-            a => DatasetCliCommands.IngestLegacyAsync(a, ingestEntry, txtLineIngestor));
+            a => DatasetCliCommands.IngestLegacyAsync(a, host));
 
         Add("ingest-dataset", "ingest refs+queries into FileStore (canonical)",
-            a => DatasetCliCommands.IngestDatasetAsync(a, ingestDatasetEntry, txtLineIngestor, queriesJsonIngestor),
+            a => DatasetCliCommands.IngestDatasetAsync(a, host),
             "ingest");
 
         Add("ingest-refs", "ingest refs only (plain)",
-            a => DatasetCliCommands.IngestRefsAsync(a, ingestEntry, txtLineIngestor));
+            a => DatasetCliCommands.IngestRefsAsync(a, host));
 
         Add("ingest-refs-chunked", "ingest refs only (chunked)",
-            a => DatasetCliCommands.IngestRefsChunkedAsync(a, ingestEntry, txtLineIngestor));
+            a => DatasetCliCommands.IngestRefsChunkedAsync(a, host));
 
         Add("ingest-queries", "ingest queries.json",
-            a => DatasetCliCommands.IngestQueriesAsync(a, ingestEntry, txtLineIngestor, queriesJsonIngestor));
+            a => DatasetCliCommands.IngestQueriesAsync(a, host));
 
         Add("ingest-inspect", "show ingest state/manifest for dataset (--role=refs|queries)",
             a => DatasetCliCommands.IngestInspectAsync(a));
 
         Add("eval", "evaluate from persisted embeddings (or --sim)",
-            a => DatasetCliCommands.EvalAsync(a, evalEntry));
+           a => DatasetCliCommands.EvalAsync(a, host));
 
         Add("run", "ingest+eval in one go (arbitrary paths)",
-            a => DatasetCliCommands.RunAsync(a, runEntry, txtLineIngestor, queriesJsonIngestor));
+            a => DatasetCliCommands.RunAsync(a, host));
 
         Add("run-demo", "run the demo insurance dataset",
-            a => DatasetCliCommands.RunDemoAsync(a, runEntry, txtLineIngestor, queriesJsonIngestor));
+            a => DatasetCliCommands.RunDemoAsync(a, host));
 
         Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
             a => RunAdaptiveAsync(a, method),

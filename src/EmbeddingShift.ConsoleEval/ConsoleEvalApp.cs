@@ -15,6 +15,6 @@ internal static class ConsoleEvalApp
         var host = ConsoleEvalHost.Create(parsed.Options);
 
         // Important: pass only command args to dispatcher (global flags removed).
-        return ConsoleEvalCli.RunAsync(parsed.CommandArgs, host.Services);
+        return ConsoleEvalCli.RunAsync(parsed.CommandArgs, host);
     }
 }

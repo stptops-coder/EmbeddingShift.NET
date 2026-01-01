@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text.Json;
+using EmbeddingShift.ConsoleEval;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Core.Shifts;
@@ -22,15 +23,16 @@ namespace EmbeddingShift.ConsoleEval.Commands
         // Backward-compatible alias for older Program.cs variants.
         public static Task<int> IngestAsync(
             string[] args,
-            DatasetIngestEntry ingestEntry,
-            IIngestor textLineIngestor)
-            => IngestRefsAsync(args, ingestEntry, textLineIngestor);
+            ConsoleEvalHost host)
+            => IngestRefsAsync(args, host);
 
         public static async Task<int> IngestLegacyAsync(
             string[] args,
-            DatasetIngestEntry ingestEntry,
-            IIngestor textLineIngestor)
+            ConsoleEvalHost host)
         {
+            var ingestEntry = host.Services.IngestEntry;
+            var textLineIngestor = host.Services.TxtLineIngestor;
+
             var input = args.Length >= 3 ? args[1] : ResolveSamplesDemoPath();
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
@@ -48,8 +50,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
         public static async Task<int> EvalAsync(
             string[] args,
-            DatasetEvalEntry evalEntry)
+            ConsoleEvalHost host)
         {
+            var evalEntry = host.Services.EvalEntry;
             // usage:
             //   eval <dataset>                 -> load persisted embeddings from FileStore
             //   eval <dataset> --sim           -> use simulated embeddings
@@ -103,10 +106,12 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
         public static async Task<int> RunAsync(
             string[] args,
-            DatasetRunEntry runEntry,
-            IIngestor textLineIngestor,
-            IIngestor queriesJsonIngestor)
+            ConsoleEvalHost host)
         {
+            var runEntry = host.Services.RunEntry;
+            var textLineIngestor = host.Services.TxtLineIngestor;
+            var queriesJsonIngestor = host.Services.QueriesJsonIngestor;
+
             // usage:
             //   run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
             if (args.Length < 4)
@@ -195,11 +200,13 @@ namespace EmbeddingShift.ConsoleEval.Commands
         }
 
         public static async Task<int> RunDemoAsync(
-            string[] args,
-            DatasetRunEntry runEntry,
-            IIngestor textLineIngestor,
-            IIngestor queriesJsonIngestor)
+             string[] args,
+             ConsoleEvalHost host)
         {
+            var runEntry = host.Services.RunEntry;
+            var textLineIngestor = host.Services.TxtLineIngestor;
+            var queriesJsonIngestor = host.Services.QueriesJsonIngestor;
+
             // usage:
             //   run-demo [<dataset>] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
             var dataset = "DemoDataset";
@@ -291,11 +298,13 @@ namespace EmbeddingShift.ConsoleEval.Commands
         }
 
         public static async Task<int> IngestQueriesAsync(
-            string[] args,
-            DatasetIngestEntry ingestEntry,
-            IIngestor textLineIngestor,
-            IIngestor queriesJsonIngestor)
+             string[] args,
+             ConsoleEvalHost host)
         {
+            var ingestEntry = host.Services.IngestEntry;
+            var textLineIngestor = host.Services.TxtLineIngestor;
+            var queriesJsonIngestor = host.Services.QueriesJsonIngestor;
+
             var input = args.Length >= 3 ? args[1] : ResolveSamplesDemoPath();
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
@@ -314,10 +323,12 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
         public static async Task<int> IngestDatasetAsync(
             string[] args,
-            DatasetIngestDatasetEntry ingestDatasetEntry,
-            IIngestor textLineIngestor,
-            IIngestor queriesJsonIngestor)
+            ConsoleEvalHost host)
         {
+            var ingestDatasetEntry = host.Services.IngestDatasetEntry;
+            var textLineIngestor = host.Services.TxtLineIngestor;
+            var queriesJsonIngestor = host.Services.QueriesJsonIngestor;
+
             // usage:
             //   ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]
             if (args.Length < 4)
@@ -374,9 +385,11 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
         public static async Task<int> IngestRefsAsync(
             string[] args,
-            DatasetIngestEntry ingestEntry,
-            IIngestor textLineIngestor)
+            ConsoleEvalHost host)
         {
+            var ingestEntry = host.Services.IngestEntry;
+            var textLineIngestor = host.Services.TxtLineIngestor;
+
             var input = args.Length >= 3 ? args[1] : ResolveSamplesDemoPath();
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
 
@@ -394,9 +407,11 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
         public static async Task<int> IngestRefsChunkedAsync(
             string[] args,
-            DatasetIngestEntry ingestEntry,
-            IIngestor textLineIngestor)
+            ConsoleEvalHost host)
         {
+            var ingestEntry = host.Services.IngestEntry;
+            var textLineIngestor = host.Services.TxtLineIngestor;
+
             // usage: ingest-refs-chunked <path> <dataset> [--chunk-size=1000] [--chunk-overlap=100] [--no-recursive]
             var input = args.Length >= 3 ? args[1] : ResolveSamplesDemoPath();
             var dataset = args.Length >= 3 ? args[2] : "DemoDataset";
