@@ -11,9 +11,10 @@ internal static class ConsoleEvalApp
         // Apply env overrides (sim/cache/backend) BEFORE composition.
         ConsoleEvalGlobalEnvironment.Apply(parsed.Options);
 
-        var services = ConsoleEvalComposition.CreateServices(parsed.Options);
+        // Host is the UI-friendly facade; CLI remains an adapter.
+        var host = ConsoleEvalHost.Create(parsed.Options);
 
         // Important: pass only command args to dispatcher (global flags removed).
-        return ConsoleEvalCli.RunAsync(parsed.CommandArgs, services);
+        return ConsoleEvalCli.RunAsync(parsed.CommandArgs, host.Services);
     }
 }
