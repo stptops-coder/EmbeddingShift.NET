@@ -1,5 +1,10 @@
-﻿using System;
+﻿// [FILE] src/EmbeddingShift.ConsoleEval/ConsoleEvalCli.cs
+// [ACTION] REPLACE WHOLE FILE
+
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Adaptive;
@@ -17,12 +22,55 @@ namespace EmbeddingShift.ConsoleEval;
 
 internal static class ConsoleEvalCli
 {
-    public static async Task<int> RunAsync(
-        string[] args,
-        ConsoleEvalServices services)
+    private sealed record CommandSpec(string Name, string Summary, Func<string[], Task<int>> Handler);
+
+    public static async Task<int> RunAsync(string[] args, ConsoleEvalServices services)
     {
         if (services is null) throw new ArgumentNullException(nameof(services));
 
+        // Keep CLI runs isolated: some commands set Environment.ExitCode; do not leak across runs.
+        Environment.ExitCode = 0;
+
+        var commands = BuildCommands(services);
+
+        if (args.Length == 0)
+        {
+            PrintHelp(commands);
+            return 0;
+        }
+
+        var cmd = args[0];
+
+        if (IsHelp(cmd))
+        {
+            PrintHelp(commands);
+            return 0;
+        }
+
+        if (cmd.Equals("--version", StringComparison.OrdinalIgnoreCase))
+        {
+            PrintVersion();
+            return 0;
+        }
+
+        if (!commands.TryGetValue(cmd, out var spec))
+        {
+            Console.WriteLine($"Unknown command '{cmd}'.");
+            Console.WriteLine();
+            PrintHelp(commands);
+            Environment.ExitCode = 1;
+            return 1;
+        }
+
+        var exitCode = await spec.Handler(args);
+        if (exitCode != 0)
+            Environment.ExitCode = exitCode;
+
+        return exitCode;
+    }
+
+    private static IReadOnlyDictionary<string, CommandSpec> BuildCommands(ConsoleEvalServices services)
+    {
         var method = services.Method;
         var ingestEntry = services.IngestEntry;
         var ingestDatasetEntry = services.IngestDatasetEntry;
@@ -31,341 +79,257 @@ internal static class ConsoleEvalCli
         var txtLineIngestor = services.TxtLineIngestor;
         var queriesJsonIngestor = services.QueriesJsonIngestor;
 
+        var map = new Dictionary<string, CommandSpec>(StringComparer.OrdinalIgnoreCase);
 
-        if (args.Length == 0)
+        void Add(string name, string summary, Func<string[], Task<int>> handler, params string[] aliases)
         {
-            PrintHelp();
-            return 0;
+            var spec = new CommandSpec(name, summary, handler);
+            map[name] = spec;
+
+            if (aliases is null) return;
+            foreach (var a in aliases.Where(x => !string.IsNullOrWhiteSpace(x)))
+                map[a] = spec;
         }
 
-        switch (args[0].ToLowerInvariant())
-        {
-            case "domain":
-                {
-                    var exitCode = await DomainCliCommands.DomainAsync(args);
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
-                    break;
-                }
+        static Func<string[], Task<int>> WrapVoid(Func<string[], Task> fn)
+            => async a =>
+            {
+                await fn(a);
+                return Environment.ExitCode;
+            };
 
-            case "ingest-legacy":
-                {
-                    var exitCode = await DatasetCliCommands.IngestLegacyAsync(args, ingestEntry, txtLineIngestor);
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
-                    break;
-                }
+        Add("domain", "domain-pack entrypoint (domain list / domain <id> ...)",
+            a => DomainCliCommands.DomainAsync(a));
 
-            case "eval":
-                {
-                    var exitCode = await DatasetCliCommands.EvalAsync(args, evalEntry);
-                    if (exitCode != 0)
-                    {
-                        Environment.ExitCode = exitCode;
-                        return exitCode;
-                    }
-                    break;
-                }
+        Add("ingest-legacy", "ingest refs only (plain) - legacy; prefer ingest-dataset / ingest",
+            a => DatasetCliCommands.IngestLegacyAsync(a, ingestEntry, txtLineIngestor));
 
-            case "run":
-                {
-                    var exitCode = await DatasetCliCommands.RunAsync(args, runEntry, txtLineIngestor, queriesJsonIngestor);
-                    if (exitCode != 0)
-                    {
-                        Environment.ExitCode = exitCode;
-                        return exitCode;
-                    }
-                    break;
-                }
+        Add("ingest-dataset", "ingest refs+queries into FileStore (canonical)",
+            a => DatasetCliCommands.IngestDatasetAsync(a, ingestDatasetEntry, txtLineIngestor, queriesJsonIngestor),
+            "ingest");
 
-            case "run-demo":
-                {
-                    var exitCode = await DatasetCliCommands.RunDemoAsync(args, runEntry, txtLineIngestor, queriesJsonIngestor);
-                    if (exitCode != 0)
-                    {
-                        Environment.ExitCode = exitCode;
-                        return exitCode;
-                    }
-                    break;
-                }
+        Add("ingest-refs", "ingest refs only (plain)",
+            a => DatasetCliCommands.IngestRefsAsync(a, ingestEntry, txtLineIngestor));
 
-            case "ingest-queries":
-                {
-                    var exitCode = await DatasetCliCommands.IngestQueriesAsync(args, ingestEntry, txtLineIngestor, queriesJsonIngestor);
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
-                    break;
-                }
+        Add("ingest-refs-chunked", "ingest refs only (chunked)",
+            a => DatasetCliCommands.IngestRefsChunkedAsync(a, ingestEntry, txtLineIngestor));
 
-            case "ingest-dataset":
-            case "ingest":
-                {
-                    var exitCode = await DatasetCliCommands.IngestDatasetAsync(args, ingestDatasetEntry, txtLineIngestor, queriesJsonIngestor);
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
-                    break;
-                }
+        Add("ingest-queries", "ingest queries.json",
+            a => DatasetCliCommands.IngestQueriesAsync(a, ingestEntry, txtLineIngestor, queriesJsonIngestor));
 
-            case "ingest-refs":
-                {
-                    var exitCode = await DatasetCliCommands.IngestRefsAsync(args, ingestEntry, txtLineIngestor);
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
-                    break;
-                }
+        Add("ingest-inspect", "show ingest state/manifest for dataset (--role=refs|queries)",
+            a => DatasetCliCommands.IngestInspectAsync(a));
 
-            case "ingest-refs-chunked":
-                {
-                    var exitCode = await DatasetCliCommands.IngestRefsChunkedAsync(args, ingestEntry, txtLineIngestor);
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
-                    break;
-                }
+        Add("eval", "evaluate from persisted embeddings (or --sim)",
+            a => DatasetCliCommands.EvalAsync(a, evalEntry));
 
-            case "ingest-inspect":
-                {
-                    var exitCode = await DatasetCliCommands.IngestInspectAsync(args);
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
-                    break;
-                }
+        Add("run", "ingest+eval in one go (arbitrary paths)",
+            a => DatasetCliCommands.RunAsync(a, runEntry, txtLineIngestor, queriesJsonIngestor));
 
-            case "adaptive":
-                {
-                    var workflowName = "mini-insurance-posneg";
-                    var domainKey = "insurance";
+        Add("run-demo", "run the demo insurance dataset",
+            a => DatasetCliCommands.RunDemoAsync(a, runEntry, txtLineIngestor, queriesJsonIngestor));
 
-                    if (args.Length > 1)
-                    {
-                        var position = 0;
+        Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
+            a => RunAdaptiveAsync(a, method),
+            "mini-insurance-adaptive",
+            "mini-insurance-adaptive-demo");
 
-                        for (var i = 1; i < args.Length; i++)
-                        {
-                            var token = args[i];
-                            if (string.IsNullOrWhiteSpace(token))
-                                continue;
+        // Legacy mini-insurance commands (kept for compatibility / existing scripts)
+        Add("mini-insurance", "legacy mini-insurance demo",
+            WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceAsync()));
 
-                            if (token.StartsWith("-", StringComparison.Ordinal))
-                                continue;
+        Add("mini-insurance-first-delta", "legacy first-delta mini-insurance demo",
+            WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync()));
 
-                            if (position == 0)
-                                workflowName = token;
-                            else if (position == 1)
-                                domainKey = token;
+        Add("mini-insurance-first-shift", "deprecated alias -> mini-insurance-first-delta",
+            WrapVoid(async _ =>
+            {
+                Console.WriteLine("Deprecated alias. Use: mini-insurance-first-delta");
+                await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync();
+            }),
+            "mini-insurance-first-shift-and-delta");
 
-                            position++;
-                        }
-                    }
+        Add("mini-insurance-first-learned-delta", "legacy first learned-delta mini-insurance demo",
+            WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstLearnedDeltaAsync()));
 
-                    var resultsRoot = DirectoryLayout.ResolveResultsRoot(domainKey);
-                    var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
+        Add("mini-insurance-first-delta-aggregate", "aggregate first-delta candidates (legacy)",
+            _ =>
+            {
+                MiniInsuranceLegacyCliCommands.AggregateFirstDelta();
+                return Task.FromResult(0);
+            });
 
-                    IShiftGenerator generator = new TrainingBackedShiftGenerator(
-                        repository,
-                        workflowName: workflowName);
+        Add("mini-insurance-first-delta-train", "train first-delta (legacy)",
+            _ =>
+            {
+                MiniInsuranceLegacyCliCommands.TrainFirstDelta();
+                return Task.FromResult(0);
+            });
 
-                    var service = new ShiftEvaluationService(generator, EvaluatorCatalog.Defaults);
-                    var wf = new AdaptiveWorkflow(generator, service, method);
+        Add("mini-insurance-first-delta-inspect", "inspect first-delta candidate (legacy)",
+            _ =>
+            {
+                MiniInsuranceLegacyCliCommands.InspectFirstDeltaCandidate();
+                return Task.FromResult(0);
+            });
 
-                    Console.WriteLine($"Adaptive ready (method={method}, workflow={workflowName}, domain={domainKey}).");
-                    AdaptiveDemo.RunDemo(wf);
-                    break;
-                }
+        Add("mini-insurance-first-delta-pipeline", "domain-pack pipeline entry (mini-insurance)",
+            a => RunMiniInsurancePipelineAsync(a));
 
-            case "mini-insurance-adaptive":
-            case "mini-insurance-adaptive-demo":
-                {
-                    goto case "adaptive";
-                }
+        Add("mini-insurance-training-inspect", "domain-pack: training-inspect (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "training-inspect" }.Concat(a.Skip(1)).ToArray()));
 
-            case "help":
-            case "--help":
-            case "-h":
-                {
-                    Console.WriteLine("Commands:");
-                    Console.WriteLine("  ingest-legacy   ingest refs only (plain) - legacy; prefer ingest-dataset / ingest");
-                    Console.WriteLine("  ingest-dataset  ingest refs+queries into FileStore (canonical)");
-                    Console.WriteLine("  ingest-refs     ingest refs only (plain)");
-                    Console.WriteLine("  ingest-refs-chunked ingest refs only (chunked)");
-                    Console.WriteLine("  ingest-inspect  show ingest state/manifest for dataset (--role=refs|queries)");
-                    Console.WriteLine("  ingest-queries  ingest queries.json");
-                    Console.WriteLine("  eval            evaluate from persisted embeddings (or --sim)");
-                    Console.WriteLine("  run             ingest+eval in one go (arbitrary paths)");
-                    Console.WriteLine("  run-demo        run the demo insurance dataset");
-                    Console.WriteLine("  domain          domain-pack entrypoint (domain list / domain <id> ...)");
-                    Console.WriteLine();
-                    Console.WriteLine("Common flags:");
-                    Console.WriteLine("  --provider=sim|openai   Select embedding provider backend");
-                    Console.WriteLine();
-                    return 0;
-                }
+        Add("mini-insurance-training-list", "domain-pack: training-list (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "training-list" }.Concat(a.Skip(1)).ToArray()));
 
-            case "mini-insurance":
-                {
-                    await MiniInsuranceLegacyCliCommands.RunMiniInsuranceAsync();
-                    break;
-                }
+        Add("mini-insurance-shift-training-inspect", "domain-pack: shift-training-inspect (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "shift-training-inspect" }.Concat(a.Skip(1)).ToArray()));
 
-            case "mini-insurance-first-delta":
-                {
-                    await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync();
-                    break;
-                }
+        Add("mini-insurance-shift-training-history", "domain-pack: shift-training-history (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "shift-training-history" }.Concat(a.Skip(1)).ToArray()));
 
-            // Compatibility with my earlier (wrong) suggestions:
-            case "mini-insurance-first-shift":
-            case "mini-insurance-first-shift-and-delta":
-                {
-                    Console.WriteLine("Deprecated alias. Use: mini-insurance-first-delta");
-                    goto case "mini-insurance-first-delta";
-                }
+        Add("mini-insurance-shift-training-best", "domain-pack: shift-training-best (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "shift-training-best" }.Concat(a.Skip(1)).ToArray()));
 
-            case "mini-insurance-first-delta-pipeline":
-                {
-                    var pack = DomainPackRegistry.TryGet("mini-insurance");
-                    if (pack is null)
-                    {
-                        Console.WriteLine("Unknown domain pack 'mini-insurance'.");
-                        Environment.ExitCode = 1;
-                        break;
-                    }
+        Add("mini-insurance-posneg-train", "domain-pack: posneg-train (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "posneg-train" }.Concat(a.Skip(1)).ToArray()));
 
-                    var subArgs = new[] { "pipeline" }.Concat(args.Skip(1)).ToArray();
-                    var exitCode = await pack.ExecuteAsync(subArgs, msg => Console.WriteLine(msg));
-                    if (exitCode != 0)
-                        Environment.ExitCode = exitCode;
+        Add("mini-insurance-posneg-training-inspect", "domain-pack: posneg-inspect (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "posneg-inspect" }.Concat(a.Skip(1)).ToArray()));
 
-                    break;
-                }
+        Add("mini-insurance-posneg-training-history", "domain-pack: posneg-history (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "posneg-history" }.Concat(a.Skip(1)).ToArray()));
 
-            case "mini-insurance-training-inspect":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "training-inspect" }.Concat(args.Skip(1)).ToArray());
-                break;
+        Add("mini-insurance-posneg-training-best", "domain-pack: posneg-best (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "posneg-best" }.Concat(a.Skip(1)).ToArray()));
 
-            case "mini-insurance-training-list":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "training-list" }.Concat(args.Skip(1)).ToArray());
-                break;
+        Add("mini-insurance-posneg-run", "domain-pack: posneg-run (mini-insurance)",
+            a => DomainCliCommands.ExecuteDomainPackAsync(
+                "mini-insurance",
+                new[] { "posneg-run" }.Concat(a.Skip(1)).ToArray()));
 
-            case "mini-insurance-first-delta-aggregate":
-                {
-                    MiniInsuranceLegacyCliCommands.AggregateFirstDelta();
-                    break;
-                }
+        // Shift-training commands (generic, not domain-scoped)
+        Add("shift-training-inspect", "inspect a shift training runroot",
+            WrapVoid(a => ShiftTrainingInspectCommand.RunAsync(a.Skip(1).ToArray())));
 
-            case "shift-training-inspect":
-                {
-                    await ShiftTrainingInspectCommand.RunAsync(args.Skip(1).ToArray());
-                    break;
-                }
+        Add("shift-training-history", "show shift training history",
+            WrapVoid(a => ShiftTrainingHistoryCommand.RunAsync(a.Skip(1).ToArray())));
 
-            case "shift-training-history":
-                {
-                    await ShiftTrainingHistoryCommand.RunAsync(args.Skip(1).ToArray());
-                    break;
-                }
+        Add("shift-training-best", "show best shift training candidate",
+            WrapVoid(a => ShiftTrainingBestCommand.RunAsync(a.Skip(1).ToArray())));
 
-            case "shift-training-best":
-                {
-                    await ShiftTrainingBestCommand.RunAsync(args.Skip(1).ToArray());
-                    break;
-                }
-
-            case "mini-insurance-first-delta-train":
-                {
-                    MiniInsuranceLegacyCliCommands.TrainFirstDelta();
-                    break;
-                }
-
-            case "mini-insurance-first-learned-delta":
-                {
-                    await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstLearnedDeltaAsync();
-                    break;
-                }
-
-            case "mini-insurance-first-delta-inspect":
-                {
-                    MiniInsuranceLegacyCliCommands.InspectFirstDeltaCandidate();
-                    break;
-                }
-
-            case "mini-insurance-shift-training-inspect":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "shift-training-inspect" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "mini-insurance-shift-training-history":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "shift-training-history" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "mini-insurance-shift-training-best":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "shift-training-best" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "mini-insurance-posneg-train":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "posneg-train" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "mini-insurance-posneg-training-inspect":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "posneg-inspect" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "mini-insurance-posneg-training-history":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "posneg-history" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "mini-insurance-posneg-training-best":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "posneg-best" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "mini-insurance-posneg-run":
-                await DomainCliCommands.ExecuteDomainPackAsync(
-                    "mini-insurance",
-                    new[] { "posneg-run" }.Concat(args.Skip(1)).ToArray());
-                break;
-
-            case "--version":
-                {
-                    var v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
-                    Console.WriteLine($".NET ConsoleEval version {v}");
-                    break;
-                }
-
-            default:
-                {
-                    PrintHelp();
-                    break;
-                }
-        }
-
-        return Environment.ExitCode;
+        return map;
     }
 
-    private static void PrintHelp()
+    private static bool IsHelp(string cmd)
+    {
+        return cmd.Equals("help", StringComparison.OrdinalIgnoreCase) ||
+               cmd.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+               cmd.Equals("-h", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void PrintVersion()
+    {
+        var v = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "dev";
+        Console.WriteLine($".NET ConsoleEval version {v}");
+    }
+
+    private static void PrintHelp(IReadOnlyDictionary<string, CommandSpec> commandMap)
     {
         Console.WriteLine("EmbeddingShift.ConsoleEval — usage");
-        Console.WriteLine("  help | --help | -h    show command list");
-        Console.WriteLine("  domain list           list domain packs");
-        Console.WriteLine("  run-demo              run demo dataset");
-        Console.WriteLine("  eval <dataset>        evaluate dataset");
-        Console.WriteLine("  adaptive              run adaptive demo");
+        Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- <command> [args]");
         Console.WriteLine();
-        Console.WriteLine("Tip: run with 'help' for the full list.");
+        Console.WriteLine("Commands:");
+
+        var unique = commandMap
+            .Values
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var spec in unique)
+            Console.WriteLine($"  {spec.Name,-28} {spec.Summary}");
+
+        Console.WriteLine();
+        Console.WriteLine("Tip: dotnet run --project src/EmbeddingShift.ConsoleEval -- help");
+        Console.WriteLine("Also: --version");
+    }
+
+    private static Task<int> RunAdaptiveAsync(string[] args, ShiftMethod method)
+    {
+        var workflowName = "mini-insurance-posneg";
+        var domainKey = "insurance";
+
+        if (args.Length > 1)
+        {
+            var position = 0;
+
+            for (var i = 1; i < args.Length; i++)
+            {
+                var token = args[i];
+                if (string.IsNullOrWhiteSpace(token))
+                    continue;
+
+                if (token.StartsWith("-", StringComparison.Ordinal))
+                    continue;
+
+                if (position == 0)
+                    workflowName = token;
+                else if (position == 1)
+                    domainKey = token;
+
+                position++;
+            }
+        }
+
+        var resultsRoot = DirectoryLayout.ResolveResultsRoot(domainKey);
+        var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
+
+        IShiftGenerator generator = new TrainingBackedShiftGenerator(
+            repository,
+            workflowName: workflowName);
+
+        var service = new ShiftEvaluationService(generator, EvaluatorCatalog.Defaults);
+        var wf = new AdaptiveWorkflow(generator, service, method);
+
+        Console.WriteLine($"Adaptive ready (method={method}, workflow={workflowName}, domain={domainKey}).");
+        AdaptiveDemo.RunDemo(wf);
+
+        return Task.FromResult(0);
+    }
+
+    private static async Task<int> RunMiniInsurancePipelineAsync(string[] args)
+    {
+        var pack = DomainPackRegistry.TryGet("mini-insurance");
+        if (pack is null)
+        {
+            Console.WriteLine("Unknown domain pack 'mini-insurance'.");
+            return 1;
+        }
+
+        var subArgs = new[] { "pipeline" }.Concat(args.Skip(1)).ToArray();
+        var exitCode = await pack.ExecuteAsync(subArgs, msg => Console.WriteLine(msg));
+        if (exitCode != 0)
+            Environment.ExitCode = exitCode;
+
+        return exitCode;
     }
 }
