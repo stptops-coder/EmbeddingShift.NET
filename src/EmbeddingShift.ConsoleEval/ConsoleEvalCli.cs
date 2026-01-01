@@ -269,8 +269,20 @@ internal static class ConsoleEvalCli
             Console.WriteLine($"  {spec.Name,-28} {spec.Summary}");
 
         Console.WriteLine();
+        Console.WriteLine("Global flags (may appear anywhere; removed before dispatch):");
+        Console.WriteLine("  --provider=sim|openai-echo|openai-dryrun");
+        Console.WriteLine("  --backend=sim|openai");
+        Console.WriteLine("  --method=A");
+        Console.WriteLine("  --sim-mode=deterministic|noisy");
+        Console.WriteLine("  --sim-noise=<float>");
+        Console.WriteLine("  --sim-algo=sha256|semantic-hash");
+        Console.WriteLine("  --sim-char-ngrams=0|1");
+        Console.WriteLine("  --semantic-cache | --no-semantic-cache");
+        Console.WriteLine("  --cache-max=<int>  --cache-hamming=<int>  --cache-approx=0|1");
+        Console.WriteLine();
         Console.WriteLine("Tip: dotnet run --project src/EmbeddingShift.ConsoleEval -- help");
         Console.WriteLine("Also: --version");
+
     }
 
     private static Task<int> RunAdaptiveAsync(string[] args, ShiftMethod method)
