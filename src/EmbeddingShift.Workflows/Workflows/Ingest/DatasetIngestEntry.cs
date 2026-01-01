@@ -77,6 +77,16 @@ namespace EmbeddingShift.Workflows.Ingest
                         ChunkOverlap: request.ChunkOverlap,
                         Recursive: request.Recursive));
 
+                await EmbeddingSpaceStateStore.TryWriteAsync(
+    embeddingsRoot: DirectoryLayout.ResolveDataRoot("embeddings"),
+    state: new EmbeddingSpaceState(
+        Space: space,
+        Mode: request.Mode.ToString(),
+        UsedJson: false,
+        Provider: _provider.Name,
+        CreatedUtc: DateTime.UtcNow,
+        ChunkFirstManifestPath: manifest));
+
                 return new DatasetIngestResult(
                     Space: space,
                     Mode: request.Mode,
@@ -97,6 +107,15 @@ namespace EmbeddingShift.Workflows.Ingest
 
             var wfPlain = new IngestWorkflow(ingestor, _provider, _store);
             await wfPlain.RunAsync(request.InputPath, space);
+            await EmbeddingSpaceStateStore.TryWriteAsync(
+    embeddingsRoot: DirectoryLayout.ResolveDataRoot("embeddings"),
+    state: new EmbeddingSpaceState(
+        Space: space,
+        Mode: request.Mode.ToString(),
+        UsedJson: usedJson,
+        Provider: _provider.Name,
+        CreatedUtc: DateTime.UtcNow,
+        ChunkFirstManifestPath: null));
 
             return new DatasetIngestResult(
                 Space: space,
@@ -133,21 +152,7 @@ namespace EmbeddingShift.Workflows.Ingest
             }
 
             private static string SpaceToPath(string space)
-            {
-                var parts = space.Split(new[] { ':', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(SanitizePathPart);
-                return Path.Combine(parts.ToArray());
-            }
-
-            private static string SanitizePathPart(string name)
-            {
-                var invalid = Path.GetInvalidFileNameChars();
-                var chars = name.ToCharArray();
-                for (int i = 0; i < chars.Length; i++)
-                    if (invalid.Contains(chars[i])) chars[i] = '_';
-                var sanitized = new string(chars).Trim();
-                return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized;
-            }
+                => SpacePath.ToRelativePath(space);
         }
     }
 }

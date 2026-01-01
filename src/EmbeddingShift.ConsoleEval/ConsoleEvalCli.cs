@@ -117,6 +117,14 @@ internal static class ConsoleEvalCli
                     break;
                 }
 
+            case "ingest-inspect":
+                {
+                    var exitCode = await DatasetCliCommands.IngestInspectAsync(args);
+                    if (exitCode != 0)
+                        Environment.ExitCode = exitCode;
+                    break;
+                }
+
             case "adaptive":
                 {
                     var workflowName = "mini-insurance-posneg";
@@ -174,6 +182,7 @@ internal static class ConsoleEvalCli
                     Console.WriteLine("  ingest-dataset  ingest refs+queries into FileStore (canonical)");
                     Console.WriteLine("  ingest-refs     ingest refs only (plain)");
                     Console.WriteLine("  ingest-refs-chunked ingest refs only (chunked)");
+                    Console.WriteLine("  ingest-inspect  show ingest state/manifest for dataset (--role=refs|queries)");
                     Console.WriteLine("  ingest-queries  ingest queries.json");
                     Console.WriteLine("  eval            evaluate from persisted embeddings (or --sim)");
                     Console.WriteLine("  run             ingest+eval in one go (arbitrary paths)");

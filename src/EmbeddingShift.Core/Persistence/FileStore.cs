@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Abstractions;
 
 namespace EmbeddingShift.Core.Persistence
@@ -42,22 +43,8 @@ namespace EmbeddingShift.Core.Persistence
 
         // --- add these helpers inside the FileStore class ---
         private static string SpaceToPath(string space)
-        {
-            // Split on common logical separators and build nested folders.
-            var parts = space.Split(new[] { ':', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-                             .Select(SanitizePathPart);
-            return Path.Combine(parts.ToArray());
-        }
+            => SpacePath.ToRelativePath(space);
 
-        private static string SanitizePathPart(string name)
-        {
-            var invalid = Path.GetInvalidFileNameChars();
-            var chars = name.ToCharArray();
-            for (int i = 0; i < chars.Length; i++)
-                if (invalid.Contains(chars[i])) chars[i] = '_';
-            var sanitized = new string(chars).Trim();
-            return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized;
-        }
         public async Task<float[]> LoadEmbeddingAsync(Guid id)
         {
             // search in all space folders

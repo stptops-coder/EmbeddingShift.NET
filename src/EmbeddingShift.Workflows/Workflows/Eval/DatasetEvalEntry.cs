@@ -106,7 +106,14 @@ namespace EmbeddingShift.Workflows.Eval
             var refsSpace = $"{dataset}:{request.RefRole}".Trim();
 
             var manifestsRoot = DirectoryLayout.ResolveDataRoot("manifests");
-            var refsManifestPath = TryResolveLatestManifestPath(manifestsRoot, refsSpace);
+
+            // Prefer authoritative ingest state stored alongside persisted embeddings.
+            var refsState = EmbeddingSpaceStateStore.TryRead(embeddingsRoot, refsSpace);
+            var refsManifestPath = refsState?.ChunkFirstManifestPath;
+
+            if (string.IsNullOrWhiteSpace(refsManifestPath))
+                refsManifestPath = TryResolveLatestManifestPath(manifestsRoot, refsSpace);
+
             var refsManifest = TryReadChunkFirstManifest(refsManifestPath);
 
             queries = LoadVectorsForSpace(embeddingsRoot, queriesSpace);
@@ -265,11 +272,7 @@ namespace EmbeddingShift.Workflows.Eval
                 if (!Directory.Exists(dir)) return null;
 
                 var latest = Path.Combine(dir, "manifest_latest.json");
-                if (File.Exists(latest)) return latest;
-
-                return Directory.EnumerateFiles(dir, "manifest_*.json", SearchOption.TopDirectoryOnly)
-                    .OrderByDescending(File.GetLastWriteTimeUtc)
-                    .FirstOrDefault();
+                return File.Exists(latest) ? latest : null;
             }
             catch
             {
@@ -296,20 +299,6 @@ namespace EmbeddingShift.Workflows.Eval
         }
 
         private static string SpaceToPath(string space)
-        {
-            var parts = space.Split(new[] { ':', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-                             .Select(SanitizePathPart);
-            return Path.Combine(parts.ToArray());
-        }
-
-        private static string SanitizePathPart(string name)
-        {
-            var invalid = Path.GetInvalidFileNameChars();
-            var chars = name.ToCharArray();
-            for (int i = 0; i < chars.Length; i++)
-                if (invalid.Contains(chars[i])) chars[i] = '_';
-            var sanitized = new string(chars).Trim();
-            return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized;
-        }
+            => SpacePath.ToRelativePath(space);
     }
 }

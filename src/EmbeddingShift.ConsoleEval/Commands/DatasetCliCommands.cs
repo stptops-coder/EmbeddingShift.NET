@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text.Json;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Core.Shifts;
@@ -432,6 +433,79 @@ namespace EmbeddingShift.ConsoleEval.Commands
             Console.WriteLine($"Ingest (refs, chunked) finished. Manifest: {result.ManifestPath}");
             return 0;
         }
+
+        public static Task<int> IngestInspectAsync(string[] args)
+        {
+            // usage:
+            //   ingest-inspect <dataset> [--role=refs|queries]
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Usage: ingest-inspect <dataset> [--role=refs|queries]");
+                Environment.ExitCode = 1;
+                return Task.FromResult(1);
+            }
+
+            var dataset = args[1].Trim();
+            var role = args.FirstOrDefault(a => a.StartsWith("--role=", StringComparison.OrdinalIgnoreCase))
+                         ?.Split('=', 2)[1]
+                         ?.Trim();
+
+            if (string.IsNullOrWhiteSpace(role))
+                role = "refs";
+
+            var space = $"{dataset}:{role}".Trim();
+            var embeddingsRoot = DirectoryLayout.ResolveDataRoot("embeddings");
+
+            var state = EmbeddingSpaceStateStore.TryRead(embeddingsRoot, space);
+            if (state is null)
+            {
+                Console.WriteLine($"No ingest state found for space '{space}'.");
+                Environment.ExitCode = 1;
+                return Task.FromResult(1);
+            }
+
+            Console.WriteLine($"[INGEST STATE] space={state.Space}");
+            Console.WriteLine($"  mode      = {state.Mode}");
+            Console.WriteLine($"  provider  = {state.Provider}");
+            Console.WriteLine($"  usedJson  = {state.UsedJson}");
+            Console.WriteLine($"  createdUtc= {state.CreatedUtc:O}");
+
+            if (!string.IsNullOrWhiteSpace(state.ChunkFirstManifestPath))
+            {
+                Console.WriteLine($"  manifest  = {state.ChunkFirstManifestPath}");
+
+                try
+                {
+                    if (File.Exists(state.ChunkFirstManifestPath))
+                    {
+                        var json = File.ReadAllText(state.ChunkFirstManifestPath);
+                        var summary = JsonSerializer.Deserialize<EmbeddingShift.Workflows.ChunkFirstIngestManifestSummary>(
+                            json,
+                            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+                        if (summary is not null)
+                        {
+                            Console.WriteLine("  [MANIFEST SUMMARY]");
+                            Console.WriteLine($"    id            = {summary.Id}");
+                            Console.WriteLine($"    inputRoot     = {summary.InputRoot}");
+                            Console.WriteLine($"    totalDocs     = {summary.TotalDocuments}");
+                            Console.WriteLine($"    totalChunks   = {summary.TotalChunks}");
+                            Console.WriteLine($"    dims          = {summary.Dimensions}");
+                            Console.WriteLine($"    chunkSize     = {summary.Preprocessing.ChunkSize}");
+                            Console.WriteLine($"    chunkOverlap  = {summary.Preprocessing.ChunkOverlap}");
+                            Console.WriteLine($"    chunkIndex    = {summary.ChunkIndexFileName}");
+                        }
+                    }
+                }
+                catch
+                {
+                    // keep inspect resilient
+                }
+            }
+
+            return Task.FromResult(0);
+        }
+
 
         private static IShift ParseShift(string[] args)
         {

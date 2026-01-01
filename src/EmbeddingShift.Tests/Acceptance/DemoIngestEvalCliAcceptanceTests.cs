@@ -72,9 +72,20 @@ namespace EmbeddingShift.Tests.Acceptance
                     refsManifestPath = p2.GetString();
 
                 Assert.False(string.IsNullOrWhiteSpace(refsManifestPath), "RefsManifestPath must be present in run_manifest.json.");
+
+                Assert.True(File.Exists(refsManifestPath!), $"Refs manifest not found: {refsManifestPath}");
+
+                var manifestsDir = Path.Combine(tempRoot, "data", "manifests", dataset, "refs");
+                var refsManifestFull = Path.GetFullPath(refsManifestPath!);
+                var manifestsDirFull = Path.GetFullPath(manifestsDir);
+
+                Assert.StartsWith(manifestsDirFull, refsManifestFull, StringComparison.OrdinalIgnoreCase);
+
+                var manifestFile = Path.GetFileName(refsManifestFull);
                 Assert.True(
-                    refsManifestPath!.EndsWith("manifest_latest.json", StringComparison.OrdinalIgnoreCase),
-                    $"Expected RefsManifestPath to end with manifest_latest.json, got: {refsManifestPath}"
+                    manifestFile.Equals("manifest_latest.json", StringComparison.OrdinalIgnoreCase) ||
+                    manifestFile.StartsWith("manifest_", StringComparison.OrdinalIgnoreCase),
+                    $"Unexpected refs manifest filename: {manifestFile}"
                 );
 
                 var qDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "queries");
@@ -83,7 +94,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.True(Directory.Exists(qDir), $"Missing queries dir: {qDir}");
                 Assert.True(Directory.Exists(rDir), $"Missing refs dir: {rDir}");
 
-                var manifestsDir = Path.Combine(tempRoot, "data", "manifests", dataset, "refs");
+                
                 Assert.True(Directory.Exists(manifestsDir), $"Missing manifests dir: {manifestsDir}");
 
                 var manifestFiles = Directory.GetFiles(manifestsDir, "manifest_*.json", SearchOption.TopDirectoryOnly);

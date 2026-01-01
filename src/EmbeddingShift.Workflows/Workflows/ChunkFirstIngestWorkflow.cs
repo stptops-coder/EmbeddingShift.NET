@@ -237,20 +237,7 @@ namespace EmbeddingShift.Workflows
         }
 
         private static string SpaceToPath(string space)
-        {
-            var parts = space.Split(new[] { ':', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries)
-                             .Select(SanitizePathPart);
-            return Path.Combine(parts.ToArray());
-        }
+            => SpacePath.ToRelativePath(space);
 
-        private static string SanitizePathPart(string name)
-        {
-            var invalid = Path.GetInvalidFileNameChars();
-            var chars = name.ToCharArray();
-            for (int i = 0; i < chars.Length; i++)
-                if (invalid.Contains(chars[i])) chars[i] = '_';
-            var sanitized = new string(chars).Trim();
-            return string.IsNullOrWhiteSpace(sanitized) ? "default" : sanitized;
-        }
     }
 }
