@@ -19,14 +19,19 @@ internal static class ConsoleEvalCli
 {
     public static async Task<int> RunAsync(
         string[] args,
-        ShiftMethod method,
-        DatasetIngestEntry ingestEntry,
-        DatasetIngestDatasetEntry ingestDatasetEntry,
-        DatasetEvalEntry evalEntry,
-        DatasetRunEntry runEntry,
-        IIngestor txtLineIngestor,
-        IIngestor queriesJsonIngestor)
+        ConsoleEvalServices services)
     {
+        if (services is null) throw new ArgumentNullException(nameof(services));
+
+        var method = services.Method;
+        var ingestEntry = services.IngestEntry;
+        var ingestDatasetEntry = services.IngestDatasetEntry;
+        var evalEntry = services.EvalEntry;
+        var runEntry = services.RunEntry;
+        var txtLineIngestor = services.TxtLineIngestor;
+        var queriesJsonIngestor = services.QueriesJsonIngestor;
+
+
         if (args.Length == 0)
         {
             PrintHelp();

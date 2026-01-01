@@ -166,15 +166,17 @@ internal static class ConsoleEvalApp
         var evalEntry = new DatasetEvalEntry(provider, evalWf);
         var runEntry = new DatasetRunEntry(ingestDatasetEntry, evalEntry);
 
-        return await ConsoleEvalCli.RunAsync(
-            args,
-            method,
-            ingestEntry,
-            ingestDatasetEntry,
-            evalEntry,
-            runEntry,
-            txtLineIngestor,
-            queriesJsonIngestor);
+        var services = new ConsoleEvalServices(
+            Method: method,
+            IngestEntry: ingestEntry,
+            IngestDatasetEntry: ingestDatasetEntry,
+            EvalEntry: evalEntry,
+            RunEntry: runEntry,
+            TxtLineIngestor: txtLineIngestor,
+            QueriesJsonIngestor: queriesJsonIngestor);
+
+        return await ConsoleEvalCli.RunAsync(args, services);
+
     }
 
     // --- Helper objects ---
