@@ -143,6 +143,10 @@ internal static class ConsoleEvalCli
             a => DatasetCliCommands.RunSmokeDemoAsync(a, host),
             "smoke-demo");
 
+        Add("smoke-all", "run: smoke-demo + mini-insurance pipeline + posneg (micro) (fast end-to-end)",
+            a => SmokeCliCommands.SmokeAllAsync(a, host),
+            "smoke");
+
         Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
             a => RunAdaptiveAsync(a, method),
             "mini-insurance-adaptive",
