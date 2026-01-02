@@ -128,7 +128,11 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                 {
                     log("[MiniInsurance] Running baseline vs pos-neg shift (simulation backend)...");
                     log("");
-                    await MiniInsurancePosNegRunner.RunAsync(EmbeddingBackend.Sim);
+
+                    var useLatest =
+                        args.Any(a => string.Equals(a, "--latest", StringComparison.OrdinalIgnoreCase));
+
+                    await MiniInsurancePosNegRunner.RunAsync(EmbeddingBackend.Sim, useLatest: useLatest);
                     return 0;
                 }
 

@@ -230,9 +230,9 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
             // This prints MAP@1 / NDCG@3 deltas to the console.
             Log("[LearnedDelta] Evaluating learned Delta (pos-neg run)...");
             await EmbeddingShift.ConsoleEval.MiniInsurancePosNegRunner
-                .RunAsync(EmbeddingShift.ConsoleEval.EmbeddingBackend.Sim)
+                .RunAsync(EmbeddingShift.ConsoleEval.EmbeddingBackend.Sim, useLatest: true)
                 .ConfigureAwait(false);
-
+    
             Log("[LearnedDelta] Learned Delta evaluation completed (see MAP/NDCG above).");
         }
 

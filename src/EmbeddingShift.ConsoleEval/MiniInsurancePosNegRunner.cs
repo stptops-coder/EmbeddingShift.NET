@@ -20,12 +20,14 @@ namespace EmbeddingShift.ConsoleEval
     {
         private const string WorkflowName = "mini-insurance-posneg";
 
-        public static async Task RunAsync(EmbeddingBackend backend)
+        public static async Task RunAsync(EmbeddingBackend backend, bool useLatest = false)
         {
             var resultsRoot = DirectoryLayout.ResolveResultsRoot("insurance");
             var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
 
-            var trainingResult = repository.LoadBest(WorkflowName);
+            var trainingResult = useLatest
+                ? repository.LoadLatest(WorkflowName)
+                : repository.LoadBest(WorkflowName);
 
             if (trainingResult is null)
             {
@@ -35,8 +37,9 @@ namespace EmbeddingShift.ConsoleEval
             else
             {
                 var len = trainingResult.DeltaVector?.Length ?? 0;
+                var sel = useLatest ? "latest" : "best";
                 Console.WriteLine(
-                    $"[MiniInsurancePosNegRunner] Loaded best training result: CreatedUtc={trainingResult.CreatedUtc:O}, " +
+                    $"[MiniInsurancePosNegRunner] Loaded {sel} training result: CreatedUtc={trainingResult.CreatedUtc:O}, " +
                     $"Cancelled={trainingResult.IsCancelled}, |Δ|={trainingResult.DeltaNorm:E3}, Δlen={len}, " +
                     $"dFirst+Δ={trainingResult.ImprovementFirstPlusDelta:0.000}");
             }
@@ -47,7 +50,8 @@ namespace EmbeddingShift.ConsoleEval
                  trainingResult.DeltaVector is { Length: > 0 })
                     ? trainingResult.DeltaVector
                     : null;
-            var provider = EmbeddingProviderFactory.Create(backend);
+
+        var provider = EmbeddingProviderFactory.Create(backend);
 
             var domainRoot = ResolveDomainRoot();
             var policiesDir = Path.Combine(domainRoot, "policies");
