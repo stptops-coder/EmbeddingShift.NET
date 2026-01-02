@@ -1,5 +1,6 @@
 ﻿namespace EmbeddingShift.Workflows.Domains;
 
+using EmbeddingShift.Core.Infrastructure;
 using System;
 using System.IO;
 
@@ -19,11 +20,7 @@ public static class MiniInsuranceDataset
     /// </summary>
     public static string ResolveDatasetRoot()
     {
-        // Start from bin/Debug/net8.0 (ConsoleEval or Tests) and go back to repo root.
-        var baseDir = AppContext.BaseDirectory;
-
-        var repoRoot = Path.GetFullPath(
-            Path.Combine(baseDir, "..", "..", "..", "..", ".."));
+        var repoRoot = RepositoryLayout.ResolveRepoRoot();
 
         // Optional override (absolute or repo-relative), e.g.:
         //   results/insurance/datasets/<name>/stage-00
