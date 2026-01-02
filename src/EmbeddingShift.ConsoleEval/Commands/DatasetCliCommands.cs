@@ -297,6 +297,138 @@ namespace EmbeddingShift.ConsoleEval.Commands
             return 0;
         }
 
+        public static async Task<int> RunSmokeAsync(string[] args, ConsoleEvalHost host)
+        {
+            // usage:
+            //   run-smoke <refsPath> <queriesPath> <dataset>
+            //            [--force-reset]
+            //            [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]
+            //            [--sim] [--baseline]
+            if (args.Length < 4)
+            {
+                Console.WriteLine("Usage: run-smoke <refsPath> <queriesPath> <dataset> [--force-reset] [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]");
+                Environment.ExitCode = 1;
+                return 1;
+            }
+
+            var refsPath = args[1];
+            var queriesPath = args[2];
+            var dataset = args[3];
+
+            var forceReset = args.Any(a => a.Equals("--force-reset", StringComparison.OrdinalIgnoreCase));
+
+            Console.WriteLine($"[SMOKE] dataset={dataset}");
+            Console.WriteLine($"  refs   = {refsPath}");
+            Console.WriteLine($"  queries= {queriesPath}");
+            Console.WriteLine($"  reset  = {forceReset}");
+            Console.WriteLine();
+
+            if (forceReset)
+            {
+                var rcReset = await DatasetResetAsync(new[] { "dataset-reset", dataset, "--role=all", "--force" });
+                if (rcReset != 0)
+                    return rcReset;
+            }
+
+            // Pass-through only the ingest-related flags we support here (avoid accidental unknowns).
+            static bool IsIngestFlag(string a) =>
+                a.Equals("--refs-plain", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("--no-recursive", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("--sim", StringComparison.OrdinalIgnoreCase) ||
+                a.StartsWith("--chunk-size=", StringComparison.OrdinalIgnoreCase) ||
+                a.StartsWith("--chunk-overlap=", StringComparison.OrdinalIgnoreCase);
+
+            var ingestArgs = new[] { "ingest-dataset", refsPath, queriesPath, dataset }
+                .Concat(args.Skip(4).Where(IsIngestFlag))
+                .ToArray();
+
+            var rcIngest = await IngestDatasetAsync(ingestArgs, host);
+            if (rcIngest != 0)
+                return rcIngest;
+
+            // Validate:
+            // - refs: require state + chunk manifest
+            // - queries: require state only (queries typically have no chunk manifest)
+            var rcV1 = await DatasetValidateAsync(new[] { "dataset-validate", dataset, "--role=refs", "--require-state", "--require-chunk-manifest" });
+            if (rcV1 != 0)
+                return rcV1;
+
+            var rcV2 = await DatasetValidateAsync(new[] { "dataset-validate", dataset, "--role=queries", "--require-state" });
+            if (rcV2 != 0)
+                return rcV2;
+
+            static bool IsEvalFlag(string a) =>
+                a.Equals("--sim", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("--baseline", StringComparison.OrdinalIgnoreCase);
+
+            var evalArgs = new[] { "eval", dataset }
+                .Concat(args.Skip(4).Where(IsEvalFlag))
+                .ToArray();
+
+            var rcEval = await EvalAsync(evalArgs, host);
+            if (rcEval != 0)
+                return rcEval;
+
+            Console.WriteLine();
+            Console.WriteLine("[SMOKE] PASS");
+            return 0;
+        }
+
+        public static Task<int> RunSmokeDemoAsync(string[] args, ConsoleEvalHost host)
+        {
+            // usage:
+            //   run-smoke-demo <datasetName> [--force-reset] [--baseline] [--sim] [--refs-plain] [--chunk-size=N] [--chunk-overlap=N]
+            var dataset = args.Length > 1 && !args[1].StartsWith("-", StringComparison.Ordinal)
+                ? args[1]
+                : "DemoDataset";
+
+            // Reuse same demo asset resolution as run-demo uses (canonical place).
+            // If your solution already has another resolver, keep this minimal and local.
+            DemoAssets demo;
+            try
+            {
+                demo = DemoDatasetAssets.Resolve();
+            }
+            catch (FileNotFoundException ex)
+            {
+                Console.WriteLine(ex.Message);
+                Environment.ExitCode = 2;
+                return Task.FromResult(2);
+            }
+                      
+            var passThrough = args.Skip(1)
+                .Where(a => a.StartsWith("-", StringComparison.Ordinal))
+                .ToArray();
+
+            var smokeArgs = new[] { "run-smoke", demo.RefsPath, demo.QueriesPath, dataset }
+                .Concat(passThrough)
+                .ToArray();
+
+            return RunSmokeAsync(smokeArgs, host);
+        }
+
+        private sealed record DemoAssets(string RefsPath, string QueriesPath);
+
+        private static class DemoDatasetAssets
+        {
+            public static DemoAssets Resolve()
+            {
+                // Align with run-demo: samples/insurance/policies + samples/insurance/queries
+                var repoRoot = ResolveRepoRoot();
+
+                var refsDir = Path.Combine(repoRoot, "samples", "insurance", "policies");
+                var queriesDir = Path.Combine(repoRoot, "samples", "insurance", "queries");
+
+                if (!Directory.Exists(refsDir))
+                    throw new FileNotFoundException($"Demo refs directory not found: {refsDir}");
+
+                if (!Directory.Exists(queriesDir))
+                    throw new FileNotFoundException($"Demo queries directory not found: {queriesDir}");
+
+                return new DemoAssets(refsDir, queriesDir);
+            }
+        }
+
         public static async Task<int> IngestQueriesAsync(
              string[] args,
              ConsoleEvalHost host)
@@ -340,7 +472,44 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             var refsPath = args[1];
             var queriesPath = args[2];
+
+            // Allow passing a directory for queries (e.g. samples/insurance/queries)
+            // and auto-resolve a concrete query file (prefer queries.json).
+            if (Directory.Exists(queriesPath))
+            {
+                var preferred = Path.Combine(queriesPath, "queries.json");
+                if (File.Exists(preferred))
+                {
+                    queriesPath = preferred;
+                }
+                else
+                {
+                    var firstJson = Directory.EnumerateFiles(queriesPath, "*.json", SearchOption.TopDirectoryOnly)
+                        .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                        .FirstOrDefault();
+
+                    if (firstJson is not null)
+                        queriesPath = firstJson;
+                }
+            }
+
             var dataset = args[3];
+
+            if (!File.Exists(queriesPath))
+            {
+                Console.WriteLine($"ERROR: queries file not found: {queriesPath}");
+                Console.WriteLine("Hint: use an absolute path or create q.txt in the current directory.");
+                Environment.ExitCode = 1;
+                return 1;
+            }
+
+            if (!(File.Exists(refsPath) || Directory.Exists(refsPath)))
+            {
+                Console.WriteLine($"ERROR: refs path not found: {refsPath}");
+                Console.WriteLine("Hint: use an absolute path or create r.txt in the current directory.");
+                Environment.ExitCode = 1;
+                return 1;
+            }
 
             var refsMode = args.Any(a => string.Equals(a, "--refs-plain", StringComparison.OrdinalIgnoreCase))
                 ? DatasetIngestMode.Plain

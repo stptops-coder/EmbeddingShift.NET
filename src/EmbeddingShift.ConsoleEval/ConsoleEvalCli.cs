@@ -1,11 +1,4 @@
-﻿// [FILE] src/EmbeddingShift.ConsoleEval/ConsoleEvalCli.cs
-// [ACTION] REPLACE WHOLE FILE
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
+﻿using System.Reflection;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Adaptive;
 using EmbeddingShift.ConsoleEval.Commands;
@@ -14,9 +7,6 @@ using EmbeddingShift.ConsoleEval.Repositories;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Workflows;
-using EmbeddingShift.Workflows.Eval;
-using EmbeddingShift.Workflows.Ingest;
-using EmbeddingShift.Workflows.Run;
 
 namespace EmbeddingShift.ConsoleEval;
 
@@ -144,6 +134,14 @@ internal static class ConsoleEvalCli
 
         Add("run-demo", "run the demo insurance dataset",
             a => DatasetCliCommands.RunDemoAsync(a, host));
+
+        Add("run-smoke", "ingest-dataset -> validate -> eval (fast smoke gate, persisted)",
+            a => DatasetCliCommands.RunSmokeAsync(a, host),
+            "smoke");
+
+        Add("run-smoke-demo", "run-smoke using the built-in demo assets (no paths required)",
+            a => DatasetCliCommands.RunSmokeDemoAsync(a, host),
+            "smoke-demo");
 
         Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
             a => RunAdaptiveAsync(a, method),
