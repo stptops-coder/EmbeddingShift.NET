@@ -113,7 +113,8 @@ public static class SmokeCliCommands
             Console.WriteLine("[SMOKE-ALL] Step 4/4: domain mini-insurance posneg-run");
             var rcRun = await DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "posneg-run", "--latest" });
+                new[] { "posneg-run" });
+
 
             if (rcRun != 0)
             {
