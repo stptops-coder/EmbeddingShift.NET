@@ -4,6 +4,10 @@ using EmbeddingShift.Preprocessing;
 using EmbeddingShift.Preprocessing.Chunking;
 using EmbeddingShift.Preprocessing.Loading;
 using EmbeddingShift.Preprocessing.Transform;
+using System;
+using System.IO;
+using System.Text;
+using System.Text.Json;
 
 namespace EmbeddingShift.Workflows.Ingest
 {
@@ -40,6 +44,55 @@ namespace EmbeddingShift.Workflows.Ingest
         private readonly IEmbeddingProvider _provider;
         private readonly IVectorStore _store;
 
+        private static readonly JsonSerializerOptions J = new(JsonSerializerDefaults.Web)
+        {
+            WriteIndented = true
+        };
+
+        private sealed record PlainIngestManifestSummary(
+            string Space,
+            string Dataset,
+            string Role,
+            string Mode,
+            bool UsedJson,
+            string Provider,
+            string InputPath,
+            DateTime CreatedUtc);
+
+        private static async Task<string> WritePlainManifestAsync(
+            string space,
+            DatasetIngestRequest request,
+            bool usedJson,
+            string providerName,
+            DateTime createdUtc,
+            CancellationToken ct)
+        {
+            var manifestsRoot = DirectoryLayout.ResolveDataRoot("manifests");
+            var manifestSpaceDir = Path.Combine(manifestsRoot, request.Dataset, request.Role);
+            Directory.CreateDirectory(manifestSpaceDir);
+
+            var summary = new PlainIngestManifestSummary(
+                Space: space,
+                Dataset: request.Dataset,
+                Role: request.Role,
+                Mode: request.Mode.ToString(),
+                UsedJson: usedJson,
+                Provider: providerName,
+                InputPath: Path.GetFullPath(request.InputPath),
+                CreatedUtc: createdUtc);
+
+            var id = Guid.NewGuid().ToString("N");
+            var summaryPath = Path.Combine(manifestSpaceDir, $"manifest_{id}.json");
+
+            var json = JsonSerializer.Serialize(summary, J);
+            await File.WriteAllTextAsync(summaryPath, json, new UTF8Encoding(false), ct);
+
+            var latestPath = Path.Combine(manifestSpaceDir, "manifest_latest.json");
+            await File.WriteAllTextAsync(latestPath, json, new UTF8Encoding(false), ct);
+
+            return summaryPath;
+        }
+
         public DatasetIngestEntry(IEmbeddingProvider provider, IVectorStore store)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
@@ -49,7 +102,8 @@ namespace EmbeddingShift.Workflows.Ingest
         public async Task<DatasetIngestResult> RunAsync(
             DatasetIngestRequest request,
             IIngestor textLineIngestor,
-            IIngestor? queriesJsonIngestor = null)
+            IIngestor? queriesJsonIngestor = null,
+            CancellationToken ct = default)
         {
             if (request is null) throw new ArgumentNullException(nameof(request));
             if (textLineIngestor is null) throw new ArgumentNullException(nameof(textLineIngestor));
@@ -78,14 +132,14 @@ namespace EmbeddingShift.Workflows.Ingest
                         Recursive: request.Recursive));
 
                 await EmbeddingSpaceStateStore.TryWriteAsync(
-    embeddingsRoot: DirectoryLayout.ResolveDataRoot("embeddings"),
-    state: new EmbeddingSpaceState(
-        Space: space,
-        Mode: request.Mode.ToString(),
-        UsedJson: false,
-        Provider: _provider.Name,
-        CreatedUtc: DateTime.UtcNow,
-        ChunkFirstManifestPath: manifest));
+                    embeddingsRoot: DirectoryLayout.ResolveDataRoot("embeddings"),
+                    state: new EmbeddingSpaceState(
+                        Space: space,
+                        Mode: request.Mode.ToString(),
+                        UsedJson: false,
+                        Provider: _provider.Name,
+                        CreatedUtc: DateTime.UtcNow,
+                        ChunkFirstManifestPath: manifest));
 
                 return new DatasetIngestResult(
                     Space: space,
@@ -107,21 +161,31 @@ namespace EmbeddingShift.Workflows.Ingest
 
             var wfPlain = new IngestWorkflow(ingestor, _provider, _store);
             await wfPlain.RunAsync(request.InputPath, space);
+
+            var createdUtc = DateTime.UtcNow;
+            var plainManifestPath = await WritePlainManifestAsync(
+                space: space,
+                request: request,
+                usedJson: usedJson,
+                providerName: _provider.Name,
+                createdUtc: createdUtc,
+                ct: ct);
+
             await EmbeddingSpaceStateStore.TryWriteAsync(
-    embeddingsRoot: DirectoryLayout.ResolveDataRoot("embeddings"),
-    state: new EmbeddingSpaceState(
-        Space: space,
-        Mode: request.Mode.ToString(),
-        UsedJson: usedJson,
-        Provider: _provider.Name,
-        CreatedUtc: DateTime.UtcNow,
-        ChunkFirstManifestPath: null));
+                embeddingsRoot: DirectoryLayout.ResolveDataRoot("embeddings"),
+                state: new EmbeddingSpaceState(
+                    Space: space,
+                    Mode: request.Mode.ToString(),
+                    UsedJson: usedJson,
+                    Provider: _provider.Name,
+                    CreatedUtc: createdUtc,
+                    ChunkFirstManifestPath: null));
 
             return new DatasetIngestResult(
                 Space: space,
                 Mode: request.Mode,
                 UsedJson: usedJson,
-                ManifestPath: null);
+                ManifestPath: plainManifestPath);
         }
 
         private static bool ShouldUseQueriesJson(string input)
@@ -129,15 +193,19 @@ namespace EmbeddingShift.Workflows.Ingest
             if (string.IsNullOrWhiteSpace(input))
                 return false;
 
-            var full = Path.GetFullPath(input);
+            if (Directory.Exists(input))
+            {
+                var candidate = Path.Combine(input, "queries.json");
+                return File.Exists(candidate);
+            }
 
-            if (Directory.Exists(full))
-                return File.Exists(Path.Combine(full, "queries.json"));
+            if (!File.Exists(input))
+                return false;
 
-            if (File.Exists(full))
-                return string.Equals(Path.GetExtension(full), ".json", StringComparison.OrdinalIgnoreCase);
-
-            return false;
+            return string.Equals(
+                Path.GetFileName(input),
+                "queries.json",
+                StringComparison.OrdinalIgnoreCase);
         }
 
         private static class EmbeddingSpaceCleaner
