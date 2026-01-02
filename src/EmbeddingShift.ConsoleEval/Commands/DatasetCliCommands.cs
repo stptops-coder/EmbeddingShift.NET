@@ -521,6 +521,327 @@ namespace EmbeddingShift.ConsoleEval.Commands
             return Task.FromResult(0);
         }
 
+        public static Task<int> DatasetStatusAsync(string[] args)
+        {
+            // usage:
+            //   dataset-status <dataset> [--role=refs|queries|all]
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Usage: dataset-status <dataset> [--role=refs|queries|all]");
+                Environment.ExitCode = 1;
+                return Task.FromResult(1);
+            }
+
+            var dataset = args[1].Trim();
+
+            var role = args.FirstOrDefault(a => a.StartsWith("--role=", StringComparison.OrdinalIgnoreCase))
+                ?.Split('=', 2)[1]
+                ?.Trim()
+                ?.ToLowerInvariant();
+
+            var roles = role switch
+            {
+                "refs" => new[] { "refs" },
+                "queries" => new[] { "queries" },
+                _ => new[] { "refs", "queries" }
+            };
+
+            var embeddingsRoot = DirectoryLayout.ResolveDataRoot("embeddings");
+            var manifestsRoot = DirectoryLayout.ResolveDataRoot("manifests");
+
+            Console.WriteLine($"[DATASET STATUS] dataset={dataset}");
+            Console.WriteLine($"  embeddingsRoot = {embeddingsRoot}");
+            Console.WriteLine($"  manifestsRoot  = {manifestsRoot}");
+
+            foreach (var r in roles)
+            {
+                var space = $"{dataset}:{r}";
+                var rel = SpacePath.ToRelativePath(space);
+
+                var spaceDir = Path.Combine(embeddingsRoot, rel);
+                var statePath = EmbeddingSpaceStateStore.ResolveStatePath(embeddingsRoot, space);
+                var latestManifest = Path.Combine(manifestsRoot, rel, "manifest_latest.json");
+
+                Console.WriteLine();
+                Console.WriteLine($"  [SPACE] {space}");
+                Console.WriteLine($"    dir         = {spaceDir}");
+                Console.WriteLine($"    dirExists   = {Directory.Exists(spaceDir)}");
+                Console.WriteLine($"    state       = {statePath}");
+                Console.WriteLine($"    stateExists = {File.Exists(statePath)}");
+                Console.WriteLine($"    latestManif = {latestManifest}");
+                Console.WriteLine($"    latestExist = {File.Exists(latestManifest)}");
+
+                var state = EmbeddingSpaceStateStore.TryRead(embeddingsRoot, space);
+                if (state is null)
+                {
+                    Console.WriteLine("    stateRead   = <none>");
+                    continue;
+                }
+
+                Console.WriteLine($"    mode        = {state.Mode}");
+                Console.WriteLine($"    provider    = {state.Provider}");
+                Console.WriteLine($"    usedJson    = {state.UsedJson}");
+                Console.WriteLine($"    createdUtc  = {state.CreatedUtc:O}");
+
+                if (!string.IsNullOrWhiteSpace(state.ChunkFirstManifestPath))
+                {
+                    Console.WriteLine($"    manifest    = {state.ChunkFirstManifestPath}");
+                    Console.WriteLine($"    manifestOk  = {File.Exists(state.ChunkFirstManifestPath)}");
+                    TryPrintManifestSummary(state.ChunkFirstManifestPath);
+                }
+            }
+
+            return Task.FromResult(0);
+        }
+        public static Task<int> DatasetResetAsync(string[] args)
+        {
+            // usage:
+            //   dataset-reset <dataset> [--role=refs|queries|all] [--force] [--keep-manifests]
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Usage: dataset-reset <dataset> [--role=refs|queries|all] [--force] [--keep-manifests]");
+                Environment.ExitCode = 1;
+                return Task.FromResult(1);
+            }
+
+            var dataset = args[1].Trim();
+
+            var role = args.FirstOrDefault(a => a.StartsWith("--role=", StringComparison.OrdinalIgnoreCase))
+                ?.Split('=', 2)[1]
+                ?.Trim()
+                ?.ToLowerInvariant();
+
+            var force = args.Any(a => a.Equals("--force", StringComparison.OrdinalIgnoreCase));
+            var keepManifests = args.Any(a => a.Equals("--keep-manifests", StringComparison.OrdinalIgnoreCase));
+
+            var roles = role switch
+            {
+                "refs" => new[] { "refs" },
+                "queries" => new[] { "queries" },
+                _ => new[] { "refs", "queries" }
+            };
+
+            var embeddingsRoot = DirectoryLayout.ResolveDataRoot("embeddings");
+            var manifestsRoot = DirectoryLayout.ResolveDataRoot("manifests");
+
+            Console.WriteLine($"[DATASET RESET] dataset={dataset}");
+            Console.WriteLine($"  embeddingsRoot = {embeddingsRoot}");
+            Console.WriteLine($"  manifestsRoot  = {manifestsRoot}");
+            Console.WriteLine($"  roles          = {string.Join(", ", roles)}");
+            Console.WriteLine($"  keepManifests  = {keepManifests}");
+            Console.WriteLine($"  mode           = {(force ? "DELETE" : "PREVIEW (use --force)")}");
+            Console.WriteLine();
+
+            var hadError = false;
+
+            foreach (var r in roles)
+            {
+                var space = $"{dataset}:{r}";
+                var rel = SpacePath.ToRelativePath(space);
+
+                var embeddingsDir = Path.Combine(embeddingsRoot, rel);
+                var statePath = EmbeddingSpaceStateStore.ResolveStatePath(embeddingsRoot, space);
+                var manifestsDir = Path.Combine(manifestsRoot, rel);
+
+                Console.WriteLine($"  [SPACE] {space}");
+                Console.WriteLine($"    embeddingsDir = {embeddingsDir}");
+                Console.WriteLine($"    statePath     = {statePath}");
+                Console.WriteLine($"    manifestsDir  = {manifestsDir}");
+
+                if (!force)
+                {
+                    Console.WriteLine("    action        = (preview only)");
+                    Console.WriteLine();
+                    continue;
+                }
+
+                try
+                {
+                    if (Directory.Exists(embeddingsDir))
+                    {
+                        Directory.Delete(embeddingsDir, recursive: true);
+                        Console.WriteLine("    deleted       = embeddingsDir");
+                    }
+
+                    if (File.Exists(statePath))
+                    {
+                        File.Delete(statePath);
+                        Console.WriteLine("    deleted       = statePath");
+                    }
+
+                    if (!keepManifests && Directory.Exists(manifestsDir))
+                    {
+                        Directory.Delete(manifestsDir, recursive: true);
+                        Console.WriteLine("    deleted       = manifestsDir");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    hadError = true;
+                    Console.WriteLine($"    ERROR         = {ex.GetType().Name}: {ex.Message}");
+                }
+
+                Console.WriteLine();
+            }
+
+            if (hadError)
+            {
+                Environment.ExitCode = 2;
+                return Task.FromResult(2);
+            }
+
+            return Task.FromResult(0);
+        }
+
+        private static void TryPrintManifestSummary(string manifestPath)
+        {
+            try
+            {
+                if (!File.Exists(manifestPath))
+                    return;
+
+                var json = File.ReadAllText(manifestPath);
+
+                var summary = JsonSerializer.Deserialize<EmbeddingShift.Workflows.ChunkFirstIngestManifestSummary>(
+                    json,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+                if (summary is null)
+                    return;
+
+                Console.WriteLine("    [MANIFEST SUMMARY]");
+                Console.WriteLine($"      totalDocs   = {summary.TotalDocuments}");
+                Console.WriteLine($"      totalChunks = {summary.TotalChunks}");
+                Console.WriteLine($"      dims        = {summary.Dimensions}");
+                Console.WriteLine($"      chunkSize   = {summary.Preprocessing.ChunkSize}");
+                Console.WriteLine($"      overlap     = {summary.Preprocessing.ChunkOverlap}");
+            }
+            catch
+            {
+                // best-effort only
+            }
+        }
+        public static Task<int> DatasetValidateAsync(string[] args)
+        {
+            // usage:
+            //   dataset-validate <dataset> [--role=refs|queries|all] [--require-state] [--require-chunk-manifest]
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Usage: dataset-validate <dataset> [--role=refs|queries|all] [--require-state] [--require-chunk-manifest]");
+                Environment.ExitCode = 1;
+                return Task.FromResult(1);
+            }
+
+            var dataset = args[1].Trim();
+
+            var role = args.FirstOrDefault(a => a.StartsWith("--role=", StringComparison.OrdinalIgnoreCase))
+                ?.Split('=', 2)[1]
+                ?.Trim()
+                ?.ToLowerInvariant();
+
+            var requireState = args.Any(a => a.Equals("--require-state", StringComparison.OrdinalIgnoreCase));
+            var requireChunkManifest = args.Any(a => a.Equals("--require-chunk-manifest", StringComparison.OrdinalIgnoreCase));
+
+            var roles = role switch
+            {
+                "refs" => new[] { "refs" },
+                "queries" => new[] { "queries" },
+                _ => new[] { "refs", "queries" }
+            };
+
+            var embeddingsRoot = DirectoryLayout.ResolveDataRoot("embeddings");
+            var manifestsRoot = DirectoryLayout.ResolveDataRoot("manifests");
+
+            Console.WriteLine($"[DATASET VALIDATE] dataset={dataset}");
+            Console.WriteLine($"  embeddingsRoot = {embeddingsRoot}");
+            Console.WriteLine($"  manifestsRoot  = {manifestsRoot}");
+            Console.WriteLine($"  roles          = {string.Join(", ", roles)}");
+            Console.WriteLine($"  requireState   = {requireState}");
+            Console.WriteLine($"  requireChunkMf = {requireChunkManifest}");
+            Console.WriteLine();
+
+            var ok = true;
+
+            foreach (var r in roles)
+            {
+                var space = $"{dataset}:{r}";
+                var rel = SpacePath.ToRelativePath(space);
+
+                var embeddingsDir = Path.Combine(embeddingsRoot, rel);
+                var statePath = EmbeddingSpaceStateStore.ResolveStatePath(embeddingsRoot, space);
+                var latestManifest = Path.Combine(manifestsRoot, rel, "manifest_latest.json");
+
+                Console.WriteLine($"  [SPACE] {space}");
+                Console.WriteLine($"    embeddingsDir = {embeddingsDir}");
+                Console.WriteLine($"    statePath     = {statePath}");
+                Console.WriteLine($"    latestManif   = {latestManifest}");
+
+                var dirExists = Directory.Exists(embeddingsDir);
+                Console.WriteLine($"    dirExists     = {dirExists}");
+                if (!dirExists) ok = false;
+
+                var embCount = 0;
+                try
+                {
+                    if (dirExists)
+                        embCount = Directory.GetFiles(embeddingsDir, "*.json", SearchOption.TopDirectoryOnly).Length;
+                }
+                catch
+                {
+                    // ignore, will fail below via count=0
+                }
+
+                Console.WriteLine($"    embFiles      = {embCount}");
+                if (embCount <= 0) ok = false;
+
+                var stateExists = File.Exists(statePath);
+                Console.WriteLine($"    stateExists   = {stateExists}");
+
+                if (requireState && !stateExists)
+                    ok = false;
+
+                var state = EmbeddingSpaceStateStore.TryRead(embeddingsRoot, space);
+                if (state is null)
+                {
+                    Console.WriteLine("    stateRead     = <none>");
+                    if (requireState) ok = false;
+                }
+                else
+                {
+                    Console.WriteLine($"    provider      = {state.Provider}");
+                    Console.WriteLine($"    mode          = {state.Mode}");
+                    Console.WriteLine($"    usedJson      = {state.UsedJson}");
+                    Console.WriteLine($"    createdUtc    = {state.CreatedUtc:O}");
+
+                    if (!string.IsNullOrWhiteSpace(state.ChunkFirstManifestPath))
+                    {
+                        var mfOk = File.Exists(state.ChunkFirstManifestPath);
+                        Console.WriteLine($"    chunkManifest = {state.ChunkFirstManifestPath}");
+                        Console.WriteLine($"    mfExists      = {mfOk}");
+                        if (!mfOk) ok = false;
+                    }
+                    else
+                    {
+                        Console.WriteLine("    chunkManifest = <none>");
+                        // typically OK for queries; only force if requested
+                        if (requireChunkManifest) ok = false;
+                    }
+                }
+
+                Console.WriteLine($"    latestExists  = {File.Exists(latestManifest)}");
+                Console.WriteLine();
+            }
+
+            if (!ok)
+            {
+                Console.WriteLine("Validation: FAIL");
+                Environment.ExitCode = 2;
+                return Task.FromResult(2);
+            }
+
+            Console.WriteLine("Validation: PASS");
+            return Task.FromResult(0);
+        }
 
         private static IShift ParseShift(string[] args)
         {

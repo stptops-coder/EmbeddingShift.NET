@@ -122,8 +122,20 @@ internal static class ConsoleEvalCli
             a => DatasetCliCommands.IngestQueriesAsync(a, host));
 
         Add("ingest-inspect", "show ingest state/manifest for dataset (--role=refs|queries)",
-            a => DatasetCliCommands.IngestInspectAsync(a));
+       a => DatasetCliCommands.IngestInspectAsync(a));
 
+        Add("dataset-status", "show dataset ingest status (state + manifests) (--role=refs|queries|all)",
+           a => DatasetCliCommands.DatasetStatusAsync(a),
+           "status");
+
+        Add("dataset-reset", "reset dataset ingest artifacts (embeddings+manifests) (--role=refs|queries|all) [--force]",
+            a => DatasetCliCommands.DatasetResetAsync(a),
+            "reset");
+
+        Add("dataset-validate", "validate dataset ingest artifacts (fast smoke gate) (--role=refs|queries|all)",
+            a => DatasetCliCommands.DatasetValidateAsync(a),
+            "validate");
+        
         Add("eval", "evaluate from persisted embeddings (or --sim)",
            a => DatasetCliCommands.EvalAsync(a, host));
 
