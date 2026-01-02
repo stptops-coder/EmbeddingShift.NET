@@ -38,7 +38,8 @@ namespace EmbeddingShift.ConsoleEval
         public static async Task<ShiftTrainingResult> TrainAsync(
             EmbeddingBackend backend,
             TrainingMode mode,
-            float cancelOutEpsilon)
+            float cancelOutEpsilon,
+            int hardNegTopK = 1)
 
         {
             var provider = EmbeddingProviderFactory.Create(backend);
@@ -117,11 +118,11 @@ namespace EmbeddingShift.ConsoleEval
                     docEmbeddings.ContainsKey(q.RelevantDocId))
                 .Select(q => new PosNegTrainingQuery(q.Id, q.Text, q.RelevantDocId))
                 .ToList();
-
             var options = new PosNegLearningOptions(
                 MaxL2Norm: MaxL2Norm,
                 DisableNormClip: disableNormClip,
-                Debug: debug);
+                Debug: debug,
+                HardNegTopK: hardNegTopK);
 
             var learn = await PosNegDeltaVectorLearner
                 .LearnAsync(provider, learnerQueries, docEmbeddings, options, debugLog)

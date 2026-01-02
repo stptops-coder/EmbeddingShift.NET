@@ -92,7 +92,7 @@ public static class SmokeCliCommands
                 Console.WriteLine("[SMOKE-ALL] Step 3/4: domain mini-insurance posneg-train --mode=micro");
                 var rcTrain = await DomainCliCommands.ExecuteDomainPackAsync(
                     "mini-insurance",
-                    new[] { "posneg-train", "--mode=micro" });
+                    new[] { "posneg-train", "--mode=micro", "--hardneg-topk=5" });
 
                 if (rcTrain != 0)
                 {

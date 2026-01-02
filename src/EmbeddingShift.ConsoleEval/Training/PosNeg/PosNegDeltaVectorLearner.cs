@@ -12,7 +12,8 @@ namespace EmbeddingShift.Core.Training.PosNeg
     public sealed record PosNegLearningOptions(
         float MaxL2Norm,
         bool DisableNormClip,
-        bool Debug);
+        bool Debug,
+        int HardNegTopK = 1);
 
     public sealed record PosNegLearningStats(
         int Cases,
@@ -32,10 +33,9 @@ namespace EmbeddingShift.Core.Training.PosNeg
 
     public static class PosNegDeltaVectorLearner
     {
-        // TODO (future):
-        // - Hard-negative sampling / TopK candidate sets (ANN index) for scale.
-        // - Optional weighting modes (e.g., margin-weighted) to reduce cancellation when uniform averaging cancels out.
-        // - Safety gates (validate/promote/rollback) and richer metadata persistence (mode/topK/clip/provider).
+        // Notes:
+        // - This learner is optimized for small datasets (full scan over docEmbeddings per query).
+        // - HardNegTopK allows learning from multiple top-ranked negatives to reduce cancel-out risk.
         public static async Task<PosNegLearningResult> LearnAsync(
             IEmbeddingProvider provider,
             IReadOnlyList<PosNegTrainingQuery> queries,
@@ -55,7 +55,7 @@ namespace EmbeddingShift.Core.Training.PosNeg
             foreach (var (docId, emb) in docEmbeddings)
             {
                 if (emb is null) throw new ArgumentException($"docEmbeddings contains a null embedding for '{docId}'.", nameof(docEmbeddings));
-                if (emb.Length != dim) throw new ArgumentException($"Inconsistent embedding dim for '{docId}'. Expected {dim}, got {emb.Length}.", nameof(docEmbeddings));
+                if (emb.Length != dim) throw new ArgumentException($"Embedding dim mismatch for '{docId}'. Expected {dim}, got {emb.Length}.", nameof(docEmbeddings));
             }
 
             var sumDirection = new float[dim];
@@ -68,14 +68,18 @@ namespace EmbeddingShift.Core.Training.PosNeg
             double maxDirNorm = 0;
             var zeroDirs = 0;
 
+            var k = options.HardNegTopK <= 0 ? 1 : options.HardNegTopK;
+
             for (var i = 0; i < queries.Count; i++)
             {
                 var q = queries[i];
+
                 if (!docEmbeddings.TryGetValue(q.RelevantDocId, out var posEmb))
                     throw new InvalidOperationException($"RelevantDocId '{q.RelevantDocId}' not found in docEmbeddings (query '{q.QueryId}').");
 
                 var qEmb = await provider.GetEmbeddingAsync(q.Text).ConfigureAwait(false);
 
+                // Score all docs
                 var scored = new List<(string DocId, double Score)>(docEmbeddings.Count);
                 foreach (var (docId, docEmb) in docEmbeddings)
                 {
@@ -93,37 +97,50 @@ namespace EmbeddingShift.Core.Training.PosNeg
                 if (posIndex == 0)
                     continue;
 
-                var negDocId = scored[0].DocId;
-                if (!docEmbeddings.TryGetValue(negDocId, out var negEmb))
-                    throw new InvalidOperationException($"NegDocId '{negDocId}' not found in docEmbeddings (query '{q.QueryId}').");
-
-                var pairKey = $"{q.RelevantDocId}|{negDocId}";
-                uniquePairs.Add(pairKey);
-
-                double dirNormSq = 0;
-                for (var d = 0; d < dim; d++)
+                // Take TopK hard negatives (excluding the positive doc)
+                var taken = 0;
+                for (var si = 0; si < scored.Count && taken < k; si++)
                 {
-                    var dir = posEmb[d] - negEmb[d];
-                    sumDirection[d] += dir;
-                    dirNormSq += (double)dir * dir;
-                }
+                    var negDocId = scored[si].DocId;
+                    if (string.Equals(negDocId, q.RelevantDocId, StringComparison.Ordinal))
+                        continue;
 
-                if (dirNormSq <= 1e-18)
-                {
-                    zeroDirs++;
-                }
+                    if (!docEmbeddings.TryGetValue(negDocId, out var negEmb))
+                        throw new InvalidOperationException($"NegDocId '{negDocId}' not found in docEmbeddings (query '{q.QueryId}').");
 
-                var dirNorm = Math.Sqrt(Math.Max(0, dirNormSq));
-                sumDirNorm += dirNorm;
-                minDirNorm = Math.Min(minDirNorm, dirNorm);
-                maxDirNorm = Math.Max(maxDirNorm, dirNorm);
+                    uniquePairs.Add($"{q.RelevantDocId}|{negDocId}");
 
-                trainingCases++;
+                    double dirNormSq = 0;
+                    for (var d = 0; d < dim; d++)
+                    {
+                        var dir = posEmb[d] - negEmb[d];
+                        sumDirection[d] += dir;
+                        dirNormSq += (double)dir * dir;
+                    }
 
-                if (options.Debug && debugLog is not null)
-                {
-                    var posRank = posIndex + 1;
-                    debugLog($"[PosNeg] Case {trainingCases}: q={q.QueryId}, pos={q.RelevantDocId}, neg={negDocId}, posRank={posRank}, |dir|={dirNorm:0.000000}");
+                    if (dirNormSq <= 1e-18)
+                    {
+                        zeroDirs++;
+                        // still counts as a "taken" hard negative (it was among top ranks),
+                        // but it doesn't contribute useful direction magnitude.
+                        taken++;
+                        continue;
+                    }
+
+                    var dirNorm = Math.Sqrt(dirNormSq);
+                    sumDirNorm += dirNorm;
+                    minDirNorm = Math.Min(minDirNorm, dirNorm);
+                    maxDirNorm = Math.Max(maxDirNorm, dirNorm);
+
+                    trainingCases++;
+
+                    if (options.Debug && debugLog is not null)
+                    {
+                        var posRank = posIndex + 1;
+                        debugLog($"[PosNeg] Case {trainingCases}: q={q.QueryId}, pos={q.RelevantDocId}, neg={negDocId}, posRank={posRank}, negRank={si + 1}, |dir|={dirNorm:0.000000}");
+                    }
+
+                    taken++;
                 }
             }
 
@@ -141,7 +158,6 @@ namespace EmbeddingShift.Core.Training.PosNeg
             if (!options.DisableNormClip && options.MaxL2Norm > 0 && preClip > options.MaxL2Norm)
             {
                 var scale = options.MaxL2Norm / preClip;
-
                 for (var d = 0; d < delta.Length; d++)
                     delta[d] *= scale;
 
@@ -153,8 +169,8 @@ namespace EmbeddingShift.Core.Training.PosNeg
             var avgDirNorm = trainingCases > 0 ? (sumDirNorm / trainingCases) : 0.0;
             if (double.IsPositiveInfinity(minDirNorm)) minDirNorm = 0.0;
 
-            // Cancel-out heuristic: strong per-case directions but near-zero averaged delta.
-            var cancelOut = trainingCases > 0 && avgDirNorm > 1.0 && postClip < 1e-6;
+            // Heuristic: delta nearly zero despite cases => likely cancel-out.
+            var cancelOut = trainingCases > 0 && preClip <= 1e-3;
 
             var stats = new PosNegLearningStats(
                 Cases: trainingCases,

@@ -79,6 +79,7 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
 
                     var mode = TrainingMode.Production;
                     var cancelEpsilon = 1e-3f;
+                    var hardNegTopK = 1;
 
                     foreach (var a in args.Skip(1))
                     {
@@ -90,11 +91,11 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                             else if (value.Equals("prod", StringComparison.OrdinalIgnoreCase) || value.Equals("production", StringComparison.OrdinalIgnoreCase))
                                 mode = TrainingMode.Production;
                         }
-                        else if (a.StartsWith("--cancel-epsilon=", StringComparison.OrdinalIgnoreCase))
+                        else if (a.StartsWith("--hardneg-topk=", StringComparison.OrdinalIgnoreCase))
                         {
                             var value = a.Split('=', 2)[1].Trim();
-                            if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
-                                cancelEpsilon = parsed;
+                            if (int.TryParse(value, out var parsed) && parsed > 0)
+                                hardNegTopK = parsed;
                         }
                     }
 
@@ -102,7 +103,11 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                     log($"  Cancel eps  : {cancelEpsilon:0.000000E+0}");
                     log("");
 
-                    var result = await MiniInsurancePosNegTrainer.TrainAsync(EmbeddingBackend.Sim, mode, cancelEpsilon);
+                    var result = await MiniInsurancePosNegTrainer.TrainAsync(
+                        EmbeddingBackend.Sim,
+                        mode,
+                        cancelEpsilon,
+                        hardNegTopK);
 
                     log("[MiniInsurance] Pos-neg training finished.");
                     log($"  Workflow    : {result.WorkflowName}");
