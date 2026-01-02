@@ -1,7 +1,13 @@
 ﻿using EmbeddingShift.ConsoleEval;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using Xunit;
 
 namespace EmbeddingShift.Tests.Acceptance
 {
@@ -72,7 +78,6 @@ namespace EmbeddingShift.Tests.Acceptance
                     refsManifestPath = p2.GetString();
 
                 Assert.False(string.IsNullOrWhiteSpace(refsManifestPath), "RefsManifestPath must be present in run_manifest.json.");
-
                 Assert.True(File.Exists(refsManifestPath!), $"Refs manifest not found: {refsManifestPath}");
 
                 var manifestsDir = Path.Combine(tempRoot, "data", "manifests", dataset, "refs");
@@ -81,11 +86,16 @@ namespace EmbeddingShift.Tests.Acceptance
 
                 Assert.StartsWith(manifestsDirFull, refsManifestFull, StringComparison.OrdinalIgnoreCase);
 
+                // Robust: allow either manifest_latest.json OR manifest_<hash>.json
                 var manifestFile = Path.GetFileName(refsManifestFull);
-                Assert.True(
+                var ok =
                     manifestFile.Equals("manifest_latest.json", StringComparison.OrdinalIgnoreCase) ||
-                    manifestFile.StartsWith("manifest_", StringComparison.OrdinalIgnoreCase),
-                    $"Unexpected refs manifest filename: {manifestFile}"
+                    (manifestFile.StartsWith("manifest_", StringComparison.OrdinalIgnoreCase) &&
+                     manifestFile.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
+
+                Assert.True(
+                    ok,
+                    $"Expected RefsManifestPath to reference a manifest json (manifest_latest.json or manifest_*.json), got: {refsManifestPath}"
                 );
 
                 var qDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "queries");
@@ -94,7 +104,6 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.True(Directory.Exists(qDir), $"Missing queries dir: {qDir}");
                 Assert.True(Directory.Exists(rDir), $"Missing refs dir: {rDir}");
 
-                
                 Assert.True(Directory.Exists(manifestsDir), $"Missing manifests dir: {manifestsDir}");
 
                 var manifestFiles = Directory.GetFiles(manifestsDir, "manifest_*.json", SearchOption.TopDirectoryOnly);
@@ -211,7 +220,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 var ingest = await RunDotnetAsync(env, consoleEvalDll, "ingest-dataset", rPath, qPath, dataset);
                 Assert.True(ingest.ExitCode == 0, BuildFailureMessage("ingest-dataset failed", tempRoot, ingest));
                 Assert.Contains("Ingest (dataset) finished.", ingest.StdOut);
-                
+
                 string? chunkFirstManifestPath = null;
 
                 // Space-state must exist for refs and point to the concrete chunk-first manifest.
@@ -272,7 +281,6 @@ namespace EmbeddingShift.Tests.Acceptance
                         StringComparison.OrdinalIgnoreCase),
                     $"Expected eval to use state-linked manifest. State={chunkFirstManifestPath} vs RunManifest={refsManifestPath}");
 
-
                 // Baseline eval must persist a machine-readable acceptance gate manifest.
                 var evalResultsDir2 = ExtractResultsDir(evalBaseline.StdOut);
                 var evalGatePath = Path.Combine(evalResultsDir2, "acceptance_gate.json");
@@ -281,6 +289,70 @@ namespace EmbeddingShift.Tests.Acceptance
                 var evalGate = await ReadAcceptanceGateAsync(evalGatePath);
                 Assert.True(evalGate.Passed, "Expected acceptance gate to pass for eval --baseline.");
                 Assert.Equal("rank", evalGate.GateProfile);
+            }
+            finally
+            {
+                if (!keepArtifacts)
+                {
+                    try { Directory.Delete(tempRoot, recursive: true); }
+                    catch { /* best-effort */ }
+                }
+            }
+        }
+
+        [Fact]
+        public async Task SmokeDemo_RunSmokeDemo_PassesEndToEnd()
+        {
+            var consoleEvalDll = typeof(EmbeddingBackend).Assembly.Location;
+            Assert.True(File.Exists(consoleEvalDll), $"ConsoleEval assembly not found: {consoleEvalDll}");
+
+            var tempRoot = Path.Combine(
+                Path.GetTempPath(),
+                "EmbeddingShift.Acceptance",
+                DateTime.UtcNow.ToString("yyyyMMdd_HHmmss"),
+                Guid.NewGuid().ToString("N"));
+
+            Directory.CreateDirectory(tempRoot);
+            Console.WriteLine($"Acceptance TempRoot: {tempRoot}");
+
+            var keepArtifacts =
+                Debugger.IsAttached ||
+                IsTruthy(Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_ACCEPTANCE_KEEP_ARTIFACTS"));
+
+            try
+            {
+                var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["EMBEDDINGSHIFT_ROOT"] = tempRoot,
+                    ["EMBEDDING_BACKEND"] = "sim",
+                    ["EMBEDDING_SIM_MODE"] = "deterministic",
+                };
+
+                var dataset = "DemoDataset";
+
+                // End-to-end: reset -> ingest demo assets -> validate -> eval baseline -> gate PASS
+                var smoke = await RunDotnetAsync(env, consoleEvalDll,
+                    "run-smoke-demo", dataset, "--force-reset", "--baseline");
+
+                Assert.True(smoke.ExitCode == 0, BuildFailureMessage("run-smoke-demo failed", tempRoot, smoke));
+
+                // Robust key markers
+                Assert.Contains("[SMOKE] PASS", smoke.StdOut);
+                Assert.Contains("Validation: PASS", smoke.StdOut);
+                Assert.Contains("Acceptance gate: PASS", smoke.StdOut);
+
+                // Minimal artifact checks under temp root
+                var refsEmbDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "refs");
+                var qEmbDir = Path.Combine(tempRoot, "data", "embeddings", dataset, "queries");
+
+                Assert.True(Directory.Exists(refsEmbDir), $"Missing refs embeddings dir: {refsEmbDir}");
+                Assert.True(Directory.Exists(qEmbDir), $"Missing queries embeddings dir: {qEmbDir}");
+
+                var refsFiles = Directory.GetFiles(refsEmbDir, "*.json", SearchOption.TopDirectoryOnly);
+                var qFiles = Directory.GetFiles(qEmbDir, "*.json", SearchOption.TopDirectoryOnly);
+
+                Assert.True(refsFiles.Length >= 1, $"Expected >= 1 refs embedding file, found {refsFiles.Length}");
+                Assert.True(qFiles.Length >= 1, $"Expected >= 1 query embedding file, found {qFiles.Length}");
             }
             finally
             {
