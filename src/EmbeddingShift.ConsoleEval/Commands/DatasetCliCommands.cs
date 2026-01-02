@@ -1048,13 +1048,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
         private static string ResolveRepoRoot()
         {
-            var dataRoot = DirectoryLayout.ResolveDataRoot();
-            var repoRoot = Path.GetFullPath(Path.Combine(dataRoot, ".."));
-
-            if (RepositoryLayout.TryResolveRepoRoot(out var rr))
-                repoRoot = rr;
-
-            return repoRoot;
+            // Demo assets live in the repository (samples/*). Do NOT derive repo root from EMBEDDINGSHIFT_ROOT
+            // because Acceptance runs intentionally redirect that root to a temp folder.
+            return RepositoryLayout.ResolveRepoRoot();
         }
     }
 }

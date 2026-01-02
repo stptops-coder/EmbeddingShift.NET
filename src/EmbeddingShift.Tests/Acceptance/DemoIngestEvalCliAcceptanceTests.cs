@@ -1,4 +1,5 @@
 ﻿using EmbeddingShift.ConsoleEval;
+using EmbeddingShift.Core.Infrastructure;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -388,6 +389,13 @@ namespace EmbeddingShift.Tests.Acceptance
             foreach (var a in args) psi.ArgumentList.Add(a);
 
             foreach (var kv in env) psi.Environment[kv.Key] = kv.Value;
+
+            // Make demo commands deterministic: they must find samples/* regardless of EMBEDDINGSHIFT_ROOT (temp).
+            var repoRoot = RepositoryLayout.ResolveRepoRoot();
+            psi.WorkingDirectory = repoRoot;
+
+            if (!psi.Environment.ContainsKey("EMBEDDINGSHIFT_REPO_ROOT"))
+                psi.Environment["EMBEDDINGSHIFT_REPO_ROOT"] = repoRoot;
 
             using var p = Process.Start(psi);
             if (p is null) throw new InvalidOperationException("Failed to start dotnet process.");
