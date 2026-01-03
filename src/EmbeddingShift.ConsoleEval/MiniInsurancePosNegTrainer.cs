@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.ConsoleEval.Repositories;
+using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.Core.Training;
 using EmbeddingShift.Core.Training.CancelOut;
 using EmbeddingShift.Core.Training.PosNeg;
@@ -154,7 +155,7 @@ namespace EmbeddingShift.ConsoleEval
                 Console.WriteLine("[PosNeg] Hint: set EMBEDDINGSHIFT_POSNEG_DEBUG=1 to print per-case details.");
             }
 
-            var resultsRoot = DirectoryLayout.ResolveResultsRoot("insurance");
+            var resultsRoot = MiniInsurancePaths.GetDomainRoot();
 
             var trainingResult = new ShiftTrainingResult
             {

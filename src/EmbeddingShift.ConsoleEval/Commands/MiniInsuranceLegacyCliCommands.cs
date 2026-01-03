@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using EmbeddingShift.ConsoleEval;             // MiniInsurance* artifacts (sibling namespace)
+using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.Core.Infrastructure;     // DirectoryLayout
 using EmbeddingShift.Core.Runs;               // RunPersistor
 using EmbeddingShift.Core.Workflows;          // IWorkflow, StatsAwareWorkflowRunner
@@ -165,8 +166,8 @@ namespace EmbeddingShift.ConsoleEval.Commands
             Console.WriteLine("[MiniInsurance] Aggregating First/Delta metrics from previous comparison runs...");
             Console.WriteLine();
 
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
-
+            var baseDir = MiniInsurancePaths.GetDomainRoot();
+            
             try
             {
                 var aggregate = MiniInsuranceFirstDeltaAggregator.AggregateFromDirectory(baseDir);
@@ -200,7 +201,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             Console.WriteLine("[MiniInsurance] Training Delta shift candidate from aggregated First/Delta metrics...");
             Console.WriteLine();
 
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
+            var baseDir = MiniInsurancePaths.GetDomainRoot();
 
             try
             {

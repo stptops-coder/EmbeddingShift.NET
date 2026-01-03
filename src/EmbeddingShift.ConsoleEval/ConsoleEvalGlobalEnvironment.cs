@@ -8,6 +8,9 @@ public static class ConsoleEvalGlobalEnvironment
     {
         if (o is null) return;
 
+        if (!string.IsNullOrWhiteSpace(o.TenantKey))
+            Environment.SetEnvironmentVariable("EMBEDDINGSHIFT_TENANT", o.TenantKey);
+    
         if (!string.IsNullOrWhiteSpace(o.Backend))
             Environment.SetEnvironmentVariable("EMBEDDING_BACKEND", o.Backend);
 

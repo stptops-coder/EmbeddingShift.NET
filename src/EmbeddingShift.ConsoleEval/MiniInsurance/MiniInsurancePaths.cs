@@ -31,10 +31,59 @@ internal static class MiniInsurancePaths
     /// </summary>
     public static string GetDomainRoot()
     {
-        // Preferred stable layout:
-        //   <repo-root>/results/insurance
-        return DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
+        // Legacy/stable layout:
+        //   <root>/results/insurance
+        //
+        // Optional tenant layout:
+        //   <root>/results/insurance/tenants/<tenantKey>
+        //
+        // Backward compatible: if no tenant is set, keep the legacy root.
+        var root = DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
+
+        var tenantKey = GetTenantKeyOrNull();
+        if (tenantKey is null)
+            return root;
+
+        return Path.Combine(root, "tenants", tenantKey);
     }
+
+    private static string? GetTenantKeyOrNull()
+    {
+        var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT");
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        return SanitizeFolderKey(raw);
+    }
+
+    private static string SanitizeFolderKey(string value)
+    {
+        // Keep it predictable and filesystem-safe:
+        // - lower invariant
+        // - allow [a-z0-9-_]
+        // - everything else -> '-'
+        // - trim leading/trailing '-'
+        var s = value.Trim().ToLowerInvariant();
+        if (s.Length == 0)
+            return "tenant";
+
+        var chars = s.ToCharArray();
+        for (var i = 0; i < chars.Length; i++)
+        {
+            var c = chars[i];
+            var ok =
+                (c >= 'a' && c <= 'z') ||
+                (c >= '0' && c <= '9') ||
+                c == '-' ||
+                c == '_';
+            if (!ok)
+                chars[i] = '-';
+        }
+
+        var cleaned = new string(chars).Trim('-');
+        return cleaned.Length == 0 ? "tenant" : cleaned;
+    }
+
 
     /// <summary>
     /// Root for all run artifacts (raw comparison runs etc.).

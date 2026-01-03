@@ -2,6 +2,7 @@
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.ConsoleEval.Repositories;
+using EmbeddingShift.ConsoleEval.MiniInsurance;
 using System;
 using System.IO;
 using System.Text;
@@ -79,7 +80,8 @@ namespace EmbeddingShift.ConsoleEval
         /// </summary>
         public static MiniInsuranceShiftTrainingResult? LoadLatestCandidate(out bool found)
         {
-            var baseDir = DirectoryLayout.ResolveResultsRoot("insurance");
+            var baseDir = MiniInsurancePaths.GetDomainRoot();
+
             return LoadLatestCandidate(baseDir, out found);
         }
 

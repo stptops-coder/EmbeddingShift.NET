@@ -11,6 +11,10 @@ public sealed record ConsoleEvalGlobalOptions
     // Optional base-backend override (maps to EMBEDDING_BACKEND).
     public string? Backend { get; init; } = null;
 
+    // Optional multi-tenant sandbox key (maps to EMBEDDINGSHIFT_TENANT).
+    // When set, Mini-Insurance can write under results/insurance/tenants/<tenantKey>/...
+    public string? TenantKey { get; init; } = null;
+
     // Used mainly by adaptive demo (Shifted vs identity).
     public ShiftMethod Method { get; init; } = ShiftMethod.Shifted;
 

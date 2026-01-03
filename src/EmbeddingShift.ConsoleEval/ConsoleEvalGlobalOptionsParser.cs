@@ -14,8 +14,12 @@ public static class ConsoleEvalGlobalOptionsParser
         var pass = new List<string>(args.Length);
         var opt = new ConsoleEvalGlobalOptions();
 
-        foreach (var a in args.Where(x => !string.IsNullOrWhiteSpace(x)))
+        for (var i = 0; i < args.Length; i++)
         {
+            var a = args[i];
+            if (string.IsNullOrWhiteSpace(a))
+                continue;
+
             if (a.StartsWith("--provider=", StringComparison.OrdinalIgnoreCase))
             {
                 opt = opt with { Provider = a.Split('=', 2)[1].Trim() };
@@ -89,8 +93,28 @@ public static class ConsoleEvalGlobalOptionsParser
                 continue;
             }
 
+            // Tenant switch:
+            //   --tenant <key>
+            //   --tenant=<key>
+            if (a.StartsWith("--tenant=", StringComparison.OrdinalIgnoreCase))
+            {
+                opt = opt with { TenantKey = a.Substring("--tenant=".Length).Trim() };
+                continue;
+            }
+
+            if (a.Equals("--tenant", StringComparison.OrdinalIgnoreCase))
+            {
+                if (i + 1 < args.Length)
+                {
+                    opt = opt with { TenantKey = (args[i + 1] ?? string.Empty).Trim() };
+                    i++; // consume value
+                }
+                continue;
+            }
+
             pass.Add(a);
         }
+
 
         return new ConsoleEvalParsedArgs(opt, pass.ToArray());
     }

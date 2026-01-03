@@ -24,6 +24,14 @@ internal static class ConsoleEvalCli
 
         var commands = BuildCommands(host);
 
+        // Global option: --tenant <key> (optional)
+        // When provided, it is stored in ENV EMBEDDINGSHIFT_TENANT.
+        // Mini-Insurance paths can then write under:
+        //   results/insurance/tenants/<tenantKey>/...
+        (var tenantKey, args) = ExtractGlobalTenantOption(args);
+        if (!string.IsNullOrWhiteSpace(tenantKey))
+            Environment.SetEnvironmentVariable("EMBEDDINGSHIFT_TENANT", tenantKey);
+
 
         if (args.Length == 0)
         {
@@ -256,6 +264,43 @@ internal static class ConsoleEvalCli
 
         return map;
     }
+    private static (string? TenantKey, string[] RemainingArgs) ExtractGlobalTenantOption(string[] args)
+    {
+        // Supported forms:
+        //   --tenant <key>
+        //   --tenant=<key>
+        // This is intentionally dependency-free and small.
+        string? tenant = null;
+        var remaining = new List<string>(args.Length);
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            var a = args[i] ?? string.Empty;
+
+            if (a.StartsWith("--tenant=", StringComparison.OrdinalIgnoreCase))
+            {
+                tenant = a.Substring("--tenant=".Length).Trim();
+                continue;
+            }
+
+            if (a.Equals("--tenant", StringComparison.OrdinalIgnoreCase))
+            {
+                if (i + 1 < args.Length)
+                {
+                    tenant = (args[i + 1] ?? string.Empty).Trim();
+                    i++; // consume value
+                }
+                continue;
+            }
+
+            remaining.Add(a);
+        }
+
+        if (string.IsNullOrWhiteSpace(tenant))
+            tenant = null;
+
+        return (tenant, remaining.ToArray());
+    }
 
     private static bool IsHelp(string cmd)
     {
@@ -288,6 +333,7 @@ internal static class ConsoleEvalCli
 
         Console.WriteLine();
         Console.WriteLine("Global flags (may appear anywhere; removed before dispatch):");
+        Console.WriteLine("  --tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...");
         Console.WriteLine("  --provider=sim|openai-echo|openai-dryrun");
         Console.WriteLine("  --backend=sim|openai");
         Console.WriteLine("  --method=A");

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.ConsoleEval.Repositories;
+using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.Core.Infrastructure;
 
 namespace EmbeddingShift.ConsoleEval
@@ -22,7 +23,8 @@ namespace EmbeddingShift.ConsoleEval
 
         public static async Task RunAsync(EmbeddingBackend backend, bool useLatest = false)
         {
-            var resultsRoot = DirectoryLayout.ResolveResultsRoot("insurance");
+            var resultsRoot = MiniInsurancePaths.GetDomainRoot();
+
             var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
 
             var trainingResult = useLatest
