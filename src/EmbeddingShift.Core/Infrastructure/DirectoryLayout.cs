@@ -12,7 +12,64 @@ namespace EmbeddingShift.Core.Infrastructure
     public static class DirectoryLayout
     {
         public static string ResolveResultsRoot(string? domainSubfolder = null)
-            => ResolveRoot("results", domainSubfolder);
+        {
+            // Tenant-aware result layout:
+            // - No tenant: results[/<domainSubfolder>]
+            // - With tenant: results/tenants/<tenant>[/<domainSubfolder>]  (if domainSubfolder is null)
+            //              OR results/<domainSubfolder>/tenants/<tenant>   (if domainSubfolder provided)
+            //
+            // This keeps domain roots stable (e.g. results/insurance/...) while also isolating
+            // generic timestamped runs under results/tenants/<tenant>/...
+            var tenant = GetTenantKeyOrNull();
+            if (tenant is null)
+                return ResolveRoot("results", domainSubfolder);
+
+            var tenantPart = Path.Combine("tenants", tenant);
+
+            var effective = domainSubfolder is null
+                ? tenantPart
+                : Path.Combine(domainSubfolder, tenantPart);
+
+            return ResolveRoot("results", effective);
+        }
+
+        private static string? GetTenantKeyOrNull()
+        {
+            var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT");
+            if (string.IsNullOrWhiteSpace(raw))
+                return null;
+
+            return SanitizeFolderKey(raw);
+        }
+
+        private static string SanitizeFolderKey(string value)
+        {
+            // Predictable + filesystem-safe:
+            // - lower invariant
+            // - allow [a-z0-9-_]
+            // - everything else -> '-'
+            // - trim leading/trailing '-'
+            var s = value.Trim().ToLowerInvariant();
+            if (s.Length == 0)
+                return "tenant";
+
+            var chars = s.ToCharArray();
+            for (var i = 0; i < chars.Length; i++)
+            {
+                var c = chars[i];
+                var ok =
+                    (c >= 'a' && c <= 'z') ||
+                    (c >= '0' && c <= '9') ||
+                    c == '-' ||
+                    c == '_';
+                if (!ok)
+                    chars[i] = '-';
+            }
+
+            var cleaned = new string(chars).Trim('-');
+            return cleaned.Length == 0 ? "tenant" : cleaned;
+        }
+
 
         public static string ResolveDataRoot(string? domainSubfolder = null)
             => ResolveRoot("data", domainSubfolder);

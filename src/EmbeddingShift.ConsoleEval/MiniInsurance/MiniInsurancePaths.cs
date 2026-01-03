@@ -31,21 +31,10 @@ internal static class MiniInsurancePaths
     /// </summary>
     public static string GetDomainRoot()
     {
-        // Legacy/stable layout:
-        //   <root>/results/insurance
-        //
-        // Optional tenant layout:
-        //   <root>/results/insurance/tenants/<tenantKey>
-        //
-        // Backward compatible: if no tenant is set, keep the legacy root.
-        var root = DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
-
-        var tenantKey = GetTenantKeyOrNull();
-        if (tenantKey is null)
-            return root;
-
-        return Path.Combine(root, "tenants", tenantKey);
+        // Tenant scoping is applied centrally in DirectoryLayout.ResolveResultsRoot(...).
+        return DirectoryLayout.ResolveResultsRoot(ResultsDomainKey);
     }
+
 
     private static string? GetTenantKeyOrNull()
     {
