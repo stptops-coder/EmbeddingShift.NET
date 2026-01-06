@@ -121,9 +121,9 @@ namespace EmbeddingShift.Core.Training.PosNeg
                     if (dirNormSq <= 1e-18)
                     {
                         zeroDirs++;
-                        // still counts as a "taken" hard negative (it was among top ranks),
-                        // but it doesn't contribute useful direction magnitude.
-                        taken++;
+                        // Do NOT consume the hard-negative budget on a zero-direction pair.
+                        // Keep scanning deeper until we find a negative with usable direction magnitude,
+                        // otherwise we can end up with cases=0 and delta=0 even though errors exist.
                         continue;
                     }
 
