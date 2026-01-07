@@ -162,6 +162,77 @@ namespace EmbeddingShift.Core.Runs
 
             return new RollbackResult(pointer, activePath, latest.Path, archivedCurrent);
         }
+        
+        public sealed record HistoryEntry(
+            string Path,
+            DateTime LastWriteUtc,
+            bool IsPreRollback,
+            ActiveRunPointer? Pointer);
+
+        public static System.Collections.Generic.IReadOnlyList<HistoryEntry> ListHistory(
+            string runsRoot,
+            string metricKey,
+            int maxItems = 20,
+            bool includePreRollback = true)
+        {
+            if (string.IsNullOrWhiteSpace(runsRoot))
+                throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
+
+            if (!Directory.Exists(runsRoot))
+                throw new DirectoryNotFoundException($"Runs root not found: {runsRoot}");
+
+            if (string.IsNullOrWhiteSpace(metricKey))
+                throw new ArgumentException("Metric key must not be null/empty.", nameof(metricKey));
+
+            if (maxItems <= 0) maxItems = 20;
+
+            var activeDir = Path.Combine(runsRoot, "_active");
+            var historyDir = Path.Combine(activeDir, "history");
+            if (!Directory.Exists(historyDir))
+                return Array.Empty<HistoryEntry>();
+
+            var safeMetric = SanitizeFileName(metricKey);
+            var pattern = $"active_{safeMetric}_*.json";
+
+            var files = Directory.EnumerateFiles(historyDir, pattern, SearchOption.TopDirectoryOnly);
+
+            if (!includePreRollback)
+            {
+                files = files.Where(p =>
+                    !Path.GetFileName(p).Contains("_preRollback_", StringComparison.OrdinalIgnoreCase));
+            }
+
+            var list = files
+                .Select(p =>
+                {
+                    var lastWriteUtc = File.GetLastWriteTimeUtc(p);
+                    var isPreRollback = Path.GetFileName(p).Contains("_preRollback_", StringComparison.OrdinalIgnoreCase);
+
+                    ActiveRunPointer? pointer = null;
+                    try
+                    {
+                        var json = File.ReadAllText(p);
+                        pointer = JsonSerializer.Deserialize<ActiveRunPointer>(
+                            json,
+                            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                            {
+                                PropertyNameCaseInsensitive = true
+                            });
+                    }
+                    catch
+                    {
+                        pointer = null;
+                    }
+
+                    return new HistoryEntry(p, lastWriteUtc, isPreRollback, pointer);
+                })
+                .OrderByDescending(x => x.LastWriteUtc)
+                .ThenByDescending(x => x.Path, StringComparer.OrdinalIgnoreCase)
+                .Take(maxItems)
+                .ToArray();
+
+            return list;
+        }
 
 
         private static string GetActivePath(string runsRoot, string metricKey)

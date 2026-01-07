@@ -167,6 +167,9 @@ internal static class ConsoleEvalCli
         Add("runs-rollback", "rollback active pointer to the latest archived active entry",
             WrapVoid(a => RunsRollbackCommand.RunAsync(a.Skip(1).ToArray())));
 
+        Add("runs-history", "list activation history entries (archived active pointers)",
+            WrapVoid(a => RunsHistoryCommand.RunAsync(a.Skip(1).ToArray())));
+
         Add("runs-active", "show current active run pointer",
             WrapVoid(a => RunsActiveCommand.RunAsync(a.Skip(1).ToArray())));
 
