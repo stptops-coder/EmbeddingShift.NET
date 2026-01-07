@@ -155,6 +155,12 @@ internal static class ConsoleEvalCli
             a => SmokeCliCommands.SmokeAllAsync(a, host),
             "smoke");
 
+        Add("runs-compare", "compare persisted run artifacts (run.json) under a root",
+            WrapVoid(a => RunsCompareCommand.RunAsync(a.Skip(1).ToArray())));
+
+        Add("runs-best", "select and optionally persist the best run (run.json) under a root",
+            WrapVoid(a => RunsBestCommand.RunAsync(a.Skip(1).ToArray())));
+
         Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
             a => RunAdaptiveAsync(a, method),
             "mini-insurance-adaptive",
