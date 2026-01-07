@@ -98,10 +98,12 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
             var runsRoot = MiniInsurancePaths.GetRunsRoot();
             _baselineRunDir = await RunPersistor.Persist(
-                    runsRoot,
-                    result,
-                    cancellationToken)
-                .ConfigureAwait(false);
+                runsRoot,
+                "FileBased-Insurance-Mini-Baseline-Pipeline",
+                result,
+                cancellationToken)
+            .ConfigureAwait(false);
+
 
             Log($"Baseline run persisted to:      {_baselineRunDir}");
         }
@@ -131,10 +133,11 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
             var runsRoot = MiniInsurancePaths.GetRunsRoot();
             _firstRunDir = await RunPersistor.Persist(
-                    runsRoot,
-                    result,
-                    cancellationToken)
-                .ConfigureAwait(false);
+                  runsRoot,
+                  "FileBased-Insurance-Mini-FirstShift-Pipeline",
+                  result,
+                  cancellationToken)
+              .ConfigureAwait(false);
 
             Log($"FirstShift run persisted to:   {_firstRunDir}");
         }
@@ -164,10 +167,11 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
             var runsRoot = MiniInsurancePaths.GetRunsRoot();
             _firstPlusDeltaRunDir = await RunPersistor.Persist(
-                    runsRoot,
-                    result,
-                    cancellationToken)
-                .ConfigureAwait(false);
+                runsRoot,
+                "FileBased-Insurance-Mini-FirstPlusDelta-Pipeline",
+                result,
+                cancellationToken)
+            .ConfigureAwait(false);
 
             Log($"First+Delta run persisted to: {_firstPlusDeltaRunDir}");
 

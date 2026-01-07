@@ -34,7 +34,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             try
             {
-                persistedPath = await RunPersistor.Persist(baseDir, result);
+                persistedPath = await RunPersistor.Persist(baseDir, "FileBased-Insurance-Mini-Console", result);
                 Console.WriteLine($"[MiniInsurance] Results persisted to: {persistedPath}");
             }
             catch (Exception ex)
@@ -109,9 +109,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             try
             {
-                baselineRunDir = await RunPersistor.Persist(baseDir, baselineResult);
-                firstRunDir = await RunPersistor.Persist(baseDir, firstResult);
-                firstPlusDeltaRunDir = await RunPersistor.Persist(baseDir, firstDeltaResult);
+                baselineRunDir = await RunPersistor.Persist(baseDir, "FileBased-Insurance-Mini-Baseline", baselineResult);
+                firstRunDir = await RunPersistor.Persist(baseDir, "FileBased-Insurance-Mini-FirstShift", firstResult);
+                firstPlusDeltaRunDir = await RunPersistor.Persist(baseDir, "FileBased-Insurance-Mini-FirstShift-Delta", firstDeltaResult);
 
                 var comparison = MiniInsuranceFirstDeltaArtifacts.CreateComparison(
                     baselineResult,
@@ -306,9 +306,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             try
             {
-                baselineRunDir = await RunPersistor.Persist(baseDir, baselineResult);
-                firstRunDir = await RunPersistor.Persist(baseDir, firstResult);
-                learnedRunDir = await RunPersistor.Persist(baseDir, learnedResult);
+                baselineRunDir = await RunPersistor.Persist(baseDir, "FileBased-Insurance-Mini-Baseline-Learned", baselineResult);
+                firstRunDir = await RunPersistor.Persist(baseDir, "FileBased-Insurance-Mini-FirstShift-Learned", firstResult);
+                learnedRunDir = await RunPersistor.Persist(baseDir, "FileBased-Insurance-Mini-FirstShift-LearnedDelta", learnedResult);
 
                 var comparison = MiniInsuranceFirstDeltaArtifacts.CreateComparison(
                     baselineResult,

@@ -45,6 +45,7 @@ namespace EmbeddingShift.Workflows
             var inner  = new EvaluationWorkflow(runner);
 
             return new EvaluationWorkflowAdapter(
+                name: "Evaluation",
                 inner,
                 shift,
                 queries,

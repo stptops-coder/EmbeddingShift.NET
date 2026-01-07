@@ -48,6 +48,7 @@ namespace EmbeddingShift.Tests
 
             // Adapter exposes EvaluationWorkflow as IWorkflow.
             var adapter = new EvaluationWorkflowAdapter(
+                name: "Evaluation",
                 inner,
                 shift,
                 queries,

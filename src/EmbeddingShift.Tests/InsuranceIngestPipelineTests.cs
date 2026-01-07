@@ -34,7 +34,7 @@ namespace EmbeddingShift.Tests
 
             // Persist the run to a domain-specific folder.
             var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "PersistedRuns", "insurance_ingest");
-            var runDir = await RunPersistor.Persist(baseDir, artifacts);
+            var runDir = await RunPersistor.Persist(baseDir, "Ingest-Insurance-Persist-Test", artifacts);
 
             Assert.True(Directory.Exists(runDir));
 

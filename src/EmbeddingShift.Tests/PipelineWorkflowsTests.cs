@@ -25,7 +25,7 @@ namespace EmbeddingShift.Tests
             Assert.True(artifacts.Success);
 
             var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "PipelineToyRuns");
-            var runDir = await RunPersistor.Persist(baseDir, artifacts);
+            var runDir = await RunPersistor.Persist(baseDir, "Toy-Pipeline-Test", artifacts);
 
             Assert.True(Directory.Exists(runDir));
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
+using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Core.Stats;
 using EmbeddingShift.Core.Workflows;
 
@@ -14,43 +15,46 @@ namespace EmbeddingShift.Workflows
     /// </summary>
     public sealed class EvaluationWorkflowAdapter : IWorkflow
     {
+        public string Name { get; }
+
         private readonly EvaluationWorkflow _inner;
         private readonly IShift _shift;
         private readonly IReadOnlyList<ReadOnlyMemory<float>> _queries;
         private readonly IReadOnlyList<ReadOnlyMemory<float>> _references;
         private readonly string _dataset;
 
-        public string Name => "Evaluation";
-
         public EvaluationWorkflowAdapter(
+            string name,
             EvaluationWorkflow inner,
             IShift shift,
             IReadOnlyList<ReadOnlyMemory<float>> queries,
             IReadOnlyList<ReadOnlyMemory<float>> references,
             string dataset)
         {
+            Name = name ?? "Evaluation";
             _inner = inner ?? throw new ArgumentNullException(nameof(inner));
             _shift = shift ?? throw new ArgumentNullException(nameof(shift));
             _queries = queries ?? throw new ArgumentNullException(nameof(queries));
             _references = references ?? throw new ArgumentNullException(nameof(references));
-            _dataset = dataset ?? throw new ArgumentNullException(nameof(dataset));
+            _dataset = string.IsNullOrWhiteSpace(dataset) ? "dataset" : dataset;
         }
 
         public Task<WorkflowResult> RunAsync(IStatsCollector stats, CancellationToken ct = default)
         {
-            // For now we only wrap the existing synchronous evaluation call
+            EvaluationRunSummary summary;
+
             using (stats.TrackStep("Evaluate"))
             {
-                _inner.Run(_shift, _queries, _references, _dataset);
+                // Important: capture structured metrics so the stats/run layer can persist and compare runs.
+                summary = _inner.RunWithBaselineSummary(_shift, _queries, _references, _dataset);
             }
 
-            // Later we can enrich metrics here (e.g. nDCG, MRR) once they are exposed
-            IReadOnlyDictionary<string, double>? metrics = null;
+            var notes = $"Evaluation finished for dataset '{_dataset}'. RunId={summary.RunId}. ResultsPath={summary.ResultsPath}";
 
             return Task.FromResult(new WorkflowResult(
                 Success: true,
-                Metrics: metrics,
-                Notes: $"Evaluation finished for dataset '{_dataset}'."
+                Metrics: summary.Metrics,
+                Notes: notes
             ));
         }
     }

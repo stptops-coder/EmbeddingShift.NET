@@ -44,6 +44,7 @@ namespace EmbeddingShift.Tests
             var registry = new WorkflowRegistry()
                 .Register("eval-toy", () =>
                     new EvaluationWorkflowAdapter(
+                        name: "Evaluation",
                         inner,
                         shift,
                         queries,
@@ -63,7 +64,7 @@ namespace EmbeddingShift.Tests
             Assert.StartsWith("# Evaluation", markdown, StringComparison.OrdinalIgnoreCase);
 
             var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "RegistryPersistedRuns");
-            var runDir = await RunPersistor.Persist(baseDir, artifacts);
+            var runDir = await RunPersistor.Persist(baseDir, "Registry-Eval-Persist-Test", artifacts);
 
             Assert.True(Directory.Exists(runDir));
 
