@@ -109,6 +109,61 @@ namespace EmbeddingShift.Core.Runs
             return new PromoteResult(pointer, activePath, archivedTo);
         }
 
+        public sealed record RollbackResult(
+            ActiveRunPointer Pointer,
+            string ActivePath,
+            string RestoredFromHistoryPath,
+            string? CurrentActiveArchivedTo);
+
+        public static RollbackResult RollbackLatest(string runsRoot, string metricKey)
+        {
+            if (string.IsNullOrWhiteSpace(runsRoot))
+                throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
+
+            if (!Directory.Exists(runsRoot))
+                throw new DirectoryNotFoundException($"Runs root not found: {runsRoot}");
+
+            if (string.IsNullOrWhiteSpace(metricKey))
+                throw new ArgumentException("Metric key must not be null/empty.", nameof(metricKey));
+
+            var activePath = GetActivePath(runsRoot, metricKey);
+            var activeDir = Path.Combine(runsRoot, "_active");
+            var historyDir = Path.Combine(activeDir, "history");
+
+            if (!Directory.Exists(historyDir))
+                throw new InvalidOperationException($"No history directory found: {historyDir}");
+
+            var safeMetric = SanitizeFileName(metricKey);
+            var pattern = $"active_{safeMetric}_*.json";
+
+            var latest = Directory.EnumerateFiles(historyDir, pattern, SearchOption.TopDirectoryOnly)
+                .Select(p => new { Path = p, LastWriteUtc = File.GetLastWriteTimeUtc(p) })
+                .OrderByDescending(x => x.LastWriteUtc)
+                .FirstOrDefault();
+
+            if (latest is null)
+                throw new InvalidOperationException($"No history entries found for metric '{metricKey}' under: {historyDir}");
+
+            // Archive current active pointer (if any) before overwriting it.
+            string? archivedCurrent = null;
+            if (File.Exists(activePath))
+            {
+                var stamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff", CultureInfo.InvariantCulture);
+                archivedCurrent = Path.Combine(historyDir, $"active_{safeMetric}_preRollback_{stamp}.json");
+                File.Copy(activePath, archivedCurrent, overwrite: false);
+            }
+
+            // Restore latest history entry to active.
+            File.Copy(latest.Path, activePath, overwrite: true);
+
+            // Load restored pointer for return value.
+            if (!TryLoadActive(runsRoot, metricKey, out var pointer) || pointer is null)
+                throw new InvalidOperationException($"Rollback wrote active pointer, but it could not be loaded: {activePath}");
+
+            return new RollbackResult(pointer, activePath, latest.Path, archivedCurrent);
+        }
+
+
         private static string GetActivePath(string runsRoot, string metricKey)
         {
             var activeDir = Path.Combine(runsRoot, "_active");

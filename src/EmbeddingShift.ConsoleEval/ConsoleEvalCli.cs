@@ -164,6 +164,9 @@ internal static class ConsoleEvalCli
         Add("runs-promote", "promote best run to active pointer (with history backup)",
             WrapVoid(a => RunsPromoteCommand.RunAsync(a.Skip(1).ToArray())));
 
+        Add("runs-rollback", "rollback active pointer to the latest archived active entry",
+            WrapVoid(a => RunsRollbackCommand.RunAsync(a.Skip(1).ToArray())));
+
         Add("runs-active", "show current active run pointer",
             WrapVoid(a => RunsActiveCommand.RunAsync(a.Skip(1).ToArray())));
 
