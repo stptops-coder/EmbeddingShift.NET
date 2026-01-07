@@ -160,6 +160,12 @@ internal static class ConsoleEvalCli
 
         Add("runs-best", "select and optionally persist the best run (run.json) under a root",
             WrapVoid(a => RunsBestCommand.RunAsync(a.Skip(1).ToArray())));
+        
+        Add("runs-promote", "promote best run to active pointer (with history backup)",
+            WrapVoid(a => RunsPromoteCommand.RunAsync(a.Skip(1).ToArray())));
+
+        Add("runs-active", "show current active run pointer",
+            WrapVoid(a => RunsActiveCommand.RunAsync(a.Skip(1).ToArray())));
 
         Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
             a => RunAdaptiveAsync(a, method),
