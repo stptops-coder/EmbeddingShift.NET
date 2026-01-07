@@ -173,6 +173,15 @@ internal static class ConsoleEvalCli
         Add("runs-active", "show current active run pointer",
             WrapVoid(a => RunsActiveCommand.RunAsync(a.Skip(1).ToArray())));
 
+        Add("runs-history", "list activation history snapshots (active pointer history)",
+            WrapVoid(a => RunsHistoryCommand.RunAsync(a.Skip(1).ToArray())));
+
+        Add("runs-active", "show current active run pointer",
+            WrapVoid(a => RunsActiveCommand.RunAsync(a.Skip(1).ToArray())));
+
+        Add("runs-matrix", "run a batch of CLI variants described by a JSON spec (optional post-processing)",
+            WrapVoid(a => RunsMatrixCommand.RunAsync(a.Skip(1).ToArray())));
+
         Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
             a => RunAdaptiveAsync(a, method),
             "mini-insurance-adaptive",

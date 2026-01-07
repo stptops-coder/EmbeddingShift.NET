@@ -1,0 +1,40 @@
+{
+  "stopOnFailure": true,
+  "variants": [
+    {
+      "name": "sha256",
+      "args": [
+        "--tenant",
+        "insurer-a",
+        "--backend=sim",
+        "--sim-mode=deterministic",
+        "domain",
+        "mini-insurance",
+        "pipeline"
+      ]
+    },
+    {
+      "name": "semantic-hash-1gram",
+      "args": [
+        "--tenant",
+        "insurer-a",
+        "--backend=sim",
+        "--sim-mode=deterministic",
+        "--sim-algo=semantic-hash",
+        "--sim-char-ngrams=1",
+        "--semantic-cache",
+        "domain",
+        "mini-insurance",
+        "pipeline"
+      ]
+    }
+  ],
+  "after": {
+    "compareMetric": "ndcg@3",
+    "top": 10,
+    "writeCompare": true,
+    "promoteBest": false,
+    "openOutput": false,
+    "domainKey": "insurance"
+  }
+}
