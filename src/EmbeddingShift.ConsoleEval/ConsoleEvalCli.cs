@@ -160,7 +160,10 @@ internal static class ConsoleEvalCli
 
         Add("runs-best", "select and optionally persist the best run (run.json) under a root",
             WrapVoid(a => RunsBestCommand.RunAsync(a.Skip(1).ToArray())));
-        
+
+        Add("runs-decide", "decide whether to promote the best run vs the active pointer (epsilon gate)",
+            WrapVoid(a => RunsDecideCommand.RunAsync(a.Skip(1).ToArray())));
+
         Add("runs-promote", "promote best run to active pointer (with history backup)",
             WrapVoid(a => RunsPromoteCommand.RunAsync(a.Skip(1).ToArray())));
 
