@@ -32,6 +32,11 @@ namespace EmbeddingShift.ConsoleEval.Commands
                  GetOpt(args, "--tenant")
                  ?? Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT")
                  ?? throw new InvalidOperationException("Tenant is required (use --tenant).");
+
+            // Ensure the current process has the tenant set.
+            // Child processes started by runs-matrix will inherit this by default.
+            Environment.SetEnvironmentVariable("EMBEDDINGSHIFT_TENANT", tenant);
+
             var domainKey = domainKeyOverride ?? "insurance";
 
             runsRoot ??= Path.Combine(
@@ -71,6 +76,14 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 Console.WriteLine($"[runs-matrix] Variant: {variant.DisplayName}");
                 Console.WriteLine($"[runs-matrix]   Log  : {logPath}");
 
+                var explicitTenant = TryFindExplicitTenantInArgs(variant.Args);
+                if (!string.IsNullOrWhiteSpace(explicitTenant) &&
+                    !string.Equals(explicitTenant, tenant, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"[runs-matrix]   WARN : Variant specifies tenant '{explicitTenant}', matrix tenant is '{tenant}'.");
+                    Console.WriteLine("[runs-matrix]          This may write runs to a different folder than runsRoot/post-processing.");
+                }
+
                 if (dry)
                 {
                     var runner = entryDll.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
@@ -82,7 +95,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
                 var sw = Stopwatch.StartNew();
 
-                var exitCode = await RunVariantAsync(entryDll, variant, logPath);
+                var exitCode = await RunVariantAsync(entryDll, variant, logPath, tenant);
 
                 sw.Stop();
                 results.Add((variant.DisplayName, exitCode, sw.Elapsed, logPath));
@@ -145,7 +158,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 OpenFolder(outDir);
         }
 
-        private static async Task<int> RunVariantAsync(string entryDll, RunMatrixVariant variant, string logPath)
+        private static async Task<int> RunVariantAsync(string entryDll, RunMatrixVariant variant, string logPath, string matrixTenant)
         {
             var isExe = entryDll.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
 
@@ -167,6 +180,13 @@ namespace EmbeddingShift.ConsoleEval.Commands
             {
                 foreach (var kvp in variant.Env)
                     psi.Environment[kvp.Key] = kvp.Value;
+            }
+
+            // Ensure a tenant is present for child processes, unless a variant explicitly sets it via ENV.
+            if (!psi.Environment.ContainsKey("EMBEDDINGSHIFT_TENANT") ||
+                string.IsNullOrWhiteSpace(psi.Environment["EMBEDDINGSHIFT_TENANT"]))
+            {
+                psi.Environment["EMBEDDINGSHIFT_TENANT"] = matrixTenant;
             }
 
             using var p = new Process { StartInfo = psi };
@@ -285,6 +305,25 @@ namespace EmbeddingShift.ConsoleEval.Commands
             return string.IsNullOrWhiteSpace(safe) ? "variant" : safe;
         }
 
+        private static string? TryFindExplicitTenantInArgs(string[]? args)
+        {
+            if (args is null || args.Length == 0)
+                return null;
+
+            for (var i = 0; i < args.Length; i++)
+            {
+                var a = args[i] ?? string.Empty;
+
+                if (a.StartsWith("--tenant=", StringComparison.OrdinalIgnoreCase))
+                    return a["--tenant=".Length..];
+
+                if (a.Equals("--tenant", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                    return args[i + 1];
+            }
+
+            return null;
+        }
+
         private static void PrintUsage()
         {
             Console.WriteLine("Usage:");
@@ -302,11 +341,11 @@ namespace EmbeddingShift.ConsoleEval.Commands
               "variants": [
                 {
                   "name": "sha256",
-                  "args": [ "--tenant", "insurer-a", "--backend=sim", "--sim-mode=deterministic", "domain", "mini-insurance", "pipeline" ]
+                  "args": [ "--backend=sim", "--sim-mode=deterministic", "domain", "mini-insurance", "pipeline" ]
                 },
                 {
                   "name": "semantic-hash-1gram",
-                  "args": [ "--tenant", "insurer-a", "--backend=sim", "--sim-mode=deterministic", "--sim-algo=semantic-hash", "--sim-char-ngrams=1", "domain", "mini-insurance", "pipeline" ]
+                  "args": [ "--backend=sim", "--sim-mode=deterministic", "--sim-algo=semantic-hash", "--sim-char-ngrams=1", "--semantic-cache", "domain", "mini-insurance", "pipeline" ]
                 }
               ],
               "after": {

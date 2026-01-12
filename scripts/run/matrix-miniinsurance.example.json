@@ -4,8 +4,6 @@
     {
       "name": "sha256",
       "args": [
-        "--tenant",
-        "insurer-a",
         "--backend=sim",
         "--sim-mode=deterministic",
         "domain",
@@ -16,8 +14,6 @@
     {
       "name": "semantic-hash-1gram",
       "args": [
-        "--tenant",
-        "insurer-a",
         "--backend=sim",
         "--sim-mode=deterministic",
         "--sim-algo=semantic-hash",
