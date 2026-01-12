@@ -8,6 +8,8 @@ using EmbeddingShift.Abstractions;
 using EmbeddingShift.ConsoleEval.Repositories;
 using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.Core.Infrastructure;
+using EmbeddingShift.Core.Stats;
+
 
 namespace EmbeddingShift.ConsoleEval
 {
@@ -23,6 +25,8 @@ namespace EmbeddingShift.ConsoleEval
 
         public static async Task RunAsync(EmbeddingBackend backend, bool useLatest = false)
         {
+            var startedAtUtc = DateTimeOffset.UtcNow;
+
             var resultsRoot = MiniInsurancePaths.GetDomainRoot();
 
             var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
@@ -259,6 +263,47 @@ namespace EmbeddingShift.ConsoleEval
             var mdPath = Path.Combine(runDir, "metrics-posneg.md");
             await File.WriteAllTextAsync(mdPath, mdBuilder.ToString())
                 .ConfigureAwait(false);
+            var finishedAtUtc = DateTimeOffset.UtcNow;
+
+            // Additionally persist run.json artifacts under results/.../runs so generic tooling
+            // like runs-compare can pick these up without parsing custom metric files.
+            // This intentionally produces two comparable runs:
+            //  - MiniInsurance-PosNeg-Baseline
+            //  - MiniInsurance-PosNeg
+            var runsRoot = MiniInsurancePaths.GetRunsRoot();
+            var runRepo = new FileRunRepository(runsRoot);
+
+            var baselineArtifact = new WorkflowRunArtifact(
+                RunId: Guid.NewGuid().ToString("N"),
+                WorkflowName: "MiniInsurance-PosNeg-Baseline",
+                StartedUtc: startedAtUtc,
+                FinishedUtc: finishedAtUtc,
+                Success: true,
+                Metrics: new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["map@1"] = mapBaseline,
+                    ["ndcg@3"] = ndcg3Baseline,
+                },
+                Notes: "Baseline metrics captured from mini-insurance posneg-run (single relevant doc per query)."
+            );
+
+            var posnegArtifact = new WorkflowRunArtifact(
+                RunId: Guid.NewGuid().ToString("N"),
+                WorkflowName: "MiniInsurance-PosNeg",
+                StartedUtc: startedAtUtc,
+                FinishedUtc: finishedAtUtc,
+                Success: true,
+                Metrics: new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["map@1"] = mapShifted,
+                    ["ndcg@3"] = ndcg3Shifted,
+                },
+                Notes: "PosNeg metrics captured from mini-insurance posneg-run (query shift = query + learned delta)."
+            );
+
+            await runRepo.SaveAsync(baselineArtifact).ConfigureAwait(false);
+            await runRepo.SaveAsync(posnegArtifact).ConfigureAwait(false);
+
         }
 
         private static int FindRank(
