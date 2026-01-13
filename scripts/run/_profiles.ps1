@@ -10,7 +10,7 @@ function Get-EmbeddingShiftProfileFlags {
 
   switch ($Profile) {
 
-    # v1: deterministic, sha256, NO cache
+    # v1: deterministic, sha256, NO semantic cache
     'v1' {
       return @(
         '--backend=sim',
@@ -22,7 +22,7 @@ function Get-EmbeddingShiftProfileFlags {
       )
     }
 
-    # v2: deterministic, sha256, WITH cache
+    # v2: deterministic, sha256, WITH semantic cache
     'v2' {
       return @(
         '--backend=sim',
@@ -30,35 +30,36 @@ function Get-EmbeddingShiftProfileFlags {
         '--sim-mode=deterministic',
         '--sim-algo=sha256',
         '--sim-noise=0',
-        '--semantic-cache',
-        '--cache-max=5000',
-        '--cache-hamming=2',
-        '--cache-approx=0'
+        '--semantic-cache'
       )
     }
 
-    # v3: noisy 0.01, sha256, NO cache
+    # v3: noisy, sha256, WITH semantic cache
     'v3' {
       return @(
         '--backend=sim',
         '--provider=sim',
         '--sim-mode=noisy',
-        '--sim-noise=0.01',
         '--sim-algo=sha256',
-        '--no-semantic-cache'
+        '--sim-noise=0.001',
+        '--semantic-cache'
       )
     }
 
-    # v4: noisy 0.01, semantic-hash, NO cache
+    # v4: noisy, semantic-hash, WITH semantic cache
     'v4' {
       return @(
         '--backend=sim',
         '--provider=sim',
         '--sim-mode=noisy',
-        '--sim-noise=0.01',
         '--sim-algo=semantic-hash',
-        '--no-semantic-cache'
+        '--sim-noise=0.001',
+        '--semantic-cache'
       )
+    }
+
+    default {
+      throw "Unknown profile: $Profile"
     }
   }
 }

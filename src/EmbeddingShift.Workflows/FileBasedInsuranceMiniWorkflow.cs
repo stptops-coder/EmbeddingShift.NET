@@ -19,10 +19,17 @@ namespace EmbeddingShift.Workflows
     /// - builds 1536-dimensional keyword-based embeddings via a local provider
     /// - computes MAP@1 and nDCG@3 as metrics
     /// </summary>
-    public sealed class FileBasedInsuranceMiniWorkflow : IWorkflow
+    public sealed class FileBasedInsuranceMiniWorkflow : IWorkflow, IPerQueryEvalProvider
     {
         private readonly ILocalEmbeddingProvider _embeddingProvider;
         private readonly IEmbeddingShiftPipeline _shiftPipeline;
+
+        /// <summary>
+        /// Per-query evaluation breakdown from the last RunAsync execution.
+        /// This is persisted by the pipeline as an extra artifact.
+        /// </summary>
+        public IReadOnlyList<PerQueryEval> PerQuery { get; private set; } = Array.Empty<PerQueryEval>();
+
 
         public FileBasedInsuranceMiniWorkflow()
             : this(
@@ -84,9 +91,9 @@ namespace EmbeddingShift.Workflows
                     _shiftPipeline.ApplyInPlace(emb);
                     return emb;
                 });
-
-            var apValues   = new List<double>();
+            var apValues = new List<double>();
             var ndcgValues = new List<double>();
+            var perQuery = new List<PerQueryEval>(queries.Count);
 
             using (stats.TrackStep("FileBased-Insurance-Mini"))
             {
@@ -98,6 +105,16 @@ namespace EmbeddingShift.Workflows
                     {
                         apValues.Add(0.0);
                         ndcgValues.Add(0.0);
+
+                        perQuery.Add(new PerQueryEval(
+                            QueryId: q.Id,
+                            RelevantDocId: q.RelevantDocId ?? string.Empty,
+                            Rank: 0,
+                            Ap1: 0.0,
+                            Ndcg3: 0.0,
+                            TopDocId: null,
+                            TopScore: 0.0));
+
                         continue;
                     }
 
@@ -113,14 +130,26 @@ namespace EmbeddingShift.Workflows
                         .OrderByDescending(x => x.Score)
                         .ToList();
 
+                    var topHit = ranked.Count > 0 ? ranked[0] : null;
+
                     var rankIndex = ranked.FindIndex(r => r.DocId == q.RelevantDocId);
                     if (rankIndex < 0)
                     {
                         apValues.Add(0.0);
                         ndcgValues.Add(0.0);
+
+                        perQuery.Add(new PerQueryEval(
+                            QueryId: q.Id,
+                            RelevantDocId: q.RelevantDocId,
+                            Rank: 0,
+                            Ap1: 0.0,
+                            Ndcg3: 0.0,
+                            TopDocId: topHit?.DocId,
+                            TopScore: topHit?.Score ?? 0.0
+                            ));
+
                         continue;
                     }
-
                     var rank = rankIndex + 1;
                     var ap   = 1.0 / rank;
                     apValues.Add(ap);
@@ -130,9 +159,19 @@ namespace EmbeddingShift.Workflows
                     var idcg = DcgatK(1, k);
                     var ndcg = idcg == 0.0 ? 0.0 : dcg / idcg;
                     ndcgValues.Add(ndcg);
+
+                    perQuery.Add(new PerQueryEval(
+                        QueryId: q.Id,
+                        RelevantDocId: q.RelevantDocId,
+                        Rank: rank,
+                        Ap1: ap,
+                        Ndcg3: ndcg,
+                        TopDocId: topHit?.DocId,
+                        TopScore: topHit?.Score ?? 0.0));
                 }
             }
 
+            PerQuery = perQuery;
             var map   = apValues.Count   == 0 ? 0.0 : apValues.Average();
             var ndcg3 = ndcgValues.Count == 0 ? 0.0 : ndcgValues.Average();
 

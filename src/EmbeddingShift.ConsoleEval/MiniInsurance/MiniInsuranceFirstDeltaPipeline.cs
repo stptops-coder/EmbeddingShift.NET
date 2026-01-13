@@ -98,12 +98,13 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
             var runsRoot = MiniInsurancePaths.GetRunsRoot();
             _baselineRunDir = await RunPersistor.Persist(
-                runsRoot,
-                "FileBased-Insurance-Mini-Baseline-Pipeline",
-                result,
-                cancellationToken)
-            .ConfigureAwait(false);
+                 runsRoot,
+                 "FileBased-Insurance-Mini-Baseline-Pipeline",
+                 result,
+                 cancellationToken)
+             .ConfigureAwait(false);
 
+            MiniInsurancePerQueryArtifacts.TryPersist(_baselineRunDir, workflow);
 
             Log($"Baseline run persisted to:      {_baselineRunDir}");
         }
@@ -114,7 +115,7 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
                 throw new InvalidOperationException("Baseline result must be computed before FirstShift.");
 
             var firstPipeline = FileBasedInsuranceMiniWorkflow.CreateFirstShiftPipeline();
-            IWorkflow firstWorkflow = new FileBasedInsuranceMiniWorkflow(firstPipeline);
+            var firstWorkflow = new FileBasedInsuranceMiniWorkflow(firstPipeline);
 
             var result = await _wfRunner.ExecuteAsync(
                     "FileBased-Insurance-Mini-FirstShift-Pipeline",
@@ -133,11 +134,13 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
             var runsRoot = MiniInsurancePaths.GetRunsRoot();
             _firstRunDir = await RunPersistor.Persist(
-                  runsRoot,
-                  "FileBased-Insurance-Mini-FirstShift-Pipeline",
-                  result,
-                  cancellationToken)
-              .ConfigureAwait(false);
+                   runsRoot,
+                   "FileBased-Insurance-Mini-FirstShift-Pipeline",
+                   result,
+                   cancellationToken)
+               .ConfigureAwait(false);
+
+            MiniInsurancePerQueryArtifacts.TryPersist(_firstRunDir, firstWorkflow);
 
             Log($"FirstShift run persisted to:   {_firstRunDir}");
         }
@@ -148,7 +151,7 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
                 throw new InvalidOperationException("Baseline result must be computed before First+Delta.");
 
             var pipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline();
-            IWorkflow workflow = new FileBasedInsuranceMiniWorkflow(pipeline);
+            var workflow = new FileBasedInsuranceMiniWorkflow(pipeline);
 
             var result = await _wfRunner.ExecuteAsync(
                     "FileBased-Insurance-Mini-FirstPlusDelta-Pipeline",
@@ -172,6 +175,8 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
                 result,
                 cancellationToken)
             .ConfigureAwait(false);
+
+            MiniInsurancePerQueryArtifacts.TryPersist(_firstPlusDeltaRunDir, workflow);
 
             Log($"First+Delta run persisted to: {_firstPlusDeltaRunDir}");
 
