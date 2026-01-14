@@ -210,25 +210,34 @@ namespace EmbeddingShift.ConsoleEval
                 ndcgShifted.Add(ndcgS);
 
                 var topB = rankedBaseline.Count > 0 ? rankedBaseline[0] : null;
-                var topS = rankedShifted.Count > 0 ? rankedShifted[0] : null;
+                var topB2 = rankedBaseline.Count > 1 ? rankedBaseline[1] : null;
 
+                var topS = rankedShifted.Count > 0 ? rankedShifted[0] : null;
+                var topS2 = rankedShifted.Count > 1 ? rankedShifted[1] : null;
+
+                // when writing PerQueryEval for baseline
                 perQueryBaseline.Add(new PerQueryEval(
                     QueryId: q.Id,
                     RelevantDocId: q.RelevantDocId,
                     Rank: rankBaseline,
-                    Ap1: 1.0 / rankBaseline,
+                    Ap1: rankBaseline == 0 ? 0.0 : (1.0 / rankBaseline),
                     Ndcg3: ndcgB,
                     TopDocId: topB?.DocId,
-                    TopScore: topB?.Score ?? 0.0));
+                    TopScore: topB?.Score ?? 0.0,
+                    Top2DocId: topB2?.DocId,
+                    Top2Score: topB2?.Score ?? 0.0));
 
+                // when writing PerQueryEval for posneg
                 perQueryPosNeg.Add(new PerQueryEval(
                     QueryId: q.Id,
                     RelevantDocId: q.RelevantDocId,
                     Rank: rankShifted,
-                    Ap1: 1.0 / rankShifted,
+                    Ap1: rankShifted == 0 ? 0.0 : (1.0 / rankShifted),
                     Ndcg3: ndcgS,
                     TopDocId: topS?.DocId,
-                    TopScore: topS?.Score ?? 0.0));
+                    TopScore: topS?.Score ?? 0.0,
+                    Top2DocId: topS2?.DocId,
+                    Top2Score: topS2?.Score ?? 0.0));
             }
 
             var usedCases = apBaseline.Count;

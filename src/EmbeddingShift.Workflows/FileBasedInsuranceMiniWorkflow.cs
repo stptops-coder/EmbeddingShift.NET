@@ -131,6 +131,7 @@ namespace EmbeddingShift.Workflows
                         .ToList();
 
                     var topHit = ranked.Count > 0 ? ranked[0] : null;
+                    var topHit2 = ranked.Count > 1 ? ranked[1] : null;
 
                     var rankIndex = ranked.FindIndex(r => r.DocId == q.RelevantDocId);
                     if (rankIndex < 0)
@@ -145,8 +146,9 @@ namespace EmbeddingShift.Workflows
                             Ap1: 0.0,
                             Ndcg3: 0.0,
                             TopDocId: topHit?.DocId,
-                            TopScore: topHit?.Score ?? 0.0
-                            ));
+                            TopScore: topHit?.Score ?? 0.0,
+                            Top2DocId: topHit2?.DocId,
+                            Top2Score: topHit2?.Score ?? 0.0));
 
                         continue;
                     }
