@@ -1,4 +1,4 @@
-﻿# Visual Studio / .NET
+# Visual Studio / .NET
 .vs/
 *.user
 *.suo
@@ -43,3 +43,7 @@ packages/
 # EmbeddingShift: local evaluation artifacts (Mini-Insurance runs & aggregates)
 src/EmbeddingShift.ConsoleEval/local/
 
+
+# Local/private tools (not committed)
+/private/
+/scripts/local/
