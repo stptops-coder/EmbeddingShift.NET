@@ -9,7 +9,7 @@ using EmbeddingShift.ConsoleEval.Repositories;
 using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Core.Stats;
-
+using EmbeddingShift.Workflows;
 
 namespace EmbeddingShift.ConsoleEval
 {
@@ -23,7 +23,7 @@ namespace EmbeddingShift.ConsoleEval
     {
         private const string WorkflowName = "mini-insurance-posneg";
 
-        public static async Task RunAsync(EmbeddingBackend backend, bool useLatest = false)
+        public static async Task RunAsync(EmbeddingBackend backend, bool useLatest = false, double scale = 1.0)
         {
             var startedAtUtc = DateTimeOffset.UtcNow;
 
@@ -126,11 +126,24 @@ namespace EmbeddingShift.ConsoleEval
                 throw new InvalidOperationException(
                     $"Shift dimension ({shift.Length}) does not match embedding dimension ({dim}).");
             }
+            if (shift != null && shift.Length > 0 && Math.Abs(scale - 1.0) > 1e-12)
+            {
+                var s = (float)scale;
+                var scaled = new float[shift.Length];
+                for (var i = 0; i < shift.Length; i++)
+                    scaled[i] = shift[i] * s;
+
+                shift = scaled;
+                Console.WriteLine($"[MiniInsurancePosNegRunner] Applying shift scale: {scale:0.###}");
+            }
 
             var apBaseline = new List<double>();
             var ndcgBaseline = new List<double>();
             var apShifted = new List<double>();
             var ndcgShifted = new List<double>();
+
+            var perQueryBaseline = new List<PerQueryEval>(queries.Count);
+            var perQueryPosNeg = new List<PerQueryEval>(queries.Count);
 
             foreach (var q in queries)
             {
@@ -195,6 +208,27 @@ namespace EmbeddingShift.ConsoleEval
 
                 ndcgBaseline.Add(ndcgB);
                 ndcgShifted.Add(ndcgS);
+
+                var topB = rankedBaseline.Count > 0 ? rankedBaseline[0] : null;
+                var topS = rankedShifted.Count > 0 ? rankedShifted[0] : null;
+
+                perQueryBaseline.Add(new PerQueryEval(
+                    QueryId: q.Id,
+                    RelevantDocId: q.RelevantDocId,
+                    Rank: rankBaseline,
+                    Ap1: 1.0 / rankBaseline,
+                    Ndcg3: ndcgB,
+                    TopDocId: topB?.DocId,
+                    TopScore: topB?.Score ?? 0.0));
+
+                perQueryPosNeg.Add(new PerQueryEval(
+                    QueryId: q.Id,
+                    RelevantDocId: q.RelevantDocId,
+                    Rank: rankShifted,
+                    Ap1: 1.0 / rankShifted,
+                    Ndcg3: ndcgS,
+                    TopDocId: topS?.DocId,
+                    TopScore: topS?.Score ?? 0.0));
             }
 
             var usedCases = apBaseline.Count;
@@ -219,6 +253,18 @@ namespace EmbeddingShift.ConsoleEval
             var runDir = Path.Combine(resultsRoot, runDirName);
             Directory.CreateDirectory(runDir);
 
+            var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+
+            await File.WriteAllTextAsync(
+                    Path.Combine(runDir, "eval.perQuery.baseline.json"),
+                    JsonSerializer.Serialize(perQueryBaseline, jsonOptions))
+                .ConfigureAwait(false);
+
+            await File.WriteAllTextAsync(
+                    Path.Combine(runDir, "eval.perQuery.posneg.json"),
+                    JsonSerializer.Serialize(perQueryPosNeg, jsonOptions))
+                .ConfigureAwait(false);
+
             var metrics = new
             {
                 WorkflowName,
@@ -231,11 +277,6 @@ namespace EmbeddingShift.ConsoleEval
                 Ndcg3Baseline = ndcg3Baseline,
                 Ndcg3PosNeg = ndcg3Shifted,
                 DeltaNdcg3 = ndcg3Shifted - ndcg3Baseline
-            };
-
-            var jsonOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true
             };
 
             var jsonPath = Path.Combine(runDir, "metrics-posneg.json");

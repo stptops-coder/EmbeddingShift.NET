@@ -137,7 +137,21 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                     var useLatest =
                         args.Any(a => string.Equals(a, "--latest", StringComparison.OrdinalIgnoreCase));
 
-                    await MiniInsurancePosNegRunner.RunAsync(EmbeddingBackend.Sim, useLatest: useLatest);
+                    double scale = 1.0;
+                    foreach (var a in args)
+                    {
+                        if (a.StartsWith("--scale=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var v = a.Split('=', 2)[1].Trim();
+                            if (double.TryParse(v, System.Globalization.NumberStyles.Float,
+                                    System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+                            {
+                                scale = parsed;
+                            }
+                        }
+                    }
+
+                    await MiniInsurancePosNegRunner.RunAsync(EmbeddingBackend.Sim, useLatest: useLatest, scale: scale);
                     return 0;
                 }
 
@@ -173,6 +187,32 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                         ? new[] { "mini-insurance-posneg", ResultsDomainKey, "--include-cancelled" }
                         : new[] { "mini-insurance-posneg", ResultsDomainKey });
                 return 0;
+                }
+
+            case "segment-compare":
+                {
+                    // usage:
+                    // domain mini-insurance segment-compare --segments <path> [--metric ndcg@3]
+                    string? segments = null;
+                    string metric = "ndcg@3";
+
+                    for (int i = 0; i < args.Length; i++)
+                    {
+                        var a = args[i];
+                        if (a.StartsWith("--segments=", StringComparison.OrdinalIgnoreCase))
+                            segments = a.Split('=', 2)[1];
+                        else if (string.Equals(a, "--segments", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                            segments = args[++i];
+                        else if (a.StartsWith("--metric=", StringComparison.OrdinalIgnoreCase))
+                            metric = a.Split('=', 2)[1];
+                        else if (string.Equals(a, "--metric", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                            metric = args[++i];
+                    }
+
+                    if (string.IsNullOrWhiteSpace(segments))
+                        throw new ArgumentException("Missing --segments <path>");
+
+                    return MiniInsuranceSegmentCompare.Run(segments, metric);
                 }
 
             case "dataset-generate":
