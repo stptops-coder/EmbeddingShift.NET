@@ -1,6 +1,6 @@
 # EmbeddingShift.NET
 
-A .NET 8 toolkit for embedding-space **shift strategies** with evaluation and simulation.
+A .NET 8 toolkit for embedding-space **shift strategies** with evaluation and simulation.  
 Focus: reproducible workflows and inspectable artifacts (file-based).
 
 ## Quickstart
@@ -49,11 +49,15 @@ Tenant scoping:
 
 ## Documentation
 
-- Repo overview: `Docs/OVERVIEW_TOUR.md`
-- CLI how-to (project-local): `src/EmbeddingShift.ConsoleEval/HowToRun.md`
-- Runbooks: `scripts/RUNBOOK_FirstLight.md`
-- Mini-Insurance reference: `Docs/MiniInsuranceFirstDeltaLoop.md`, `Docs/MiniInsuranceAdaptiveOverview.md`
+- Repo overview: [Docs/OVERVIEW_TOUR.md](Docs/OVERVIEW_TOUR.md)
+- CLI onboarding (recommended): [Docs/CLI-Onboarding.md](Docs/CLI-Onboarding.md)
+- CLI full reference: [Docs/CLI-Full-Guide.md](Docs/CLI-Full-Guide.md)
+- CLI how-to (project-local): [src/EmbeddingShift.ConsoleEval/HowToRun.md](src/EmbeddingShift.ConsoleEval/HowToRun.md)
+- Runbook: [scripts/RUNBOOK_FirstLight.md](scripts/RUNBOOK_FirstLight.md)
+- Mini-Insurance reference:
+  - [Docs/MiniInsuranceFirstDeltaLoop.md](Docs/MiniInsuranceFirstDeltaLoop.md)
+  - [Docs/MiniInsuranceAdaptiveOverview.md](Docs/MiniInsuranceAdaptiveOverview.md)
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE).
