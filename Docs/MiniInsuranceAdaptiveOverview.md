@@ -5,21 +5,22 @@ the statistical / training layer with the adaptive shift selection.
 
 ## 1. Baseline and First/Delta
 
-The classic Mini-Insurance path is:
+The classic Mini-Insurance First/Delta path is:
 
-1. **Baseline**  
-   - Embeddings for policies and queries are computed via the simulated backend.  
-   - Similarity is evaluated without any shift.
+1. **Baseline**
+   - Loads policies and queries from `samples/insurance/`.
+   - Computes **local, deterministic keyword-count embeddings** (1536D).
+   - Evaluates similarity without any shift.
 
-2. **FirstShift**  
-   - A hand-crafted (or domain-informed) First shift is applied.  
-   - We compare Baseline vs First.
+2. **FirstShift**
+   - Applies a small, hand-crafted First shift.
+   - Compares Baseline vs First.
 
-3. **First+Delta**  
-   - A small Delta shift is added on top of First.  
-   - We compare Baseline vs First vs First+Delta and aggregate metrics.
+3. **First+Delta**
+   - Adds an additional handcrafted Delta on top of First.
+   - Compares Baseline vs First vs First+Delta and aggregates metrics.
 
-This is orchestrated by:
+This is orchestrated by (legacy + convenience entry points):
 
 - `mini-insurance-first-delta`
 - `mini-insurance-first-delta-pipeline`
@@ -29,25 +30,30 @@ This is orchestrated by:
 
 In addition to First/Delta, there is a pos/neg training path:
 
-1. We define **positive** and **negative** policy examples per query.
-2. The trainer computes a global Delta vector from the differences:
+1. Define **positive** and **negative** policy examples per query.
+2. Compute a global Delta vector from the differences:
    - For each (query, pos, neg) triple it builds a direction vector.
    - All direction vectors are aggregated into a single Delta.
-3. The training result is stored as a `ShiftTrainingResult`:
-
+3. Persist the result as a `ShiftTrainingResult`, including:
    - `WorkflowName = "mini-insurance-posneg"`
    - `DeltaVector` (1536 dimensions)
-   - Improvements (MAP / NDCG deltas)
-   - Scope and metadata
+   - Improvements (First / First+Delta deltas) and metadata
 
-The main entry points are:
+Main entry points:
 
 - `MiniInsurancePosNegTrainer` → `TrainAsync(EmbeddingBackend.Sim)`
 - `MiniInsurancePosNegRunner` → evaluates Baseline vs PosNeg
-- `FileSystemShiftTrainingResultRepository` → persists results under  
-  `src/EmbeddingShift.ConsoleEval/bin/Debug/net8.0/results/insurance`
+- `FileSystemShiftTrainingResultRepository` → persists results under:
+  - `results/insurance/` (default)
+  - or under `<EMBEDDINGSHIFT_ROOT>/results/insurance/` when `EMBEDDINGSHIFT_ROOT` is set
 
-You can inspect training results via:
+Directory layout (per training run):
+
+- `results/insurance/{workflowName}-training_<timestamp>/`
+  - `shift-training-result.json`
+  - `shift-training-result.md`
+
+Inspect the latest training result:
 
 `dotnet run --project src/EmbeddingShift.ConsoleEval -- shift-training-inspect mini-insurance-posneg`
 
@@ -64,7 +70,7 @@ This generator:
 3. Exposes it as an `AdditiveShift` (global shift for this workflow).
 4. Falls back to `NoShift.IngestBased` if no usable Delta exists.
 
-There is no database required – the repository can be file-based
+There is no database required – the repository is file-based
 (e.g. `FileSystemShiftTrainingResultRepository`).
 
 ## 4. Adaptive CLI wiring
@@ -78,8 +84,8 @@ The `adaptive` CLI command in `EmbeddingShift.ConsoleEval` is wired to:
 
 In short:
 
-> Pos/Neg training → ShiftTrainingResult (Delta vector)  
+> Pos/Neg training → ShiftTrainingResult (Delta vector)
 > → TrainingBackedShiftGenerator → AdaptiveWorkflow → runtime shift selection.
 
-This is the core bridge between the **statistics layer** and the
+This is the bridge between the **statistics layer** and the
 **adaptive shift selection** in the Mini-Insurance demo.

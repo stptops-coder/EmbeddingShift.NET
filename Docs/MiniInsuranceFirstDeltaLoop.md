@@ -20,7 +20,7 @@ a reference implementation and a template that can be ported to other domains.
 
 ## 2. Data & Embedding Space
 
-- Documents: `samples/insurance/docs/*.txt`
+- Documents: `samples/insurance/policies/*.txt`
 - Queries: `samples/insurance/queries/queries.json`
   - 5 queries, some of which are **intentionally mis-ranked** by the baseline.
 - Embedding space:
@@ -79,8 +79,15 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- mini-insurance-first-delt
   - First+handcrafted Delta
 - Persists each run under:
 
-  - `results/insurance/# Workflow____Generated at_ ...`
-  - plus a comparison directory:
+  - `results/insurance/FileBased-Insurance-Mini-Baseline_<timestamp>/`
+  - `results/insurance/FileBased-Insurance-Mini-FirstShift_<timestamp>/`
+  - `results/insurance/FileBased-Insurance-Mini-FirstShift-Delta_<timestamp>/`
+
+  Each run directory contains:
+  - `report.md`
+  - `run.json`
+
+  Plus a comparison directory:
 
     - `results/insurance/mini-insurance-first-delta_<timestamp>/metrics-comparison.json`
     - `results/insurance/mini-insurance-first-delta_<timestamp>/metrics-comparison.md`
@@ -202,9 +209,11 @@ accordingly. For now, the project intentionally stays file-based.
 
 ## 6. Extension Points
 
-1. **Real embeddings**
-   - Swap the embedding provider (sim → OpenAI or other backend).
-   - Workflow and metrics structure remain unchanged.
+1. **Embeddings / backends**
+   - This Mini-Insurance loop uses **local, deterministic keyword-count embeddings** (it does not depend on `EMBEDDING_BACKEND`).
+   - For the generic ingest/eval pipeline (chunk → embed → store → eval), see the ConsoleEval dataset/ingest commands, which use:
+     - `EMBEDDING_BACKEND=sim` (default)
+     - `EMBEDDING_BACKEND=openai` (scaffold only; not wired yet)
 
 2. **Alternative storage (optional)**
    - Keep `IMetricsRepository` and provide a different implementation if needed.

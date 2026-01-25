@@ -1,4 +1,4 @@
-﻿# Baseline Shift (NoShiftIngestBased)
+﻿﻿# Baseline Shift (NoShiftIngestBased)
 
 This configuration represents the **Baseline mode ("Pretrained Model as is")**.
 
@@ -30,9 +30,9 @@ Output shows baseline scores that serve as the reference for later shifted runs.
 
 | Layer | Role | Description |
 |-------|------|-------------|
-| Embedding Provider | Pretrained (OpenAI / Simulated) | Produces original 1536-D vectors |
+| Embedding Provider | Simulated (default); OpenAI scaffold (not wired) | Produces original vectors |
 | Shift | NoShiftIngestBased | Applies no transformation |
-| Vector Store | FileStore / SQLite | Persists embeddings and metrics |
+| Vector Store | FileStore | Persists embeddings and metrics |
 | Evaluation | Cosine, MRR, nDCG | Quantifies baseline performance |
 
 This represents the **pure Method A setup**  using pretrained embeddings "as is".

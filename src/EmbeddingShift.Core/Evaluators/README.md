@@ -1,7 +1,7 @@
 # Evaluators in EmbeddingShift
 
 This folder contains evaluators used to measure the quality of shift strategies.  
-Evaluators implement `IShiftEvaluator` and are located under **`EmbeddingShift.Adaptive.Evaluators`**.
+Evaluators implement `IShiftEvaluator` and are located under **`EmbeddingShift.Core.Evaluators`**.
 
 ## When to use which evaluator?
 
@@ -40,3 +40,4 @@ var evals = new IShiftEvaluator[]
 
 var service = new ShiftEvaluationService(generator, evals);
 var report = service.Evaluate(pairs);
+```

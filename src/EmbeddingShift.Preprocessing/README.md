@@ -1,4 +1,4 @@
-﻿# EmbeddingShift.Preprocessing
+﻿﻿# EmbeddingShift.Preprocessing
 
 This project provides the **document preprocessing pipeline** used before embeddings are generated.
 
@@ -20,7 +20,8 @@ This project provides the **document preprocessing pipeline** used before embedd
 - PreprocessPipeline.cs
 
 ## Example
-`csharp
+
+```csharp
 var pipeline = new PreprocessPipeline(
     new IDocumentLoader[] { new TxtLoader() },
     new Normalizer(),
@@ -30,3 +31,4 @@ foreach (var (chunk, meta) in pipeline.Run("sample.txt"))
 {
     Console.WriteLine(chunk);
 }
+```
