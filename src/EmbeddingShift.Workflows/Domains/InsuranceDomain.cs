@@ -1,4 +1,4 @@
-﻿using System.IO;
+﻿﻿using System.IO;
 
 namespace EmbeddingShift.Workflows.Domains
 {
@@ -9,13 +9,13 @@ namespace EmbeddingShift.Workflows.Domains
     /// </summary>
     public static class InsuranceDomain
     {
-        public const string RelativeRoot          = "data/domains/insurance";
+        public const string RelativeRoot          = "samples/domains/insurance";
         public const string PoliciesSubfolder     = "policies";
         public const string ClaimsSubfolder       = "claims";
         public const string PreprocessedSubfolder = "preprocessed";
 
         public static string GetDomainRoot(string repoRoot) =>
-            Path.Combine(repoRoot, "data", "domains", "insurance");
+            Path.Combine(repoRoot, "samples", "domains", "insurance");
 
         public static string GetPoliciesPath(string repoRoot) =>
             Path.Combine(GetDomainRoot(repoRoot), PoliciesSubfolder);

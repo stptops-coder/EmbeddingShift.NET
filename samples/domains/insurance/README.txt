@@ -1,4 +1,4 @@
-﻿Domain: Insurance
+﻿﻿Domain: Insurance
 
 This folder contains sample insurance-related documents that can be used
 for ingestion experiments. The structure is intentionally simple and can
