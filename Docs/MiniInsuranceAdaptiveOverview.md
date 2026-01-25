@@ -73,9 +73,12 @@ This generator:
 There is no database required – the repository is file-based
 (e.g. `FileSystemShiftTrainingResultRepository`).
 
-## 4. Adaptive CLI wiring
+## 4. Adaptive CLI wiring (demo)
 
-The `adaptive` CLI command in `EmbeddingShift.ConsoleEval` is wired to:
+The `adaptive` CLI command in `EmbeddingShift.ConsoleEval` is a **demo** that wires the adaptive components together.
+It **loads the latest training result** (if present) but runs the selection on **synthetic vectors** (not on the persisted Mini‑Insurance corpus).
+
+It is wired to:
 
 1. Resolve the results root for the "insurance" domain.
 2. Construct a `FileSystemShiftTrainingResultRepository`.
@@ -89,3 +92,8 @@ In short:
 
 This is the bridge between the **statistics layer** and the
 **adaptive shift selection** in the Mini-Insurance demo.
+
+
+## Notes
+
+- This is currently a wiring/demo step. A full Mini‑Insurance adaptive loop over persisted embeddings (per‑query selection + gating/promote) is **not** implemented yet.
