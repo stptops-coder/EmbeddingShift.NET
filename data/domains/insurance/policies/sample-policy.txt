@@ -1,9 +1,0 @@
-﻿Sample Insurance Policy
-
-Section 1: Coverage
-- The policy covers fire and water damage for the insured property.
-- Maximum coverage: 250_000 EUR.
-
-Section 2: Exclusions
-- Intentional damage is excluded.
-- Damage caused by war or nuclear incidents is excluded.
