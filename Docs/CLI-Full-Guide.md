@@ -1,555 +1,173 @@
-# EmbeddingShift ConsoleEval CLI — Full Guide
+# EmbeddingShift ConsoleEval CLI – Full Guide (code-synchronous)
 
-This is the comprehensive reference for the CLI implemented in `src/EmbeddingShift.ConsoleEval`.
-It is structured as:
+As of: 2026-01-25 (Repo ZIP: `EmbeddingShift.NET-main - 2026-01-25T050917.259.zip`)
 
-1. Execution model (dotnet + CLI)
-2. Global options and environment variables
-3. Workflow maps (from Generate/Ingest to Production-style promotion)
-4. Command reference (purpose, syntax, key options, artifacts)
-
-Note: In this repo version, the OpenAI backend is **not implemented** (`--backend=openai` throws `NotSupportedException`).
+This guide prioritizes **accuracy**: global flags/usage lines are taken from `help` and/or derived directly from the command implementations.
 
 ---
 
-## 1) Execution model
+## A) Global flags (from `help`)
 
-### 1.1 Standard invocation
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- <command> <args>
-```
-
-### 1.2 Recommended for repeated runs
-
-```powershell
-dotnet build -c Release
-dotnet run --no-build -c Release --project src/EmbeddingShift.ConsoleEval -- <command> <args>
-```
-
----
-
-## 2) Global options and environment variables
-
-### 2.1 Tenant (most important)
-
-Either:
-
-```powershell
---tenant insurer-a
-```
-
-or:
-
-```powershell
-$env:EMBEDDINGSHIFT_TENANT = "insurer-a"
-```
-
-Tenant scopes run artifacts under:
-`results\<domainKey>\tenants\<tenant>\runs\...`
-
----
-
-### 2.2 Backend and simulation globals
-
-#### Backend
-- `--backend=sim|openai` (OpenAI not implemented in this repo; use `sim`)
-
-#### Simulation behavior
+- `--tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...`
+- `--provider=sim|openai-echo|openai-dryrun`
+- `--backend=sim|openai`
+- `--method=A`
 - `--sim-mode=deterministic|noisy`
-- `--sim-noise=<float>` (only meaningful if `sim-mode=noisy`)
-- `--sim-algo=semantic-hash|sha256`
-- `--sim-char-ngrams=1` (enables char n-gram behavior)
-
-Example:
-
-```powershell
---backend=sim --sim-mode=deterministic --sim-algo=semantic-hash
-```
+- `--sim-noise=<float>`
+- `--sim-algo=sha256|semantic-hash`
+- `--sim-char-ngrams=0|1`
+- `--semantic-cache | --no-semantic-cache`
+- `--cache-max=<int>  --cache-hamming=<int>  --cache-approx=0|1`
 
 ---
 
-### 2.3 Semantic cache (optional)
+## B) Dataset/Ingest/Eval (usage lines from `DatasetCliCommands`)
 
-- `--semantic-cache` / `--no-semantic-cache`
-- `--cache-max=<int>`
-- `--cache-hamming=<int>`
-- `--cache-approx=<0|1>`
-
-Example:
-
-```powershell
---semantic-cache --cache-max=2000 --cache-hamming=6 --cache-approx=1
-```
+- `run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]`
+- `run-smoke <refsPath> <queriesPath> <dataset> [--force-reset] [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]`
+- `ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]`
+- `ingest-inspect <dataset> [--role=refs|queries]`
+- `dataset-status <dataset> [--role=refs|queries|all]`
+- `dataset-reset <dataset> [--role=refs|queries|all] [--force] [--keep-manifests]`
+- `dataset-validate <dataset> [--role=refs|queries|all] [--require-state] [--require-chunk-manifest]`
 
 ---
 
-### 2.4 Location overrides (environment)
+## C) Runs (usage/default blocks taken from the respective command classes)
 
-#### Root override
-If you want results and data rooted somewhere else:
+### runs-compare
 
-```powershell
-$env:EMBEDDINGSHIFT_ROOT = "D:\work\EmbeddingShiftRunRoot"
+```
+Usage:
+runs-compare [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--top=N] [--write] [--out=<dir>]
+
+Defaults:
+domainKey = insurance
+tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a" if missing)
+runs-root = .\results\<domainKey>\tenants\<tenant>\runs
+metric    = ndcg@3
+top       = 20
+write     = false
 ```
 
-#### Mini-Insurance dataset root override
-If you generate a dataset via `domain mini-insurance dataset-generate` and want to force using it:
+### runs-best
 
-```powershell
-$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "...\results\insurance\datasets\<name>\staged"
+```
+Usage:
+runs-best [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--write] [--out=<dir>] [--open]
+
+Defaults:
+domainKey = insurance
+tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
+runs-root = .\results\<domainKey>\tenants\<tenant>\runs
+metric    = ndcg@3
 ```
 
----
+### runs-decide
 
-## 3) Directory layout (what is written where)
-
-The CLI uses two conceptual roots:
-
-- `results\...` for human-facing run artifacts and domain outputs
-- `data\...` for embedding/state/manifests used by dataset ingest and evaluation
-
-Key locations you will inspect most:
-
-- Run artifacts (for compare/promote):
-  `results\insurance\tenants\<tenant>\runs\<WorkflowName>\<RunId>\run.json`
-
-- Dataset ingest manifests:
-  `data\manifests\<dataset>\<role>\manifest_latest.json`
-
-- Dataset space state:
-  `data\state\<dataset>\<role>\space_state.json`
-
----
-
-## 4) Workflow maps
-
-### 4.1 Track A — Dataset utilities (quick checking)
-This track is ideal for verifying ingest + embeddings + evaluation quickly.
-It does **not** create `run.json` artifacts used by `runs-compare/promote`.
-
-Typical sequence:
-
-1. `ingest-dataset`
-2. `dataset-validate`
-3. `eval` (optionally gated)
-
-### 4.2 Track B — Run-based production loop
-This track produces explicit run artifacts (`run.json`) and supports:
-Compare → Decide → Promote/Rollback.
-
-In this repo version, the most complete producer of run artifacts is:
-- `domain mini-insurance posneg-run` (writes baseline + posneg runs)
-
-Typical sequence:
-
-1. (Optional) `domain mini-insurance dataset-generate`
-2. `domain mini-insurance posneg-train`
-3. `domain mini-insurance posneg-run`
-4. `runs-compare` / `runs-best` / `runs-decide`
-5. `runs-promote` or `runs-rollback`
-
----
-
-## 5) Command reference
-
-### 5.1 Discovery and help
-
-#### `help`
-Purpose: print available commands and global flags.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- help
 ```
+Usage:
+runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--eps=<double>] [--write] [--apply] [--open]
 
-#### `domain list`
-Purpose: list registered domain packs.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- domain list
-```
-
-#### `domain mini-insurance help`
-Purpose: show Mini-Insurance domain pack commands.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance help
-```
-
----
-
-### 5.2 Smoke orchestration
-
-#### `smoke-all`
-Purpose: end-to-end verification of the core paths.
-It orchestrates:
-- `run-smoke-demo`
-- `domain mini-insurance run`
-- `domain mini-insurance posneg-train --mode=micro`
-- `domain mini-insurance posneg-run --use-latest`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a smoke-all
-```
-
----
-
-### 5.3 Dataset ingest commands
-
-#### `ingest-dataset` (canonical)
-Purpose: ingest references + queries into the embedding store.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-dataset <dataset> --refs=<path> --queries=<path>
-```
-
-Key options:
-- `--refs=<path>` (default: `samples\demo`)
-- `--queries=<path>` (default: `samples\demo\queries.json`)
-- `--refs-plain` (use plain refs ingest instead of chunk-first)
-- `--chunk-size=<int>` / `--chunk-overlap=<int>`
-- `--no-recursive`
-
-Artifacts:
-- Embeddings under `data\embeddings\...`
-- Manifests under `data\manifests\...` (if chunk-first)
-- Space state under `data\state\...`
-
----
-
-#### `ingest-refs`
-Purpose: ingest references only (plain mode).
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-refs <path> <dataset>
-```
+Defaults:
+domainKey = insurance
+tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
+runs-root = .\results\<domainKey>\tenants\<tenant>\runs
+metric    = ndcg@3
+eps       = 1e-6
+write     = true
+apply     = false (dry decision only)
 
 Notes:
-- If no args are provided, the command uses demo defaults.
+- 'apply' uses RunActivation.Promote(...) and will create/overwrite the active pointer for this metric.
+- This command does not delete any run directories.
+```
+
+### runs-promote
+
+```
+Usage:
+runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open]
+
+Defaults:
+domainKey = insurance
+tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
+runs-root = .\results\<domainKey>\tenants\<tenant>\runs
+metric    = ndcg@3
+```
+
+### runs-rollback
+
+```
+Usage:
+runs-rollback [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open]
+
+Defaults:
+domainKey = insurance
+tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
+runs-root = .\results\<domainKey>\tenants\<tenant>\runs
+metric    = ndcg@3
+```
+
+### runs-active
+
+```
+Usage:
+runs-active [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>]
+
+Defaults:
+domainKey = insurance
+tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
+runs-root = .\results\<domainKey>\tenants\<tenant>\runs
+metric    = ndcg@3
+```
+
+### runs-history
+
+```
+Usage:
+runs-history [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--max=N] [--exclude-preRollback] [--open]
+
+Defaults:
+domainKey = insurance
+tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
+runs-root = .\results\<domainKey>\tenants\<tenant>\runs
+metric    = ndcg@3
+max       = 20
+```
+
+### runs-matrix
+
+```
+Usage:
+runs-matrix --spec=<path> [--runs-root=<path>] [--domainKey=<key>] [--dry] [--open]
+
+The spec file contains the list of variants (each variant is a CLI argument array for this ConsoleEval app)
+plus optional "after" settings (compare/promote/open).
+```
+
+Important clarifications (to avoid “implicitly wrong” documentation):
+
+- There is **no** `--workflow` option on `runs-compare`. If you want to scan a single workflow only: point `--runs-root` directly at that workflow folder.
+- `runs-promote`/`runs-rollback` work via “best/previous” per metric – there is currently no explicit `runId` promotion.
+- `runs-matrix` has **no** `--out`/`--rerun`. Output is automatic: `<runsRoot>/_matrix/matrix_<timestamp>/`.
 
 ---
 
-#### `ingest-refs-chunked`
-Purpose: ingest references only (chunk-first mode).
+## D) Mini-Insurance domain pack (key subcommands)
 
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-refs-chunked <path> <dataset> --chunk-size=1000 --chunk-overlap=100
-```
+- `domain mini-insurance dataset-generate <name> [--stages=N] [--policies=N] [--queries=N] [--seed=N] [--overwrite]`
+- `domain mini-insurance pipeline [--no-learned]`
+- `domain mini-insurance posneg-train --mode=micro|production [--hardneg-topk=N]`
+- `domain mini-insurance posneg-run [--latest] [--scale=<float>]`
+- `domain mini-insurance posneg-inspect | posneg-history [maxItems] [--include-cancelled] | posneg-best [--include-cancelled]`
+- `domain mini-insurance runroot-summarize [--runroot=<path>] [--out=<path>]`
 
-Key options:
-- `--chunk-size=<int>` (default 1000)
-- `--chunk-overlap=<int>` (default 100)
-- `--no-recursive`
-
----
-
-#### `ingest-queries`
-Purpose: ingest queries only.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-queries <path> <dataset>
-```
+**Important (sync note):** The domain help mentions `--cancel-epsilon=<float>`, but in the current state it is **not** parsed (the flag has no effect).
 
 ---
 
-#### `ingest-inspect`
-Purpose: inspect ingest artifacts for a dataset/role.
+## E) Adaptive/Generator (status and positioning)
 
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-inspect <dataset> --role=refs
-```
-
-Key options:
-- `--role=refs|queries` (default: refs)
-
----
-
-#### `ingest-legacy` (deprecated)
-Purpose: legacy ingest using `r.txt` and `q.txt`.
-Recommendation: use `ingest-dataset` instead.
-
----
-
-### 5.4 Dataset hygiene and gates
-
-#### `dataset-status`
-Purpose: show state/manifest availability per role.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-status <dataset> --role=all
-```
-
----
-
-#### `dataset-validate`
-Purpose: validate that required ingest artifacts exist.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-validate <dataset> --role=all --require-state --require-chunk-manifest
-```
-
-Exit codes:
-- `0` ok
-- `2` failed
-
----
-
-#### `dataset-reset`
-Purpose: reset embeddings/state (and optionally manifests) for a dataset.
-Important: by default it runs in preview mode; nothing is deleted unless `--force` is provided.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-reset <dataset> --role=all
-```
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-reset <dataset> --role=all --force
-```
-
-Key options:
-- `--role=refs|queries|all`
-- `--force`
-- `--keep-manifests`
-
----
-
-### 5.5 Evaluation and run (non-artifact runs)
-
-#### `eval`
-Purpose: evaluate a dataset. Optionally runs a baseline and applies an acceptance gate.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- eval <dataset> --baseline --gate-profile=rank+cosine --gate-eps=0.001
-```
-
-Key options:
-- `--baseline`
-- `--gate-profile=rank|rank+cosine`
-- `--gate-eps=<double>` (default 0.001)
-
-Notes:
-- `--shift` exists but currently supports only `identity` and `zero` (placeholder behavior in this repo state).
-
----
-
-#### `run`
-Purpose: convenience orchestration: ingest-dataset + eval.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- run <dataset> --refs=<path> --queries=<path>
-```
-
-Notes:
-- This does not write `run.json` artifacts used by `runs-compare/promote`.
-
----
-
-#### `run-smoke` / `run-smoke-demo`
-Purpose: reset → ingest → validate → eval with gate.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
-```
-
----
-
-### 5.6 Mini-Insurance domain pack
-
-#### `domain mini-insurance dataset-generate`
-Purpose: create a staged dataset under `results\insurance\datasets\<name>\staged`.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance dataset-generate --name=myds
-```
-
-Common options (see `domain mini-insurance help` for exact current set):
-- `--name=<string>`
-- `--policy-count=<int>`
-- `--query-count=<int>`
-
----
-
-#### `domain mini-insurance posneg-train`
-Purpose: train a global delta vector via PosNeg pairs and persist a training result (latest/best/history).
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  domain mini-insurance posneg-train --mode=prod --hardneg-topk=20 --cancel-eps=0.001
-```
-
-Key options:
-- `--mode=micro|prod` (default: micro)
-- `--hardneg-topk=<int>` (default: 5)
-- `--cancel-eps=<double>` (default: 0.001)
-
----
-
-#### `domain mini-insurance posneg-run`
-Purpose: run evaluation baselines + posneg-shifted and write run artifacts (`run.json`) suitable for compare/promote.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  domain mini-insurance posneg-run --use-latest --scale=1.0
-```
-
-Key options:
-- `--use-latest` (otherwise it uses `best`)
-- `--scale=<double>` (default: 1.0)
-
-Artifacts:
-- per-run `run.json` under `results\insurance\tenants\<tenant>\runs\MiniInsurance-PosNeg\...`
-- per-query JSONs (baseline vs posneg)
-- markdown metrics summaries
-
----
-
-#### `domain mini-insurance run` (pipeline / legacy)
-Purpose: execute the Mini-Insurance pipeline (baseline/first/delta/learned-delta style flows).
-This is useful for experimentation, but the production-style loop is currently centered on PosNeg.
-
----
-
-### 5.7 Training result inspection (generic)
-
-These commands work on persisted training results (latest/best/history) by workflow name.
-
-#### `shift-training-history`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- shift-training-history --workflow=mini-insurance-posneg --domainKey=insurance --include-cancelled
-```
-
-#### `shift-training-best`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- shift-training-best --workflow=mini-insurance-posneg --domainKey=insurance
-```
-
-#### `shift-training-inspect`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- shift-training-inspect --workflow=mini-insurance-posneg --domainKey=insurance --which=latest
-```
-
----
-
-### 5.8 Runs management (production loop)
-
-These commands operate on run artifacts under:
-`results\<domainKey>\tenants\<tenant>\runs\<workflow>\<runId>\run.json`
-
-#### `runs-history`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-history --workflow=MiniInsurance-PosNeg
-```
-
-#### `runs-compare`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  runs-compare --workflow=MiniInsurance-PosNeg --metric=ndcg@3 --top=10 --out=compare.md
-```
-
-#### `runs-best`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-best --workflow=MiniInsurance-PosNeg --metric=ndcg@3
-```
-
-#### `runs-active`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-active --workflow=MiniInsurance-PosNeg
-```
-
-#### `runs-decide`
-Compares best vs active and decides if promotion is warranted (gate via epsilon).
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-decide --workflow=MiniInsurance-PosNeg --metric=ndcg@3 --eps=0.001
-```
-
-#### `runs-promote`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-promote --workflow=MiniInsurance-PosNeg --run=<RunId>
-```
-
-#### `runs-rollback`
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-rollback --workflow=MiniInsurance-PosNeg
-```
-
----
-
-### 5.9 Batch runner
-
-#### `runs-matrix`
-Purpose: execute a matrix of variants described by a JSON spec; optionally compare, write summaries, and open output.
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- runs-matrix --spec=...\matrix.json --tenant=insurer-a --open
-```
-
-Key options:
-- `--spec=<file>` (required)
-- `--tenant=<t>` (default: `default`)
-- `--domainKey=<key>` (affects default runs-root resolution)
-- `--runs-root=<path>` (override)
-- `--dry` (print plan only)
-- `--open` (open output folder)
-- `--timeout-sec=<int>` (default: 600)
-
-Spec model reference: `RunMatrixSpec`.
-
----
-
-## 6) Troubleshooting (common cases)
-
-### 6.1 `--backend=openai` fails
-Expected in this repo state (OpenAI backend not implemented). Use `--backend=sim`.
-
-### 6.2 Dataset validate fails
-Most common causes:
-- You ran `ingest-dataset` but forgot to ingest queries or refs.
-- You expected chunk-first manifests but ingested plain.
-
-Use:
-- `ingest-inspect <dataset> --role=refs`
-- `dataset-status <dataset> --role=all`
-
-### 6.3 `dataset-reset` did nothing
-By design: it previews unless `--force` is provided.
-
-### 6.4 Compare/promote shows no runs
-Compare/promote requires `run.json` artifacts. In this repo version, the easiest producer is:
-- `domain mini-insurance posneg-run`
-
----
-
-## 7) Cheat sheet
-
-### End-to-end (production loop)
-
-```powershell
-# Train
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  domain mini-insurance posneg-train --mode=prod --hardneg-topk=20 --cancel-eps=0.001
-
-# Run (produces run.json)
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  domain mini-insurance posneg-run --use-latest --scale=1.0
-
-# Compare → Decide → Promote
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  runs-compare --workflow=MiniInsurance-PosNeg --metric=ndcg@3 --top=10
-
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  runs-decide --workflow=MiniInsurance-PosNeg --metric=ndcg@3 --eps=0.001
-
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a \
-  runs-promote --workflow=MiniInsurance-PosNeg --run=<RunId>
-```
-
+- `adaptive` is currently a **demo** (synthetic vectors, local selection) and is not part of the production-like ingest→eval→runs→promote flow.
+- The “generator” (no-shift/additive/multiplicative selection) exists as a demo in `EmbeddingShift.ConsoleSmoke` and is not wired into ConsoleEval workflows.
