@@ -1,6 +1,6 @@
 # EmbeddingShift ConsoleEval CLI – Full Guide (code-synchronous)
 
-As of: 2026-01-25 (Repo ZIP: `EmbeddingShift.NET-main - 2026-01-25T050917.259.zip`)
+As of: 2026-01-26 (Repo ZIP: `EmbeddingShift.NET-main - 2026-01-26T160236.153.zip`)
 
 This guide prioritizes **accuracy**: global flags/usage lines are taken from `help` and/or derived directly from the command implementations.
 

@@ -1,6 +1,6 @@
 # EmbeddingShift ConsoleEval CLI – Onboarding (Quickstart)
 
-As of: 2026-01-25 (Repo ZIP: `EmbeddingShift.NET-main - 2026-01-25T050917.259.zip`)
+As of: 2026-01-26 (Repo ZIP: `EmbeddingShift.NET-main - 2026-01-26T160236.153.zip`)
 
 Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Validate → Eval → Compare/activate runs.
 

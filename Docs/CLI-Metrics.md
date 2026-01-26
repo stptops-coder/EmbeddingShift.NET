@@ -1,4 +1,4 @@
-# CLI Metrics & Evaluation Artifacts (Code-synchronous, as of 2026-01-25)
+# CLI Metrics & Evaluation Artifacts (Code-synchronous, as of 2026-01-26)
 
 This document describes **which metrics/statistics** the CLI currently produces, **where** they are stored, and **how** to interpret them – focusing on the "production-like" workflow (run artifacts + comparisons), not older First-Delta experiments.
 
@@ -10,7 +10,7 @@ In the repo there are currently **multiple layers** of metrics/outputs that must
 
 1) **Run artifacts (comparable/aggregatable)**
    - Persisted as `run.json` inside a run folder.
-   - Read by `runs-compare`, `runs-list`, `runs-matrix`, etc.
+   - Read by `runs-compare`, `runs-active`, `runs-history`, `runs-matrix`, etc.
    - Currently used primarily by the **Mini-Insurance PosNeg run**.
 
 2) **Per-query breakdown (for segmentation/analysis)**
@@ -46,14 +46,24 @@ results/
   insurance/
     tenants/<tenant>/
       runs/
-        mini-insurance-posneg-run_YYYYMMDD_HHMMSS_fff/
-          run.json
-          eval.perQuery.baseline.json
-          eval.perQuery.posneg.json
+        MiniInsurance-PosNeg-Baseline/
+          <RunId>/
+            run.json
+        MiniInsurance-PosNeg/
+          <RunId>/
+            run.json
+
+      mini-insurance-posneg-run_YYYYMMDD_HHMMSS_fff/
+        eval.perQuery.baseline.json
+        eval.perQuery.posneg.json
+        metrics-posneg.json
+        metrics-posneg.md
+
       mini-insurance-posneg-training_YYYYMMDD_HHMMSS_fff/
         shift-training-result.json
         shift-training-result.md
 ```
+
 
 Without tenant, the `tenants/<tenant>` part is missing.
 
