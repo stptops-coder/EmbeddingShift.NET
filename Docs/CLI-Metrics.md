@@ -1,4 +1,4 @@
-# CLI Metrics & Evaluation Artifacts (Code-synchronous, as of 2026-01-26)
+# CLI Metrics & Evaluation Artifacts (Code-synchronous, as of 2026-01-27)
 
 This document describes **which metrics/statistics** the CLI currently produces, **where** they are stored, and **how** to interpret them – focusing on the "production-like" workflow (run artifacts + comparisons), not older First-Delta experiments.
 

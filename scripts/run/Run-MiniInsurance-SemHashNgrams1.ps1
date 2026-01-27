@@ -1,12 +1,17 @@
 param(
   [int]$Seed = 1006,
   [string]$Tenant = "insurer-a",
-  [string]$RepoRoot = "C:\pg\RakeX",
+  [string]$RepoRoot = "",
   [switch]$Open
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot "..\lib\RepoRoot.ps1")
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+  $RepoRoot = Get-RepoRoot -StartPath $PSScriptRoot
+}
 
 # --- Preflight ---------------------------------------------------------------
 if (-not (Test-Path $RepoRoot)) {

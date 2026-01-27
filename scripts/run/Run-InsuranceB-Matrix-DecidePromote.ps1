@@ -11,7 +11,9 @@ $ErrorActionPreference = 'Stop'
 $proj = "src/EmbeddingShift.ConsoleEval"
 $spec = "scripts/run/matrix-miniinsurance.example.json"
 
-cd C:\pg\RakeX
+. (Join-Path $PSScriptRoot "..\lib\RepoRoot.ps1")
+$repoRoot = Get-RepoRoot -StartPath $PSScriptRoot
+Set-Location $repoRoot
 
 Write-Host "== Matrix run (tenant=$Tenant) =="
 dotnet run --project $proj -- --tenant $Tenant --backend=sim --sim-mode=deterministic `

@@ -37,7 +37,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repoRoot = 'C:\pg\RakeX'
+. (Join-Path $PSScriptRoot "..\lib\RepoRoot.ps1")
+$repoRoot = Get-RepoRoot -StartPath $PSScriptRoot
 if (!(Test-Path $repoRoot)) { throw "Repo root not found: $repoRoot" }
 
 $profilesPath = Join-Path $repoRoot 'scripts\run\_profiles.ps1'

@@ -1,6 +1,6 @@
 # EmbeddingShift ConsoleEval CLI – Onboarding (Quickstart)
 
-As of: 2026-01-26 (Repo ZIP: `EmbeddingShift.NET-main - 2026-01-26T160236.153.zip`)
+As of: 2026-01-27
 
 Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Validate → Eval → Compare/activate runs.
 
@@ -8,8 +8,14 @@ Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Va
 
 ## 1) Standard invocation
 
+**Prefer copy/paste multi-step sequences?**
+
+- PowerShell runbook: `scripts/RUNBOOK_FirstLight.md`
+- ConsoleEval how-to: `src/EmbeddingShift.ConsoleEval/HowToRun.md`
+
+
 ```
-cd C:\pg\RakeX
+cd <repo-root>
 dotnet run --project src/EmbeddingShift.ConsoleEval -- help
 ```
 

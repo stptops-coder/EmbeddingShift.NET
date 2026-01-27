@@ -11,7 +11,7 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant $tenant `
   --sim-algo=semantic-hash --sim-char-ngrams=1 `
   domain mini-insurance posneg-run --scale=10
 
-$runDir = (Get-ChildItem "C:\pg\RakeX\results\insurance\tenants\$tenant" -Directory -Filter "mini-insurance-posneg-run_*" |
+$runDir = (Get-ChildItem (Join-Path $RepoRoot "results\insurance\tenants\$tenant") -Directory -Filter "mini-insurance-posneg-run_*" |
   Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
 
 Write-Host "RUN_DIR=$runDir"
