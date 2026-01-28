@@ -14,10 +14,10 @@ Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Va
 - ConsoleEval how-to: `src/EmbeddingShift.ConsoleEval/HowToRun.md`
 
 
-```
+```powershell
 cd <repo-root>
 dotnet run --project src/EmbeddingShift.ConsoleEval -- help
-```
+```powershell
 
 ## 2) Global flags (exactly as printed by `help`)
 
@@ -38,19 +38,19 @@ Note: `--tenant` is parsed globally, set as ENV, and removed before dispatch. Th
 
 ## 3) Quick sanity: demo smoke
 
-```
+```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a run-smoke-demo --baseline
-```
+```powershell
 
 ---
 
 ## 4) Mini-Insurance: generate a staged dataset and set the root
 
-```
+```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance dataset-generate MyDS --stages 3 --policies 40 --queries 80 --seed 1337 --overwrite
 
 $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results/insurance/datasets/MyDS/stage-00"
-```
+```powershell
 
 ---
 
@@ -58,57 +58,57 @@ $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results/insurance/datasets/MyD
 
 ### 5.1 Ingest
 
-```
-dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-dataset ^
-  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\policies ^
-  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\queries ^
-  MyDataset ^
+```powershell
+dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-dataset `
+  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\policies `
+  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\queries `
+  MyDataset `
   --chunk-size=1000 --chunk-overlap=100
-```
+```powershell
 
 ### 5.2 Validate
 
-```
+```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-validate MyDataset --role=refs --require-state --require-chunk-manifest
 dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-validate MyDataset --role=queries --require-state
-```
+```powershell
 
 ### 5.3 Eval
 
-```
+```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- eval MyDataset --baseline
-```
+```powershell
 
 ---
 
 ## 6) One-shot: run-smoke (your dataset)
 
-```
-dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke ^
-  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\policies ^
-  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\queries ^
-  MyDataset ^
+```powershell
+dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke `
+  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\policies `
+  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT\queries `
+  MyDataset `
   --force-reset --baseline
-```
+```powershell
 
 ---
 
 ## 7) PosNeg (learned delta) – Mini-Insurance domain pack
 
-```
+```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance posneg-train --mode=micro
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance posneg-run --latest
-```
+```powershell
 
 ---
 
 ## 8) Compare/activate runs (Compare → Decide → Active)
 
-```
+```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-compare --metric ndcg@3 --top 10
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-decide --metric ndcg@3 --eps 1e-6 --apply
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-active --metric ndcg@3
-```
+```powershell
 
 ---
 

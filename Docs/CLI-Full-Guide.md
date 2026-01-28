@@ -4,6 +4,9 @@ As of: 2026-01-27
 
 This guide prioritizes **accuracy**: global flags/usage lines are taken from `help` and/or derived directly from the command implementations.
 
+
+This guide is a **reference**. All commands assume your current directory is the **repository root** (the folder that contains `src/` and `scripts/`). For runnable copy/paste sequences, start with `Docs/CLI-Onboarding.md`.
+
 ---
 
 ## A) Global flags (from `help`)

@@ -5,6 +5,8 @@ Focus: reproducible workflows and inspectable artifacts (file-based).
 
 ## Quickstart
 
+Run commands from the repository root (the folder that contains `src/` and `scripts/`).
+
 ```powershell
 dotnet build
 dotnet test
