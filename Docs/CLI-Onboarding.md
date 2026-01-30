@@ -21,6 +21,9 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- help
 
 ## 2) Global flags (exactly as printed by `help`)
 
+
+> **Note on help:** Per-command `--help` is not implemented; use the top-level `help` (or `domain <id> help`).
+
 - `--tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...`
 - `--provider=sim|openai-echo|openai-dryrun`
 - `--backend=sim|openai`

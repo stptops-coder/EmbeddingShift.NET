@@ -11,6 +11,9 @@ This guide is a **reference**. All commands assume your current directory is the
 
 ## A) Global flags (from `help`)
 
+
+> **Note on help:** The CLI only supports `help` / `--help` at the top-level (and `domain <id> help`). `--help` placed after a subcommand is treated as unsupported nested help and prints the parent help.
+
 - `--tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...`
 - `--provider=sim|openai-echo|openai-dryrun`
 - `--backend=sim|openai`

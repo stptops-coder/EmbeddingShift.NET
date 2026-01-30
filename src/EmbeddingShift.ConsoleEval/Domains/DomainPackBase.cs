@@ -1,4 +1,4 @@
-﻿namespace EmbeddingShift.ConsoleEval.Domains;
+namespace EmbeddingShift.ConsoleEval.Domains;
 
 using System;
 using System.Linq;
@@ -24,6 +24,17 @@ internal abstract class DomainPackBase : IDomainPack
 
     public async Task<int> ExecuteAsync(string[] args, Action<string> log)
     {
+        args ??= Array.Empty<string>();
+
+        if (args.Length > 1 && args.Skip(1).Any(IsHelpToken))
+        {
+            log("Note: subcommand-level help is not implemented (help must be the first token after the domain id).");
+            log($"Use: domain {DomainId} help   (or: domain {DomainId} --help)");
+            log("");
+            PrintDomainHelp(log);
+            return 0;
+        }
+
         var sub = args.FirstOrDefault()?.ToLowerInvariant() ?? "help";
 
         switch (sub)
@@ -68,4 +79,13 @@ internal abstract class DomainPackBase : IDomainPack
     }
 
     protected abstract Task<int> ExecuteDomainCommandAsync(string sub, string[] args, Action<string> log);
+
+    private static bool IsHelpToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return false;
+
+        return token.Equals("help", StringComparison.OrdinalIgnoreCase) ||
+               token.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+               token.Equals("-h", StringComparison.OrdinalIgnoreCase);
+    }
 }

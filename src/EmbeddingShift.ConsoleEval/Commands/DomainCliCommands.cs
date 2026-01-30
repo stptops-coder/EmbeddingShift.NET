@@ -1,4 +1,4 @@
-﻿using EmbeddingShift.ConsoleEval.Domains;
+using EmbeddingShift.ConsoleEval.Domains;
 
 namespace EmbeddingShift.ConsoleEval.Commands;
 
@@ -17,6 +17,13 @@ public static class DomainCliCommands
         //   domain <domainId> <subcommand> [...]
 
         var sub = args.Length >= 2 ? args[1] : "list";
+
+        if (IsHelp(sub))
+        {
+            PrintDomainEntryHelp();
+            return 0;
+        }
+
 
         if (string.Equals(sub, "list", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(sub, "--list", StringComparison.OrdinalIgnoreCase))
@@ -68,5 +75,34 @@ public static class DomainCliCommands
         }
 
         return exitCode;
+    }
+
+
+    private static bool IsHelp(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return false;
+        return token.Equals("help", StringComparison.OrdinalIgnoreCase) ||
+               token.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
+               token.Equals("-h", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void PrintDomainEntryHelp()
+    {
+        Console.WriteLine("Domain packs — usage");
+        Console.WriteLine("  domain list");
+        Console.WriteLine("  domain <domainId> <subcommand> [...]");
+        Console.WriteLine();
+        Console.WriteLine("Tip:");
+        Console.WriteLine("  domain <domainId> help");
+        Console.WriteLine("  domain <domainId> --help");
+        Console.WriteLine();
+        Console.WriteLine("Available domain packs:");
+        foreach (var pack in DomainPackRegistry.All)
+        {
+            Console.WriteLine($"  {pack.DomainId,-18} {pack.DisplayName}");
+        }
+        Console.WriteLine();
+        Console.WriteLine("Example:");
+        Console.WriteLine("  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pipeline");
     }
 }

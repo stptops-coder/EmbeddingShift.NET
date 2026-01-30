@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using EmbeddingShift.Core.Workflows;
@@ -17,7 +17,9 @@ namespace EmbeddingShift.Tests
         public async Task Ingest_over_insurance_domain_produces_basic_metrics()
         {
             var repoRoot = TestPathHelper.GetRepositoryRoot();
-            var domainDir = Path.Combine(repoRoot, "data", "domains", "insurance");
+            var preferred = Path.Combine(repoRoot, "samples", "domains", "insurance");
+            var fallback  = Path.Combine(repoRoot, "data", "domains", "insurance");
+            var domainDir = Directory.Exists(preferred) ? preferred : fallback;
 
             Assert.True(Directory.Exists(domainDir), $"Domain directory not found: {domainDir}");
 

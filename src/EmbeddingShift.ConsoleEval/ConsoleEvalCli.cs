@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Adaptive;
 using EmbeddingShift.ConsoleEval.Commands;
@@ -60,6 +60,21 @@ internal static class ConsoleEvalCli
             PrintHelp(commands);
             Environment.ExitCode = 1;
             return 1;
+        }
+
+
+        // Note: per-command help is only supported at the top-level (and at the domain-pack root).
+        // If a help token appears after the command name, treat it as unsupported nested help
+        // and print the top-level help instead of mis-parsing it as a positional argument.
+        if (!cmd.Equals("domain", StringComparison.OrdinalIgnoreCase) &&
+            args.Length > 1 &&
+            args.Skip(1).Any(IsHelp))
+        {
+            Console.WriteLine($"Note: per-command help is not implemented for '{cmd}' (help must be the first token).");
+            Console.WriteLine("Use: dotnet run --project src/EmbeddingShift.ConsoleEval -- help");
+            Console.WriteLine();
+            PrintHelp(commands);
+            return 0;
         }
 
         var exitCode = await spec.Handler(args);
