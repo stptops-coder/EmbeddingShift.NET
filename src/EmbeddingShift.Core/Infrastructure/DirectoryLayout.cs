@@ -13,27 +13,39 @@ namespace EmbeddingShift.Core.Infrastructure
     {
         public static string ResolveResultsRoot(string? domainSubfolder = null)
         {
-            // Tenant-aware result layout:
+            // Tenant-aware result layout (unified):
             // - No tenant: results[/<domainSubfolder>]
-            // - With tenant: results/tenants/<tenant>[/<domainSubfolder>]  (if domainSubfolder is null)
-            //              OR results/<domainSubfolder>/tenants/<tenant>   (if domainSubfolder provided)
+            // - With tenant: results/<domainKey>/tenants/<tenant>[/...]
             //
-            // This keeps domain roots stable (e.g. results/insurance/...) while also isolating
-            // generic timestamped runs under results/tenants/<tenant>/...
+            // Historically, some commands wrote to results/tenants/<tenant>/..., while others used
+            // results/<domainKey>/tenants/<tenant>/... (e.g. "insurance"). This created confusing
+            // cross-command inconsistencies. We now always route tenant results through the
+            // domainKey layout, using a stable default domainKey when none is provided.
             var tenant = GetTenantKeyOrNull();
             if (tenant is null)
                 return ResolveRoot("results", domainSubfolder);
 
-            var tenantPart = Path.Combine("tenants", tenant);
+            var domainKey = domainSubfolder ?? GetDefaultResultsDomainKeyOrNull() ?? "insurance";
+            domainKey = SanitizeFolderKey(domainKey);
 
-            var effective = domainSubfolder is null
-                ? tenantPart
-                : Path.Combine(domainSubfolder, tenantPart);
+            var tenantPart = Path.Combine("tenants", tenant);
+            var effective = Path.Combine(domainKey, tenantPart);
 
             return ResolveRoot("results", effective);
         }
 
-        private static string? GetTenantKeyOrNull()
+        private static string? GetDefaultResultsDomainKeyOrNull()
+        {
+            // Optional override (keeps the layout flexible for future domain packs).
+            // Example: set EMBEDDINGSHIFT_RESULTS_DOMAIN=pharma to route tenant results under results/pharma/tenants/<tenant>/...
+            var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_RESULTS_DOMAIN");
+            if (string.IsNullOrWhiteSpace(raw))
+                return null;
+
+            return raw;
+        }
+
+private static string? GetTenantKeyOrNull()
         {
             var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT");
             if (string.IsNullOrWhiteSpace(raw))

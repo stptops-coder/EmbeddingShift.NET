@@ -43,7 +43,7 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
 Notes:
 - Uses built-in demo assets under `samples/insurance/`.
 - Persists embeddings/manifests under `data/`.
-- Writes an evaluation run under `results/` (or `results/tenants/<tenant>/...` if `--tenant` is set).
+- Writes an evaluation run under `results/` (or `results/insurance/tenants/<tenant>/...` if `--tenant` is set).
 
 ## Artifact roots
 
@@ -54,5 +54,5 @@ Override:
 - `EMBEDDINGSHIFT_ROOT=<path>` → `<path>/data` and `<path>/results`
 
 Tenant layout:
-- Generic evaluation: `results/tenants/<tenant>/...`
+- Generic evaluation: `results/insurance/tenants/<tenant>/...`
 - Mini-Insurance: `results/insurance/tenants/<tenant>/...`

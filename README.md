@@ -41,7 +41,7 @@ Override both roots:
 - `EMBEDDINGSHIFT_ROOT=<path>` → uses `<path>/data` and `<path>/results`
 
 Tenant scoping:
-- `--tenant <key>` writes generic evaluation runs under `results/tenants/<key>/...`
+- `--tenant <key>` writes generic evaluation runs under `results/insurance/tenants/<key>/...`
 - Mini-Insurance writes under `results/insurance/tenants/<key>/...`
 
 ## Embedding backend
