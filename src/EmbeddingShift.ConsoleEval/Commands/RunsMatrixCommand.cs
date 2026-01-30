@@ -39,13 +39,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             var domainKey = domainKeyOverride ?? "insurance";
 
-            runsRoot ??= Path.Combine(
-                Environment.CurrentDirectory,
-                "results",
-                domainKey,
-                "tenants",
-                tenant,
-                "runs");
+            runsRoot ??= Path.Combine(DirectoryLayout.ResolveResultsRoot(domainKey), "runs");
 
             var outDir = Path.Combine(runsRoot, "_matrix", $"matrix_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}");
             Directory.CreateDirectory(outDir);
