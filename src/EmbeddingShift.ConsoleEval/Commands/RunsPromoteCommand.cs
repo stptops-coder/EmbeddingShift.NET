@@ -1,5 +1,5 @@
 ﻿using System;
-using EmbeddingShift.Core.Infrastructure;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,7 +12,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open]
+            //   runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--rank=<n>] [--runid=<id>] [--open]
             //
             // Defaults:
             //   domainKey = insurance
@@ -23,15 +23,30 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var runsRoot = GetOpt(args, "--runs-root");
             var domainKey = GetOpt(args, "--domainKey") ?? "insurance";
             var metricKey = GetOpt(args, "--metric") ?? "ndcg@3";
+
+            var rankText = GetOpt(args, "--rank");
+            int? pickRank = null;
+            if (!string.IsNullOrWhiteSpace(rankText) &&
+                int.TryParse(rankText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedRank) &&
+                parsedRank > 0)
+            {
+                pickRank = parsedRank;
+            }
+
+            var pickRunId = GetOpt(args, "--runid");
+            if (string.IsNullOrWhiteSpace(pickRunId))
+            {
+                pickRunId = null;
+            }
+
             var open = HasSwitch(args, "--open");
 
             if (string.IsNullOrWhiteSpace(runsRoot))
             {
                 var tenant = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT");
                 if (string.IsNullOrWhiteSpace(tenant)) tenant = "insurer-a";
-                Environment.SetEnvironmentVariable("EMBEDDINGSHIFT_TENANT", tenant);
 
-                runsRoot = Path.Combine(DirectoryLayout.ResolveResultsRoot(domainKey), "runs");
+                runsRoot = Path.Combine(Environment.CurrentDirectory, "results", domainKey, "tenants", tenant, "runs");
             }
 
             if (!Directory.Exists(runsRoot))
@@ -44,7 +59,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             RunActivation.PromoteResult result;
             try
             {
-                result = RunActivation.Promote(runsRoot, metricKey);
+                result = RunActivation.Promote(runsRoot, metricKey, pickRank, pickRunId);
             }
             catch (Exception ex)
             {
@@ -53,8 +68,22 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 return Task.CompletedTask;
             }
 
+            if (result.Pointer is null)
+            {
+                Console.WriteLine($"[runs-promote] root   = {runsRoot}");
+                Console.WriteLine($"[runs-promote] metric = {metricKey}");
+                if (pickRank is not null) Console.WriteLine($"[runs-promote] rank   = {pickRank}");
+                if (pickRunId is not null) Console.WriteLine($"[runs-promote] runid  = {pickRunId}");
+                Console.WriteLine();
+                Console.WriteLine("No runs found that contain the requested metric (or selection did not match).");
+                Environment.ExitCode = 2;
+                return Task.CompletedTask;
+            }
+
             Console.WriteLine($"[runs-promote] root   = {runsRoot}");
             Console.WriteLine($"[runs-promote] metric = {metricKey}");
+            if (pickRank is not null) Console.WriteLine($"[runs-promote] rank   = {pickRank}");
+            if (pickRunId is not null) Console.WriteLine($"[runs-promote] runid  = {pickRunId}");
             Console.WriteLine();
             Console.WriteLine($"Active directory: {result.Pointer.RunDirectory}");
             Console.WriteLine($"WorkflowName    : {result.Pointer.WorkflowName}");

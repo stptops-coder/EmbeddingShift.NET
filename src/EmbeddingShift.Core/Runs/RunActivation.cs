@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 
@@ -52,6 +53,16 @@ namespace EmbeddingShift.Core.Runs
         }
 
         public static PromoteResult Promote(string runsRoot, string metricKey)
+            => Promote(runsRoot, metricKey, pickRank: null, pickRunId: null);
+
+        /// <summary>
+        /// Promotes the selected run to be the active pointer for the given metric.
+        /// Selection priority:
+        /// - If pickRunId is provided, that exact RunId is used (must exist and contain the metric).
+        /// - Else if pickRank is provided, the N-th run by score (1-based) is used.
+        /// - Else the best run by score is used.
+        /// </summary>
+        public static PromoteResult Promote(string runsRoot, string metricKey, int? pickRank, string? pickRunId)
         {
             if (string.IsNullOrWhiteSpace(runsRoot))
                 throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
@@ -66,9 +77,25 @@ namespace EmbeddingShift.Core.Runs
             if (discovered.Count == 0)
                 throw new InvalidOperationException($"No run.json found under: {runsRoot}");
 
-            var best = RunBestSelection.SelectBest(metricKey, discovered);
-            if (best is null)
+            var candidates = discovered
+                .Select(r =>
+                {
+                    if (!RunArtifactDiscovery.TryGetMetric(r.Artifact, metricKey, out var score))
+                        return null;
+
+                    return new Candidate(r, score);
+                })
+                .Where(x => x is not null)
+                .Cast<Candidate>()
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.Run.Artifact.FinishedUtc)
+                .ThenByDescending(x => x.Run.Artifact.RunId, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (candidates.Count == 0)
                 throw new InvalidOperationException($"No runs contained metric '{metricKey}' under: {runsRoot}");
+
+            var chosen = SelectCandidate(candidates, pickRank, pickRunId);
 
             var activeDir = Path.Combine(runsRoot, "_active");
             Directory.CreateDirectory(activeDir);
@@ -94,11 +121,11 @@ namespace EmbeddingShift.Core.Runs
                 CreatedUtc: DateTimeOffset.UtcNow,
                 RunsRoot: runsRoot,
                 TotalRunsFound: discovered.Count,
-                WorkflowName: best.Run.Artifact.WorkflowName,
-                RunId: best.Run.Artifact.RunId,
-                Score: best.Score,
-                RunDirectory: best.Run.RunDirectory,
-                RunJsonPath: best.Run.RunJsonPath);
+                WorkflowName: chosen.Run.Artifact.WorkflowName,
+                RunId: chosen.Run.Artifact.RunId,
+                Score: chosen.Score,
+                RunDirectory: chosen.Run.RunDirectory,
+                RunJsonPath: chosen.Run.RunJsonPath);
 
             var jsonOut = JsonSerializer.Serialize(
                 pointer,
@@ -107,6 +134,36 @@ namespace EmbeddingShift.Core.Runs
             File.WriteAllText(activePath, jsonOut, new UTF8Encoding(false));
 
             return new PromoteResult(pointer, activePath, archivedTo);
+        }
+
+        private sealed record Candidate(RunArtifactDiscovery.DiscoveredRun Run, double Score);
+
+        private static Candidate SelectCandidate(
+            System.Collections.Generic.IReadOnlyList<Candidate> candidates,
+            int? pickRank,
+            string? pickRunId)
+        {
+            if (!string.IsNullOrWhiteSpace(pickRunId))
+            {
+                var match = candidates
+                    .FirstOrDefault(x => string.Equals(x.Run.Artifact.RunId, pickRunId, StringComparison.OrdinalIgnoreCase));
+
+                if (match is null)
+                    throw new InvalidOperationException($"No run with RunId '{pickRunId}' contained metric under the runs root.");
+
+                return match;
+            }
+
+            if (pickRank.HasValue)
+            {
+                var n = pickRank.Value;
+                if (n <= 0 || n > candidates.Count)
+                    throw new InvalidOperationException($"Rank '{n}' is out of range. Available ranks: 1..{candidates.Count}.");
+
+                return candidates[n - 1];
+            }
+
+            return candidates[0];
         }
 
         public sealed record RollbackResult(
@@ -162,7 +219,7 @@ namespace EmbeddingShift.Core.Runs
 
             return new RollbackResult(pointer, activePath, latest.Path, archivedCurrent);
         }
-        
+
         public sealed record HistoryEntry(
             string Path,
             DateTime LastWriteUtc,
@@ -233,7 +290,6 @@ namespace EmbeddingShift.Core.Runs
 
             return list;
         }
-
 
         private static string GetActivePath(string runsRoot, string metricKey)
         {
