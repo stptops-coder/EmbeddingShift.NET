@@ -44,6 +44,33 @@ This guide is a **reference**. All commands assume your current directory is the
 
 ---
 
+### Environment variables (optional)
+
+The CLI supports a small set of `EMBEDDINGSHIFT_*` environment variables to keep runs reproducible and paths stable across machines/sweeps.
+
+**Common (file layout / scoping):**
+- `EMBEDDINGSHIFT_ROOT` — forces a stable root for `results/` and `data/` (otherwise repo-root fallbacks are used).
+- `EMBEDDINGSHIFT_TENANT` — tenant key; enables tenant-scoped results under `results/<domain>/tenants/<tenant>/...`.
+- `EMBEDDINGSHIFT_RESULTS_DOMAIN` — optional override for `<domain>` (default is `insurance`).
+- `EMBEDDINGSHIFT_DATA_ROOT` — optional override for the data root (rare; mostly for experiments).
+- `EMBEDDINGSHIFT_REPO_ROOT` — optional override for repo-root detection (useful in scripted runs).
+
+**Mini-Insurance domain pack:**
+- `EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT` — points at a staged dataset root (e.g. `...\datasets\MyDS\stage-00`).
+
+**Debug / test toggles (use only when you know why):**
+- `EMBEDDINGSHIFT_POSNEG_DEBUG`, `EMBEDDINGSHIFT_POSNEG_NOCLIP`, `EMBEDDINGSHIFT_POSNEG_DISABLE_CLIP`
+- `EMBEDDINGSHIFT_ACCEPTANCE_KEEP_ARTIFACTS`
+
+**PowerShell example (session-scoped):**
+```powershell
+$env:EMBEDDINGSHIFT_ROOT   = "C:\temp\EmbeddingShift.Sweep\20260131_012048"
+$env:EMBEDDINGSHIFT_TENANT = "insurer-a"
+$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results\insurance\tenants\insurer-a\datasets\SweepDS\stage-00"
+```
+
+---
+
 ## B) Dataset/Ingest/Eval (usage lines from `DatasetCliCommands`)
 
 - `run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]`
