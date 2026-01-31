@@ -1,3 +1,20 @@
+## Workflow overview: runs, comparison, and “what is good”
+
+Most commands in this CLI boil down to producing **runs** that can be compared:
+
+- A run always uses a **dataset scope** and produces file-based artifacts (inputs, embeddings, and metrics).
+- **Baseline** runs measure retrieval quality without a learned shift.
+- **Shift** runs re-evaluate retrieval after applying a shift (trained or configured).
+- “Good” is defined by **metric improvement** (commonly NDCG@K / MRR@K) under the same evaluation setup.
+
+If you only remember one thing: keep the *evaluation setup constant* (same dataset/scope/queries) and compare runs by metrics.
+Metric definitions live in `Docs/CLI-Metrics.md`.
+
+### Pos/Neg in one paragraph
+
+Pos/Neg training derives a directional shift from positive vs. negative examples. Instead of changing the model, it adjusts embeddings so that positives tend to move closer and negatives farther away in retrieval space.
+
+
 # EmbeddingShift ConsoleEval CLI – Full Guide (code-synchronous)
 
 As of: 2026-01-27

@@ -3,6 +3,20 @@
 A .NET 8 toolkit for embedding-space **shift strategies** with evaluation and simulation.  
 Focus: reproducible workflows and inspectable artifacts (file-based).
 
+## Concept in 60 seconds
+
+A typical workflow is:
+
+1. **Ingest** documents/queries into a dataset scope (file-based artifacts).
+2. **Embed + evaluate** a **baseline** retrieval run.
+3. **Train/apply a shift** (e.g., Pos/Neg, adaptive, etc.) and **re-evaluate**.
+4. **Compare runs** using retrieval metrics (e.g., NDCG/MRR) to decide whether a shift is beneficial.
+
+**Pos/Neg (intuition):** learn a direction from *positive vs. negative* examples and apply it as an embedding-space shift (no model retraining).
+
+This targets the *retrieval layer* that is also used in RAG systems; it does not implement prompting/LLM orchestration.
+For metric definitions and interpretation, see `Docs/CLI-Metrics.md`.
+
 ## Quickstart
 
 Run commands from the repository root (the folder that contains `src/` and `scripts/`).
