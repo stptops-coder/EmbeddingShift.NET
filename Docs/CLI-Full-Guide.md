@@ -47,18 +47,26 @@ This guide is a **reference**. All commands assume your current directory is the
 ## B) Dataset/Ingest/Eval (usage lines from `DatasetCliCommands`)
 
 - `run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]`
+  - Purpose: End-to-end command: ingest (if needed) → embed → retrieve → metrics; supports baseline/shift and simple dataset gates.
 - `run-smoke <refsPath> <queriesPath> <dataset> [--force-reset] [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]`
+  - Purpose: Fast sanity run with safe defaults (ingest → validate → eval). Good for first checks and repeatability.
 - `ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]`
+  - Purpose: Create/refresh dataset artifacts (manifests, chunking) without running evaluation.
 - `ingest-inspect <dataset> [--role=refs|queries]`
+  - Purpose: Inspect dataset artifacts (counts/samples) for refs or queries.
 - `dataset-status <dataset> [--role=refs|queries|all]`
+  - Purpose: Show current dataset status (what exists) for refs/queries/all.
 - `dataset-reset <dataset> [--role=refs|queries|all] [--force] [--keep-manifests]`
+  - Purpose: Reset dataset artifacts for a clean rerun (optionally keep manifests).
 - `dataset-validate <dataset> [--role=refs|queries|all] [--require-state] [--require-chunk-manifest]`
+  - Purpose: Validate required artifacts and invariants; used as a gate before running evaluations.
 
 ---
-
 ## C) Runs (usage/default blocks taken from the respective command classes)
 
 ### runs-compare
+
+Purpose: Rank and compare runs by a chosen metric (top-N), optionally writing a small report.
 
 ```
 Usage:
@@ -75,6 +83,8 @@ write     = false
 
 ### runs-best
 
+Purpose: Select the best run for a metric and optionally persist/write the selection for later use.
+
 ```
 Usage:
 runs-best [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--write] [--out=<dir>] [--open]
@@ -87,6 +97,8 @@ metric    = ndcg@3
 ```
 
 ### runs-decide
+
+Purpose: Apply a simple acceptance gate (eps threshold) to decide whether a candidate run is acceptable; can write/apply the decision.
 
 ```
 Usage:
@@ -108,6 +120,8 @@ Notes:
 
 ### runs-promote
 
+Purpose: Promote the currently selected/best run to become the active run for a metric.
+
 ```
 Usage:
 runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open]
@@ -120,6 +134,8 @@ metric    = ndcg@3
 ```
 
 ### runs-rollback
+
+Purpose: Rollback the active run pointer to the previous state (undo the last promotion).
 
 ```
 Usage:
@@ -134,6 +150,8 @@ metric    = ndcg@3
 
 ### runs-active
 
+Purpose: Show which run is currently marked active for a metric (and where it lives).
+
 ```
 Usage:
 runs-active [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>]
@@ -146,6 +164,8 @@ metric    = ndcg@3
 ```
 
 ### runs-history
+
+Purpose: List promotion/decision history for a metric and link to stored artifacts (optional open).
 
 ```
 Usage:
@@ -160,6 +180,8 @@ max       = 20
 ```
 
 ### runs-matrix
+
+Purpose: Execute a predefined set of run variants from a spec file and compare them systematically.
 
 ```
 Usage:
@@ -180,16 +202,21 @@ Important clarifications (to avoid “implicitly wrong” documentation):
 ## D) Mini-Insurance domain pack (key subcommands)
 
 - `domain mini-insurance dataset-generate <name> [--stages=N] [--policies=N] [--queries=N] [--seed=N] [--overwrite]`
+  - Purpose: Generate a deterministic synthetic Mini-Insurance dataset (refs + queries) for demos/tests.
 - `domain mini-insurance pipeline [--no-learned]`
+  - Purpose: Run a default end-to-end workflow for Mini-Insurance (baseline → shifts → eval) as a compact demo.
 - `domain mini-insurance posneg-train --mode=micro|production [--hardneg-topk=N]`
+  - Purpose: Train a Pos/Neg global delta (micro = small debug run, production = fuller run; optional hard-negative top-K).
 - `domain mini-insurance posneg-run [--latest] [--scale=<float>]`
+  - Purpose: Run evaluation with a Pos/Neg shift applied (latest/best), with optional scale.
 - `domain mini-insurance posneg-inspect | posneg-history [maxItems] [--include-cancelled] | posneg-best [--include-cancelled]`
+  - Purpose: Inspect Pos/Neg training results (latest/history/best variants) and related artifacts.
 - `domain mini-insurance runroot-summarize [--runroot=<path>] [--out=<path>]`
+  - Purpose: Create a compact summary report for a runroot folder (shareable/diff-friendly).
 
 **Important (sync note):** The domain help mentions `--cancel-epsilon=<float>`, but in the current state it is **not** parsed (the flag has no effect).
 
 ---
-
 ## E) Adaptive/Generator (status and positioning)
 
 - `adaptive` is currently a **demo** (synthetic vectors, local selection) and is not part of the production-like ingest→eval→runs→promote flow.
