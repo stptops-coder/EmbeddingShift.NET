@@ -91,6 +91,13 @@ $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results\insurance\tenants\insu
 ---
 ## C) Runs (usage/default blocks taken from the respective command classes)
 
+Each persisted run lives in its own timestamped folder under the runs root and contains:
+
+- `run.json` — metrics + minimal metadata (used for compare/best/decide/promote)
+- `run_request.json` — optional replay snapshot (only written when a RunRequestContext is present)
+- `report.md` — human-readable report
+
+
 ### runs-compare
 
 Purpose: Rank and compare runs by a chosen metric (top-N), optionally writing a small report.
@@ -189,6 +196,25 @@ tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
 runs-root = .\results\<domainKey>\tenants\<tenant>\runs
 metric    = ndcg@3
 ```
+
+### runs-rerun
+
+Purpose: Replay the CLI command that produced a run, based on `run_request.json`.
+
+```
+Usage:
+runs-rerun --run-dir=<path> [--print] [--keep-env]
+
+Defaults:
+print    = false
+keep-env = false
+```
+
+Notes:
+- By default, `runs-rerun` applies the captured environment snapshot (EMBEDDING_* vars) before replay.
+- `--print` prints the reconstructed command and exits without executing it.
+
+
 
 ### runs-history
 

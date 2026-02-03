@@ -111,6 +111,25 @@ namespace EmbeddingShift.Core.Runs
             var runJsonPath = Path.Combine(runDirectory, "run.json");
             await File.WriteAllTextAsync(runJsonPath, json, encoding, cancellationToken).ConfigureAwait(false);
 
+            // 3) Optional replay/request artifact (run_request.json)
+            // This is written only when a RunRequestContext is present.
+            var request = RunRequestContext.Current;
+            if (request is not null)
+            {
+                var reqArtifact = new WorkflowRunRequestArtifact(
+                    RunId: runId,
+                    WorkflowName: workflowName,
+                    CreatedUtc: now,
+                    Request: request);
+
+                var reqJson = JsonSerializer.Serialize(
+                    reqArtifact,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true });
+
+                var reqPath = Path.Combine(runDirectory, "run_request.json");
+                await File.WriteAllTextAsync(reqPath, reqJson, encoding, cancellationToken).ConfigureAwait(false);
+            }
+
             return runDirectory;
         }
 

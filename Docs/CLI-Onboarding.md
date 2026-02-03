@@ -115,6 +115,17 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-a
 
 ---
 
+
+
+### Replay a run (optional)
+
+Each run folder contains `run.json`, `report.md` and (when captured) `run_request.json`. If `run_request.json` is present, you can replay the original command:
+
+```
+runs-rerun --run-dir=<path-to-a-run-folder>
+```
+
+Use `--print` to inspect the reconstructed command without executing it.
 ## 9) Adaptive (status)
 
 - `adaptive` is currently a **demo** (synthetic vectors) and is **not** integrated into the ingest→eval→promote flow.

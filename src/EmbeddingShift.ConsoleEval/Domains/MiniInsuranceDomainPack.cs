@@ -8,6 +8,7 @@ using EmbeddingShift.ConsoleEval.Commands;
 using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.ConsoleEval;
 using EmbeddingShift.Core.Training;
+using EmbeddingShift.Core.Runs;
 
 
 /// <summary>
@@ -58,6 +59,16 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                 {
                     var includeLearned =
                         !args.Any(a => string.Equals(a, "--no-learned", StringComparison.OrdinalIgnoreCase));
+
+                    var commandArgs = includeLearned
+                        ? new[] { "domain", "mini-insurance", "pipeline" }
+                        : new[] { "domain", "mini-insurance", "pipeline", "--no-learned" };
+
+                    var request = RunRequestFactory.Create(
+                        commandArgs: commandArgs,
+                        notes: "Captured from environment for replay (mini-insurance pipeline).");
+
+                    using var _ = RunRequestContext.Push(request);
 
                     var pipeline = new MiniInsuranceFirstDeltaPipeline(log);
                     await pipeline.RunAsync(includeLearnedDelta: includeLearned);
