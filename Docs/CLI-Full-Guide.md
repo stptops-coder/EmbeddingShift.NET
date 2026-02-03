@@ -17,7 +17,7 @@ Pos/Neg training derives a directional shift from positive vs. negative examples
 
 # EmbeddingShift ConsoleEval CLI – Full Guide (code-synchronous)
 
-As of: 2026-01-27
+As of: 2026-02-03
 
 This guide prioritizes **accuracy**: global flags/usage lines are taken from `help` and/or derived directly from the command implementations.
 
@@ -97,6 +97,29 @@ Each persisted run lives in its own timestamped folder under the runs root and c
 - `run_request.json` — optional replay snapshot (only written when a RunRequestContext is present)
 - `report.md` — human-readable report
 
+
+### Run activation lifecycle (compare → best → decide → promote/rollback)
+
+The CLI supports a small “activation loop” that lets you select a winner by metric and persist an **active pointer**:
+
+- `runs-compare` ranks candidates (`run.json`) by a metric (e.g., `ndcg@3`).
+- `runs-best` writes a best pointer under `runs/_best/` (e.g., `best_ndcg@3.json`).
+- `runs-decide` applies an epsilon gate and writes a decision record under `runs/_decisions/`.
+- `runs-promote` writes the active pointer under `runs/_active/` and archives history.
+- `runs-rollback` restores the last archived active pointer.
+
+**Rerun** (`runs-rerun`) is a *verification tool*: if a run captured `run_request.json`, it can replay the original command. By default, rerun is **manual / operator-triggered** (or a higher-level controller could trigger it after `runs-decide`).
+
+### Dataset stages as “patch levels”
+
+The Mini-Insurance generator can emit multiple stages (e.g., `stage-00`, `stage-01`, `stage-02`). Treat these stages as **dataset versions / patch levels**:
+
+- A promotion decision should always be interpreted **within the same stage** (same dataset root, same evaluation setup).
+- If you advance to a new stage, you are effectively evaluating on a changed corpus; expect metrics to move and re-run the activation loop.
+
+A practical rule: *keep (Tenant, DatasetName, Stage, Seed, Metric) stable while comparing runs.*
+
+---
 
 ### runs-compare
 

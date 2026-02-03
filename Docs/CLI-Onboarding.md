@@ -1,8 +1,37 @@
 # EmbeddingShift ConsoleEval CLI – Onboarding (Quickstart)
 
-As of: 2026-01-27
+As of: 2026-02-03
 
 Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Validate → Eval → Compare/activate runs.
+
+## 0) Blank Start – Run Activation Sweep (recommended)
+
+If you want a single “known good” end-to-end sequence (generate → pipeline → compare → decide → promote → rollback → optional rerun), use the runbook:
+
+- `scripts/runbook/21-BlankStart-RunActivation-Sweep.ps1`
+
+Example:
+
+```powershell
+cd <repo-root>
+
+# If PowerShell blocks script execution, run from a bypass shell:
+#   PowerShell -ExecutionPolicy Bypass -NoProfile
+
+.\scriptsunbook\21-BlankStart-RunActivation-Sweep.ps1 `
+  -Tenant "insurer-b" `
+  -DatasetName "SweepDS" `
+  -Seed 1337 `
+  -Metric "ndcg@3" `
+  -Top 10 `
+  -DoRerun
+```
+
+Notes:
+- The runbook uses an isolated temp root (`$env:TEMP\EmbeddingShift.Sweep\...`) so it does not mutate your normal `results/` tree.
+- “Rerun” is an optional verification step. It replays the *workflow command* (not a bit-for-bit copy of a previous run directory).
+
+---
 
 ---
 
