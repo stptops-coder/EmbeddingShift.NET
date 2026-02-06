@@ -119,9 +119,11 @@ namespace EmbeddingShift.Workflows
                     }
 
                     var qEmb = _embeddingProvider.Embed(q.Text ?? string.Empty);
+                using (QueryShiftContext.Push(q.Id))
+                {
                     _shiftPipeline.ApplyInPlace(qEmb);
-
-                    var ranked = docEmbeddings
+                }
+var ranked = docEmbeddings
                         .Select(d => new
                         {
                             DocId = d.Key,

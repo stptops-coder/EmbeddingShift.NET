@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
+using EmbeddingShift.Core.QueryPolicies;
+using EmbeddingShift.Core.Shifts;
+using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.Core.Runs;
 using EmbeddingShift.Core.Workflows;
 using EmbeddingShift.Workflows;
@@ -45,6 +49,7 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
 
         public async Task RunAsync(
             bool includeLearnedDelta = true,
+            string? queryPolicyPath = null,
             CancellationToken cancellationToken = default)
         {
             var domainRoot = MiniInsurancePaths.GetDomainRoot();
@@ -57,7 +62,7 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
             await RunFirstShiftAsync(cancellationToken).ConfigureAwait(false);
 
             Log("Step 3: First+Delta");
-            await RunFirstPlusDeltaAsync(cancellationToken).ConfigureAwait(false);
+            await RunFirstPlusDeltaAsync(queryPolicyPath, cancellationToken).ConfigureAwait(false);
 
             if (includeLearnedDelta)
             {
@@ -145,16 +150,37 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
             Log($"FirstShift run persisted to:   {_firstRunDir}");
         }
 
-        private async Task RunFirstPlusDeltaAsync(CancellationToken cancellationToken)
+        private async Task RunFirstPlusDeltaAsync(string? queryPolicyPath, CancellationToken cancellationToken)
         {
             if (_baselineResult is null)
                 throw new InvalidOperationException("Baseline result must be computed before First+Delta.");
 
-            var pipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline();
+            var useQueryPolicy = !string.IsNullOrWhiteSpace(queryPolicyPath);
+
+            IEmbeddingShiftPipeline pipeline;
+            string workflowName;
+
+            if (!useQueryPolicy)
+            {
+                pipeline = FileBasedInsuranceMiniWorkflow.CreateFirstPlusDeltaPipeline();
+                workflowName = "FileBased-Insurance-Mini-FirstPlusDelta-Pipeline";
+            }
+            else
+            {
+                var policy = QueryShiftPolicyLoader.Load(queryPolicyPath!);
+
+                // Compose: FirstShift + (query-policy delta)
+                var first = FileBasedInsuranceMiniWorkflow.CreateFirstShiftPipeline();
+                var policyShift = new QueryPolicyShift("QueryPolicy-Delta", policy);
+
+                pipeline = new EmbeddingShiftPipeline(first.Shifts.Concat(new[] { (IEmbeddingShift)policyShift }));
+workflowName = "FileBased-Insurance-Mini-FirstPlusPolicyDelta-Pipeline";
+            }
+
             var workflow = new FileBasedInsuranceMiniWorkflow(pipeline);
 
             var result = await _wfRunner.ExecuteAsync(
-                    "FileBased-Insurance-Mini-FirstPlusDelta-Pipeline",
+                    workflowName,
                     workflow,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -171,16 +197,15 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
             var runsRoot = MiniInsurancePaths.GetRunsRoot();
             _firstPlusDeltaRunDir = await RunPersistor.Persist(
                 runsRoot,
-                "FileBased-Insurance-Mini-FirstPlusDelta-Pipeline",
+                workflowName,
                 result,
                 cancellationToken)
             .ConfigureAwait(false);
 
             MiniInsurancePerQueryArtifacts.TryPersist(_firstPlusDeltaRunDir, workflow);
 
-            Log($"First+Delta run persisted to: {_firstPlusDeltaRunDir}");
-
-            // Persist a comparison object for this run under runsRoot.
+            Log(useQueryPolicy ? $"First+PolicyDelta run persisted to: {_firstPlusDeltaRunDir}" : $"First+Delta run persisted to: {_firstPlusDeltaRunDir}");
+// Persist a comparison object for this run under runsRoot.
             var comparison = EmbeddingShift.ConsoleEval.MiniInsuranceFirstDeltaArtifacts.CreateComparison(
                 _baselineResult,
                 _firstResult ?? result,

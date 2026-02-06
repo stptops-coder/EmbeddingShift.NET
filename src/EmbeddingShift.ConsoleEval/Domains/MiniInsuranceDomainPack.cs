@@ -1,6 +1,7 @@
 ﻿namespace EmbeddingShift.ConsoleEval.Domains;
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
     {
         log("Mini-Insurance domain pack");
         log("Usage:");
-        log("  domain mini-insurance pipeline [--no-learned]");
+        log("  domain mini-insurance pipeline [--no-learned] [--query-policy=<path>]");
         log("  domain mini-insurance training-list");
         log("  domain mini-insurance training-inspect");
         log("  domain mini-insurance posneg-train [--mode=micro|production] [--cancel-epsilon=<float>]");
@@ -60,18 +61,44 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
                     var includeLearned =
                         !args.Any(a => string.Equals(a, "--no-learned", StringComparison.OrdinalIgnoreCase));
 
-                    var commandArgs = includeLearned
-                        ? new[] { "domain", "mini-insurance", "pipeline" }
-                        : new[] { "domain", "mini-insurance", "pipeline", "--no-learned" };
+                    static string? ReadOpt(string[] allArgs, string optName)
+                    {
+                        for (int i = 0; i < allArgs.Length; i++)
+                        {
+                            var a = allArgs[i] ?? string.Empty;
+
+                            if (a.StartsWith(optName + "=", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return a.Substring(optName.Length + 1).Trim().Trim('"');
+                            }
+
+                            if (string.Equals(a, optName, StringComparison.OrdinalIgnoreCase) && i + 1 < allArgs.Length)
+                            {
+                                return (allArgs[i + 1] ?? string.Empty).Trim().Trim('"');
+                            }
+                        }
+
+                        return null;
+                    }
+
+                    var queryPolicyPath = ReadOpt(args, "--query-policy");
+
+                    var commandArgs = new List<string> { "domain", "mini-insurance", "pipeline" };
+
+                    if (!includeLearned)
+                        commandArgs.Add("--no-learned");
+
+                    if (!string.IsNullOrWhiteSpace(queryPolicyPath))
+                        commandArgs.Add($"--query-policy={queryPolicyPath}");
 
                     var request = RunRequestFactory.Create(
-                        commandArgs: commandArgs,
+                        commandArgs: commandArgs.ToArray(),
                         notes: "Captured from environment for replay (mini-insurance pipeline).");
 
                     using var _ = RunRequestContext.Push(request);
 
                     var pipeline = new MiniInsuranceFirstDeltaPipeline(log);
-                    await pipeline.RunAsync(includeLearnedDelta: includeLearned);
+                    await pipeline.RunAsync(includeLearnedDelta: includeLearned, queryPolicyPath: queryPolicyPath);
                     return 0;
                 }
 

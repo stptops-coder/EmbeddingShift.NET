@@ -57,7 +57,11 @@ if (-not (Test-Path $queriesFile)) { throw "Queries file not found: $queriesFile
 Write-Host ""
 
 Write-Host "=== Pipeline (Mini-Insurance, no learned delta) ==="
-dotnet run --project $Project -- --tenant $Tenant --backend=sim --sim-mode=deterministic domain mini-insurance pipeline --no-learned
+if (-not [string]::IsNullOrWhiteSpace($QueryPolicyPath)) {
+  dotnet run --project $Project -- --tenant $Tenant --backend=sim --sim-mode=deterministic domain mini-insurance pipeline --no-learned --query-policy="$QueryPolicyPath"
+} else {
+  dotnet run --project $Project -- --tenant $Tenant --backend=sim --sim-mode=deterministic domain mini-insurance pipeline --no-learned
+}
 Write-Host ""
 
 $RunsRoot = Join-Path $Root ("results\insurance\tenants\" + $Tenant + "\runs")
