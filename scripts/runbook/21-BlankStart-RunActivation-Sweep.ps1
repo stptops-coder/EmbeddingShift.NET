@@ -4,6 +4,7 @@ param(
   [int]   $Seed        = 1337,
   [string]$Metric      = "ndcg@3",
   [int]   $Top         = 10,
+  [string]$QueryPolicyPath = "",
   [switch]$DoRerun
 )
 
@@ -64,7 +65,7 @@ if (-not [string]::IsNullOrWhiteSpace($QueryPolicyPath)) {
 }
 Write-Host ""
 
-$RunsRoot = Join-Path $Root ("results\insurance\tenants\" + $Tenant + "\runs")
+$RunsRoot = Join-Path $Root ("results\insurance\" + $tenantPart + "runs")
 
 Write-Host "=== Compare/Best/Decide/Promote (Run Activation) ==="
 dotnet run --project $Project -- --tenant $Tenant runs-compare --runs-root="$RunsRoot" --metric="$Metric" --top=$Top --write
