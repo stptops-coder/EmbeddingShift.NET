@@ -1,17 +1,19 @@
+param(
+  [string]$Tenant = "insurer-a"
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $RepoRoot
 
-$tenant = "insurer-a"
-
 Write-Host "[PosNegRun] Creating posneg-run with scale=10 (semantic-hash, ngrams=1)..."
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant $tenant `
+dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant $Tenant `
   --sim-algo=semantic-hash --sim-char-ngrams=1 `
   domain mini-insurance posneg-run --scale=10
 
-$runDir = (Get-ChildItem (Join-Path $RepoRoot "results\insurance\tenants\$tenant") -Directory -Filter "mini-insurance-posneg-run_*" |
+$runDir = (Get-ChildItem (Join-Path $RepoRoot "results\insurance\tenants\$Tenant") -Directory -Filter "mini-insurance-posneg-run_*" |
   Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
 
 Write-Host "RUN_DIR=$runDir"

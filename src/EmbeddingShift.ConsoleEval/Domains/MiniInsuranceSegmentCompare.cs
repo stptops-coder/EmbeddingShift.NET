@@ -42,14 +42,6 @@ internal static class MiniInsuranceSegmentCompare
 
         var baseById = baseline.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
         var posById = posneg.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
-
-        double GetMetric(PerQueryEval e) => metric switch
-        {
-            "ndcg@3" => e.Ndcg3,
-            "map@1" => e.Ap1,
-            _ => throw new ArgumentException($"Unsupported metric: {metric}")
-        };
-
         int apply = 0, skip = 0, missing = 0, used = 0;
 
         double mapBaseSum = 0, ndcgBaseSum = 0;

@@ -1,15 +1,16 @@
+param(
+  [string]$Tenant = "insurer-a",
+  [int]$Seed = 1006
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 Set-Location $RepoRoot
 
-# Defaults (keep them stable)
-$tenant = "insurer-a"
-$seed   = 1006
-
-Write-Host "[FullRun] tenant=$tenant seed=$seed"
-.\scripts\run\Run-MiniInsurance-SemHashNgrams1.ps1 -Tenant $tenant -Seed $seed
+Write-Host "[FullRun] tenant=$Tenant seed=$Seed"
+.\scripts\run\Run-MiniInsurance-SemHashNgrams1.ps1 -Tenant $Tenant -Seed $Seed
 
 Write-Host ("[FullRun] DATASET_ROOT=" + $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT)
 

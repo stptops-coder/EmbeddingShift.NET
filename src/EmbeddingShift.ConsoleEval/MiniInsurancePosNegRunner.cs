@@ -154,10 +154,11 @@ namespace EmbeddingShift.ConsoleEval
                 }
 
                 var qText = q.Text ?? string.Empty;
-                var qEmb = await provider.GetEmbeddingAsync(qText).ConfigureAwait(false);
-                if (qEmb == null || qEmb.Length != dim)
+                var qEmbMaybe = await provider.GetEmbeddingAsync(qText).ConfigureAwait(false);
+                if (qEmbMaybe is null || qEmbMaybe.Length != dim)
                     continue;
 
+                var qEmb = qEmbMaybe; // non-null for closures / nullable flow
                 // Baseline ranking (no shift).
                 var rankedBaseline = docEmbeddings
                     .Select(d => new
