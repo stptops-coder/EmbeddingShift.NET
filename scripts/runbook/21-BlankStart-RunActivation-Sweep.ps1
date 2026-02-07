@@ -70,7 +70,7 @@ $RunsRoot = Join-Path $Root ("results\insurance\" + $tenantPart + "runs")
 Write-Host "=== Compare/Best/Decide/Promote (Run Activation) ==="
 dotnet run --project $Project -- --tenant $Tenant runs-compare --runs-root="$RunsRoot" --metric="$Metric" --top=$Top --write
 dotnet run --project $Project -- --tenant $Tenant runs-best    --runs-root="$RunsRoot" --metric="$Metric" --write
-dotnet run --project $Project -- --tenant $Tenant runs-decide  --runs-root="$RunsRoot" --metric="$Metric" --epsilon=0.001
+dotnet run --project $Project -- --tenant $Tenant runs-decide  --runs-root="$RunsRoot" --metric="$Metric" --eps=0.001
 dotnet run --project $Project -- --tenant $Tenant runs-promote --runs-root="$RunsRoot" --metric="$Metric"
 dotnet run --project $Project -- --tenant $Tenant runs-active  --runs-root="$RunsRoot" --metric="$Metric"
 dotnet run --project $Project -- --tenant $Tenant runs-history --runs-root="$RunsRoot"

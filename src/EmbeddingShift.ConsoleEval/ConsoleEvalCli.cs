@@ -193,7 +193,6 @@ internal static class ConsoleEvalCli
 
         Add("runs-rerun", "replay a run based on run_request.json (deterministic-friendly)",
             WrapVoid(a => RunsRerunCommand.RunAsync(a.Skip(1).ToArray())));
-            WrapVoid(a => RunsActiveCommand.RunAsync(a.Skip(1).ToArray())));
 
         Add("runs-matrix", "run a batch of CLI variants described by a JSON spec (optional post-processing)",
             WrapVoid(a => RunsMatrixCommand.RunAsync(a.Skip(1).ToArray())));
