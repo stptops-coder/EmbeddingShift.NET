@@ -388,6 +388,12 @@ namespace EmbeddingShift.Tests.Acceptance
             psi.ArgumentList.Add(consoleEvalDll);
             foreach (var a in args) psi.ArgumentList.Add(a);
 
+            // Ensure acceptance tests are not influenced by the caller's shell environment.
+            // The CLI may set these internally via global flags (e.g. --tenant), but the parent process must not leak them.
+            psi.Environment.Remove("EMBEDDINGSHIFT_TENANT");
+            psi.Environment.Remove("EMBEDDINGSHIFT_RESULTS_ROOT");
+            psi.Environment.Remove("EMBEDDINGSHIFT_RESULTS_DOMAIN");
+
             foreach (var kv in env) psi.Environment[kv.Key] = kv.Value;
 
             // Make demo commands deterministic: they must find samples/* regardless of EMBEDDINGSHIFT_ROOT (temp).
