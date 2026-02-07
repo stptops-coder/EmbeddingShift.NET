@@ -153,6 +153,13 @@ runs-root = .\results\<domainKey>\tenants\<tenant>\runs
 metric    = ndcg@3
 ```
 
+Advanced options (debug):
+- `--rank=<n>`: promote the n-th run in the current metric-sorted list (1-based).
+- `--runid=<id>`: promote a specific run id directly.
+
+If neither is provided, `runs-promote` promotes the currently selected “best” run for the metric.
+
+
 ### runs-decide
 
 Purpose: Apply a simple acceptance gate (eps threshold) to decide whether a candidate run is acceptable; can write/apply the decision.
@@ -270,7 +277,7 @@ plus optional "after" settings (compare/promote/open).
 Important clarifications (to avoid “implicitly wrong” documentation):
 
 - There is **no** `--workflow` option on `runs-compare`. If you want to scan a single workflow only: point `--runs-root` directly at that workflow folder.
-- `runs-promote`/`runs-rollback` work via “best/previous” per metric – there is currently no explicit `runId` promotion.
+- `runs-promote`/`runs-rollback` work via “best/previous” per metric – explicit `--runid`/`--rank` promotion is supported (primarily for debugging).
 - `runs-matrix` has **no** `--out`/`--rerun`. Output is automatic: `<runsRoot>/_matrix/matrix_<timestamp>/`.
 
 ---

@@ -18,7 +18,7 @@ cd <repo-root>
 # If PowerShell blocks script execution, run from a bypass shell:
 #   PowerShell -ExecutionPolicy Bypass -NoProfile
 
-.\scriptsunbook\21-BlankStart-RunActivation-Sweep.ps1 `
+.\scripts\runbook\21-BlankStart-RunActivation-Sweep.ps1 `
   -Tenant "insurer-b" `
   -DatasetName "SweepDS" `
   -Seed 1337 `
