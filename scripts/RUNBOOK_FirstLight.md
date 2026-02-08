@@ -4,6 +4,15 @@ This runbook describes how to run the **FirstLight** workflow end-to-end using t
 
 **Goal:** clone the repo → run scripts from the repo root → get a reproducible RunRoot with `reports/summary.txt` and inspection outputs.
 
+
+## Runbooks in this repo
+
+- **FirstLight (baseline / first-delta)** is documented below.
+- **PosNeg (deterministic)**: `scripts/runbook/25-PosNeg-Deterministic-Full.ps1`
+- **Acceptance sweep (deterministic)**: `scripts/runbook/21-AcceptanceSweep-Deterministic.ps1`
+
+Tip: The scripts default to `results\_scratch\...` inside the repo (so you don’t depend on `%TEMP%`).
+
 ---
 
 ## 1) Prerequisites

@@ -34,6 +34,23 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
 2) dataset validation  
 3) evaluation (writes a run report under `results/`)
 
+## Runbooks (recommended)
+
+If you want a *stable*, copy/pasteable sequence (and you prefer not to rely on private temp folders), use the runbook scripts:
+
+- **PosNeg (deterministic, full sequence)**  
+  `.\scripts\runbook\25-PosNeg-Deterministic-Full.ps1`  
+  (generates dataset → trains PosNeg → runs baseline vs PosNeg → prints history/best/inspect)
+
+- **Acceptance sweep (deterministic)**  
+  `.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1`  
+  (runs a grid of dataset sizes → compares/decides best run; promotion is optional via `-Promote`)
+
+Notes:
+- These scripts default to writing run roots under `results\_scratch\...` **inside the repo** (so you can keep everything in one place and avoid `%TEMP%`).  
+  If you explicitly want `%TEMP%`, pass `-RootMode temp`.
+- `dataset-status` / `dataset-validate` are **top-level CLI commands**, not `domain mini-insurance ...` subcommands.
+
 ## Smoke-all (full end-to-end demo)
 
 ```powershell
