@@ -28,9 +28,17 @@ cd <repo-root>
 ```
 
 Notes:
-- The runbook uses an isolated temp root (`$env:TEMP\EmbeddingShift.Sweep\...`) so it does not mutate your normal `results/` tree.
+- The runbook uses an isolated scratch root (`<repo>\results\_scratch\EmbeddingShift.Sweep\...`) so it does not mutate your normal results tree.
 - “Rerun” is an optional verification step. It replays the *workflow command* (not a bit-for-bit copy of a previous run directory).
 
+
+Mini-Insurance (single run):
+```powershell
+.\scripts\runbook\00-Prep.ps1
+.\scripts\runbook\10-Build.ps1
+.\scripts\runbook\20-FullRun-MiniInsurance.ps1
+.\scripts\runbook\40-Health.ps1
+```
 ---
 
 ---

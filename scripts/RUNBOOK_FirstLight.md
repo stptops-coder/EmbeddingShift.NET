@@ -205,3 +205,20 @@ Mitigations:
 - Increase dataset size (Policies/Queries)
 - Use production training mode (if exposed by the scripts)
 
+
+---
+
+## Mini-Insurance runbook scripts (single run)
+
+From the repo root:
+
+```powershell
+.\scripts\runbook\00-Prep.ps1
+.\scripts\runbook\10-Build.ps1
+.\scripts\runbook\20-FullRun-MiniInsurance.ps1
+.\scripts\runbook\40-Health.ps1
+```
+
+Notes:
+- The run is isolated under `results\_scratch\EmbeddingShift.MiniInsurance\yyyyMMdd_HHmmss` via `EMBEDDINGSHIFT_ROOT` (process scope).
+- `20-FullRun-MiniInsurance.ps1` generates a dataset, runs the pipeline, creates a compare report, and makes a promotion decision.

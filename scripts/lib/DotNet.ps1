@@ -33,3 +33,36 @@ function Invoke-DotNet {
     if ($wdPushed) { Pop-Location }
   }
 }
+
+function DotNet-RunConsoleEval {
+    <#
+      Runs EmbeddingShift.ConsoleEval via "dotnet run --project ... -- <args>".
+
+      Usage:
+        DotNet-RunConsoleEval @('domain','mini-insurance','pipeline')
+        DotNet-RunConsoleEval @('--','domain','mini-insurance','pipeline')   # also supported
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Args,
+
+        # Optional override. If omitted, repo root is inferred from this file location.
+        [string]$RepoRoot = ''
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+        $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+    }
+
+    $dotnetArgs = @('run', '--project', 'src/EmbeddingShift.ConsoleEval')
+
+    if ($Args.Count -gt 0 -and $Args[0] -eq '--') {
+        $dotnetArgs += $Args
+    } else {
+        $dotnetArgs += @('--') + $Args
+    }
+
+    Invoke-DotNet -Args $dotnetArgs -WorkingDirectory $RepoRoot
+}
+

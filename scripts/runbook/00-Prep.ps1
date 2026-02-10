@@ -1,20 +1,37 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# RepoRoot = two levels up from scripts\runbook
-$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-Set-Location $RepoRoot
+# Clears run-related environment variables (process scope) so runs are reproducible.
+# This does NOT touch user/machine scope.
+
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$Scratch  = Join-Path $RepoRoot 'results\_scratch'
+
+Write-Host "[Prep] Clearing run-related environment variables (process scope)..."
+
+$vars = @(
+    'EMBEDDINGSHIFT_ROOT',
+    'EMBEDDINGSHIFT_RESULTS_ROOT',
+    'EMBEDDINGSHIFT_DATA_ROOT',
+    'EMBEDDINGSHIFT_REPO_ROOT',
+    'EMBEDDINGSHIFT_TENANT',
+    'EMBEDDINGSHIFT_RESULTS_DOMAIN',
+    'EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT',
+    'EMBEDDINGSHIFT_SWEEP_ROOT',
+    'EMBEDDINGSHIFT_RUNROOT',
+    'EMBEDDINGSHIFT_EVAL_ROOT',
+    'EMBEDDINGSHIFT_COMPARE_ROOT',
+    'EMBEDDINGSHIFT_DECISION_ROOT'
+)
+
+foreach ($v in $vars) {
+    if (Test-Path "Env:$v") {
+        Remove-Item "Env:$v" -ErrorAction SilentlyContinue
+    }
+}
+
+New-Item -ItemType Directory -Force -Path $Scratch | Out-Null
 
 Write-Host "[Prep] RepoRoot = $RepoRoot"
-
-# Ensure folders exist
-$privateDir = Join-Path $RepoRoot "private"
-if (-not (Test-Path $privateDir)) { New-Item -ItemType Directory -Path $privateDir | Out-Null }
-
-# Avoid the classic footgun: tests / runs accidentally pick up a stale dataset root
-Remove-Item Env:\EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT -ErrorAction SilentlyContinue
-
-# Optional: show dotnet + git quick sanity
-Write-Host ("[Prep] dotnet = " + (& dotnet --version))
-Write-Host ("[Prep] git status:")
-& git status
+Write-Host "[Prep] Scratch  = $Scratch"
+Write-Host "[Prep] OK"

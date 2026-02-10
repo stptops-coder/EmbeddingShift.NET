@@ -1,272 +1,116 @@
-[CmdletBinding()]
 param(
-  # Optional override. If not provided, the script auto-detects the repo root.
-  [string]$RepoRoot,
+  [Parameter(Mandatory=$false)]
+  [int]$Seed = 1337,
 
-  # Folder name under .\results\<ResultsDomain>\...
-  [string]$ResultsDomain = "insurance",
+  [Parameter(Mandatory=$false)]
+  [string]$DatasetName = "FirstLight3-$Seed",
 
-  # ConsoleEval domain id (argument to the CLI).
-  [string]$DomainId = "mini-insurance",
-
-  # Naming
-  [string]$BaseDatasetName = "FirstLight3",
-
-  # Generator size
+  [Parameter(Mandatory=$false)]
   [int]$Policies = 80,
-  [int]$Queries  = 160,
-  [int]$Stages   = 3,
 
-  # Seeds => 5 runs
-  [int[]]$Seeds = @(1337, 1338, 1339, 1340, 1341),
+  [Parameter(Mandatory=$false)]
+  [int]$Queries = 160,
 
-  # Which stage is used for training / which stages are evaluated
-  [int]$TrainStageIndex = 1,
-  [int[]]$RunStageIndices = @(1, 0, 2),
+  [Parameter(Mandatory=$false)]
+  [int]$Stages = 3,
 
-  # PosNeg training options
-  [ValidateSet("micro","production")]
-  
-  # [string]$TrainMode = "micro",
-  # [double]$CancelEpsilon = 0.000001,
-  
-  [string]$TrainMode = "production",
-  [double]$CancelEpsilon = 0.001,
+  [Parameter(Mandatory=$false)]
+  [string]$Tenant = "insurer-a",
 
-
-
-  # Simulation
-  [ValidateSet("deterministic","stochastic")]
-  [string]$SimMode = "deterministic",
-  [double]$SimNoise = 0,
-  # [string]$SimAlgo = "semantic-hash",
-  [string]$SimAlgo = "sha256",
-  [int]$SimCharNgrams = 1,
-
-  # Semantic cache
-  [switch]$SemanticCache,
-  [int]$CacheMax = 20000,
-  [int]$CacheHamming = 3,
-  [int]$CacheApprox = 0
+  [switch]$Build
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$InvCult = [System.Globalization.CultureInfo]::InvariantCulture
 
-# --- Import helpers
-. (Join-Path $PSScriptRoot "..\lib\RepoRoot.ps1")
-. (Join-Path $PSScriptRoot "..\lib\DotNet.ps1")
+. "$PSScriptRoot\..\lib\RepoRoot.ps1"
+. "$PSScriptRoot\..\lib\DotNet.ps1"
 
-if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
-  # Convention: scripts\run\... lives under <RepoRoot>\scripts\...
-  # So the repo root is two levels up from this script folder.
-  $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
-}
-$RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 
-Assert-File (Join-Path $RepoRoot "EmbeddingShift.sln") "Solution"
-Assert-Dir  (Join-Path $RepoRoot "src\EmbeddingShift.ConsoleEval") "ConsoleEval project"
+# -------------------------------------------------------------------------------------------------
+# Purpose
+#   End-to-end "FirstLight" demo run (generate multi-stage dataset -> run mini-insurance pipeline -> train posneg).
+#   Uses tenant layout to stay compatible with other runbook scripts and ConsoleEval defaults.
+#
+# Preconditions
+#   - Run from repo root (recommended) or any folder inside the repo.
+#   - dotnet SDK installed.
+#
+# Postconditions
+#   - A new runroot is created under: results\insurance\runroots\FirstLight3_yyyyMMdd_HHmmss
+#   - Dataset is generated under tenant layout: results\insurance\tenants\<tenant>\datasets\<dataset>\stage-*
+#   - Mini-insurance pipeline + posneg training are executed using the generated dataset.
+# -------------------------------------------------------------------------------------------------
 
-function Parse-Num([string]$s) {
-  if ([string]::IsNullOrWhiteSpace($s)) { return $null }
+$RepoRoot = Get-RepoRoot -StartPath $PSScriptRoot
+$SlnPath  = Join-Path $RepoRoot "EmbeddingShift.sln"
 
-  $t = $s.Trim()
-
-  # Remove trailing punctuation (e.g. "0.259.")
-  while ($t.Length -gt 0 -and ($t.EndsWith(".") -or $t.EndsWith(",") -or $t.EndsWith(";"))) {
-    $t = $t.Substring(0, $t.Length - 1)
-  }
-
-  $t = $t -replace '\s+', ''
-
-  # German style: 1.234,56  -> 1234.56
-  if ($t -match '^\d{1,3}(\.\d{3})+,\d+$') {
-    $t = $t -replace '\.', ''
-    $t = $t -replace ',', '.'
-  } else {
-    # Simple: 0,259 -> 0.259
-    $t = $t -replace ',', '.'
-  }
-
-  return [double]::Parse($t, $InvCult)
-}
-
-function Parse-RunMetrics([string]$text) {
-  $m = [ordered]@{
-    BaselineMap  = $null
-    PosNegMap    = $null
-    DeltaMap     = $null
-    BaselineNdcg = $null
-    PosNegNdcg   = $null
-    DeltaNdcg    = $null
-  }
-
-  $lines = $text -split "`r?`n"
-
-  # We keep this tolerant: match first occurrence of each metric line.
-  foreach ($line in $lines) {
-if ($m.BaselineMap -eq $null -and $line -match 'baseline.*map@1\s*[:=]\s*([0-9\.,Ee\+\-]+)') { $m.BaselineMap = Parse-Num $Matches[1] }
-if ($m.PosNegMap   -eq $null -and $line -match 'posneg.*map@1\s*[:=]\s*([0-9\.,Ee\+\-]+)')   { $m.PosNegMap   = Parse-Num $Matches[1] }
-if ($m.DeltaMap    -eq $null -and $line -match 'delta.*map@1\s*[:=]\s*([0-9\.,Ee\+\-]+)')    { $m.DeltaMap    = Parse-Num $Matches[1] }
-
-if ($m.BaselineNdcg -eq $null -and $line -match 'baseline.*ndcg@3\s*[:=]\s*([0-9\.,Ee\+\-]+)') { $m.BaselineNdcg = Parse-Num $Matches[1] }
-if ($m.PosNegNdcg   -eq $null -and $line -match 'posneg.*ndcg@3\s*[:=]\s*([0-9\.,Ee\+\-]+)')   { $m.PosNegNdcg   = Parse-Num $Matches[1] }
-if ($m.DeltaNdcg    -eq $null -and $line -match 'delta.*ndcg@3\s*[:=]\s*([0-9\.,Ee\+\-]+)')    { $m.DeltaNdcg    = Parse-Num $Matches[1] }
-  }
-
-  return [pscustomobject]$m
-}
-
-# ---- RunRoot: everything for this execution goes under one directory
-$ts = Get-Date -Format "yyyyMMdd_HHmmss"
-$runRoot = Join-Path $RepoRoot ("results\{0}\runroots\{1}_{2}" -f $ResultsDomain, $BaseDatasetName, $ts)
-New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
-
-# ---- env var backup/restore (Process scope)
-$envNames = @(
-  "EMBEDDINGSHIFT_ROOT",
-  "EMBEDDING_SIM_MODE",
-  "EMBEDDING_SIM_NOISE",
-  "EMBEDDING_SIM_ALGO",
-  "EMBEDDING_SIM_CHAR_NGRAMS",
-  "EMBEDDING_SEMANTIC_CACHE",
-  "EMBEDDING_SEMANTIC_CACHE_MAX",
-  "EMBEDDING_SEMANTIC_CACHE_HAMMING",
-  "EMBEDDING_SEMANTIC_CACHE_APPROX",
-  "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT"
-)
-
-$prev = @{}
-foreach ($n in $envNames) {
-  $prev[$n] = [Environment]::GetEnvironmentVariable($n, "Process")
-}
-
-function Restore-Env() {
-  foreach ($n in $envNames) {
-    [Environment]::SetEnvironmentVariable($n, $prev[$n], "Process")
-  }
-  Write-Host "[Env] Restored previous env (Process scope)."
-}
-
-try {
-  # Route all artifacts under runRoot
-  [Environment]::SetEnvironmentVariable("EMBEDDINGSHIFT_ROOT", $runRoot, "Process")
-  [Environment]::SetEnvironmentVariable("EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT", $null, "Process")
-
-  # Sim settings
-  [Environment]::SetEnvironmentVariable("EMBEDDING_SIM_MODE", $SimMode, "Process")
-  [Environment]::SetEnvironmentVariable("EMBEDDING_SIM_NOISE", $SimNoise.ToString($InvCult), "Process")
-  [Environment]::SetEnvironmentVariable("EMBEDDING_SIM_ALGO", $SimAlgo, "Process")
-  [Environment]::SetEnvironmentVariable("EMBEDDING_SIM_CHAR_NGRAMS", "$SimCharNgrams", "Process")
-
-  # Semantic cache settings
-  if ($SemanticCache) {
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE", "1", "Process")
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_MAX", "$CacheMax", "Process")
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_HAMMING", "$CacheHamming", "Process")
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_APPROX", "$CacheApprox", "Process")
-  } else {
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE", $null, "Process")
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_MAX", $null, "Process")
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_HAMMING", $null, "Process")
-    [Environment]::SetEnvironmentVariable("EMBEDDING_SEMANTIC_CACHE_APPROX", $null, "Process")
-  }
-
+if ($Build) {
   Write-Host ""
   Write-Host "dotnet build (explicit sln)"
-  Invoke-DotNet -Args @("build", (Join-Path $RepoRoot "EmbeddingShift.sln")) | Out-Host
+  Invoke-DotNet @("build", $SlnPath)
+  Write-Host ""
+}
 
-  $manifest = [ordered]@{
-    createdUtc = (Get-Date).ToUniversalTime().ToString("o")
-    repoRoot = $RepoRoot
-    runRoot = $runRoot
-    resultsDomain = $ResultsDomain
-    domainId = $DomainId
-    generator = [ordered]@{ policies = $Policies; queries = $Queries; stages = $Stages; seeds = $Seeds }
-    simulation = [ordered]@{ mode = $SimMode; noise = $SimNoise; algo = $SimAlgo; charNgrams = $SimCharNgrams }
-    semanticCache = [ordered]@{ enabled = [bool]$SemanticCache; max = $CacheMax; hamming = $CacheHamming; approx = $CacheApprox }
-    trainStageIndex = $TrainStageIndex
-    runStageIndices = $RunStageIndices
-  }
+$RunId = (Get-Date).ToString("yyyyMMdd_HHmmss")
+$RunRoot = Join-Path $RepoRoot "results\insurance\runroots\FirstLight3_$RunId"
 
-  $cases = @()
+# In this run we want a tenant-scoped layout to be compatible with the rest of the runbook.
+$PrevTenant = $env:EMBEDDINGSHIFT_TENANT
+$env:EMBEDDINGSHIFT_TENANT = $Tenant
 
-  foreach ($seed in $Seeds) {
-    $datasetName = "$BaseDatasetName-$seed"
+try {
+  Write-Host ""
+  Write-Host "=== Seed $Seed / dataset $DatasetName / tenant $Tenant ==="
+
+  # Scope all output to this run root (ConsoleEval honors EMBEDDINGSHIFT_ROOT).
+  $PrevRoot = $env:EMBEDDINGSHIFT_ROOT
+  $env:EMBEDDINGSHIFT_ROOT = $RunRoot
+
+  try {
+    # 1) Generate multi-stage dataset (tenant layout)
+    Invoke-DotNet @(
+      "run","--project","src/EmbeddingShift.ConsoleEval","--",
+      "domain","mini-insurance",
+      "--tenant",$Tenant,
+      "dataset-generate",$DatasetName,
+      "--policies=$Policies","--queries=$Queries","--stages=$Stages","--seed=$Seed"
+    )
+
+    $DatasetStage0 = Join-Path $RunRoot "results\insurance\tenants\$Tenant\datasets\$DatasetName\stage-00"
 
     Write-Host ""
-    Write-Host ("=== Seed {0} / dataset {1} ===" -f $seed, $datasetName)
+    Write-Host "Next (PowerShell):"
+    Write-Host "  `$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = `"$DatasetStage0`""
+    Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pipeline"
+    Write-Host ""
 
-    # 1) dataset-generate
-    $genArgs = @(
-      "run","--project","src/EmbeddingShift.ConsoleEval","--",
-      "domain", $DomainId, "dataset-generate",
-      $datasetName,
-      ("--policies=" + $Policies),
-      ("--queries=" + $Queries),
-      ("--stages=" + $Stages),
-      ("--seed=" + $seed)
-    )
-    Invoke-DotNet -Args $genArgs -WorkingDirectory $RepoRoot | Out-Host
-
-    # 2) train (posneg)
-    $trainStagePath = Join-Path $runRoot ("results\{0}\datasets\{1}\stage-{2:00}" -f $ResultsDomain, $datasetName, $TrainStageIndex)
-    [Environment]::SetEnvironmentVariable("EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT", $trainStagePath, "Process")
-
-    $trainArgs = @(
-      "run","--project","src/EmbeddingShift.ConsoleEval","--",
-      "domain", $DomainId, "posneg-train",
-      ("--mode=" + $TrainMode),
-      ("--cancel-epsilon=" + $CancelEpsilon.ToString($InvCult))
-    )
-    Invoke-DotNet -Args $trainArgs -WorkingDirectory $RepoRoot | Out-Host
-
-# 3) run stages
-    foreach ($runStage in $RunStageIndices) {
-      $runStagePath = Join-Path $runRoot ("results\{0}\datasets\{1}\stage-{2:00}" -f $ResultsDomain, $datasetName, $runStage)
-      [Environment]::SetEnvironmentVariable("EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT", $runStagePath, "Process")
-
-      $runArgs = @(
+    # 2) Run mini-insurance pipeline against stage-00
+    $PrevDsRoot = $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT
+    $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $DatasetStage0
+    try {
+      Invoke-DotNet @(
         "run","--project","src/EmbeddingShift.ConsoleEval","--",
-        "domain", $DomainId, "posneg-run"
+        "domain","mini-insurance",
+        "--tenant",$Tenant,
+        "pipeline"
       )
-
-
-      $out = Invoke-DotNet -Args $runArgs -WorkingDirectory $RepoRoot
-      $out | Out-Host
-
-      $metrics = Parse-RunMetrics $out
-      $cases += [pscustomobject]@{
-        dataset = $datasetName
-        seed = $seed
-        trainStage = $TrainStageIndex
-        runStage = $runStage
-        baseline_map1  = $metrics.BaselineMap
-        posneg_map1    = $metrics.PosNegMap
-        delta_map1     = $metrics.DeltaMap
-        baseline_ndcg3 = $metrics.BaselineNdcg
-        posneg_ndcg3   = $metrics.PosNegNdcg
-        delta_ndcg3    = $metrics.DeltaNdcg
-      }
+    } finally {
+      $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $PrevDsRoot
     }
+
+    # 3) Train PosNeg delta (production mode by default)
+    Invoke-DotNet @(
+      "run","--project","src/EmbeddingShift.ConsoleEval","--",
+      "domain","mini-insurance",
+      "--tenant",$Tenant,
+      "posneg-train","--mode=production","--cancel-epsilon=0.001"
+    )
+
+  } finally {
+    $env:EMBEDDINGSHIFT_ROOT = $PrevRoot
   }
-
-  # Write JSON outputs (no CSV)
-  $manifestPath = Join-Path $runRoot "manifest.json"
-  $casesPath    = Join-Path $runRoot "cases.json"
-  ($manifest | ConvertTo-Json -Depth 10) | Set-Content -Encoding UTF8 -Path $manifestPath
-  ($cases    | ConvertTo-Json -Depth 10) | Set-Content -Encoding UTF8 -Path $casesPath
-
-  Write-Host ""
-  Write-Host "=== DONE ==="
-  Write-Host ("RunRoot   : {0}" -f $runRoot)
-  Write-Host ("Manifest  : {0}" -f $manifestPath)
-  Write-Host ("Cases     : {0}" -f $casesPath)
-
-  # Print runRoot for callers that want to capture it
-  Write-Output $runRoot
 }
 finally {
-  Restore-Env
+  $env:EMBEDDINGSHIFT_TENANT = $PrevTenant
 }
