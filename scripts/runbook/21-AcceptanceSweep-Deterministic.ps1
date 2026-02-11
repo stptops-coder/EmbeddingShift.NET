@@ -71,6 +71,7 @@
     Write-Host "[Sweep] ROOT   = $env:EMBEDDINGSHIFT_ROOT"
     Write-Host "[Sweep] TENANT = $env:EMBEDDINGSHIFT_TENANT"
     Write-Host "[Sweep] MODE   = $backend/$simMode"
+Write-Host ("[Sweep] PROMOTE= {0}" -f ([bool]$Promote))
 
     foreach ($p in $Policies) {
       foreach ($q in $Queries) {
