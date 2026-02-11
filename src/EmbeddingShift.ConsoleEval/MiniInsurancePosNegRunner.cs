@@ -112,8 +112,8 @@ namespace EmbeddingShift.ConsoleEval
 
             var dim = firstEmbedding.Length;
 
-            var shift = rawShift;
-            if (shift is null || shift.Length == 0)
+            float[] shift;
+            if (rawShift is null || rawShift.Length == 0)
             {
                 Console.WriteLine(
                     $"[MiniInsurancePosNegRunner] No usable (non-cancelled) delta vector found for workflow '{WorkflowName}'. " +
@@ -121,12 +121,17 @@ namespace EmbeddingShift.ConsoleEval
 
                 shift = new float[dim];
             }
-            else if (shift.Length != dim)
+            else
             {
-                throw new InvalidOperationException(
-                    $"Shift dimension ({shift.Length}) does not match embedding dimension ({dim}).");
+                if (rawShift.Length != dim)
+                {
+                    throw new InvalidOperationException(
+                        $"Shift dimension ({rawShift.Length}) does not match embedding dimension ({dim}).");
+                }
+
+                shift = rawShift;
             }
-            if (shift != null && shift.Length > 0 && Math.Abs(scale - 1.0) > 1e-12)
+            if (Math.Abs(scale - 1.0) > 1e-12)
             {
                 var s = (float)scale;
                 var scaled = new float[shift.Length];
@@ -158,7 +163,7 @@ namespace EmbeddingShift.ConsoleEval
                 if (qEmbMaybe is null || qEmbMaybe.Length != dim)
                     continue;
 
-                var qEmb = qEmbMaybe; // non-null for closures / nullable flow
+                var qEmb = qEmbMaybe!; // non-null for closures / nullable flow
                 // Baseline ranking (no shift).
                 var rankedBaseline = docEmbeddings
                     .Select(d => new

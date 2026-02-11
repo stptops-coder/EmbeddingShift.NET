@@ -14,9 +14,10 @@ if (-not (Test-Path $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT)) {
 
 Write-Host ("[Tests] DATASET_ROOT=" + $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT)
 
-Write-Host "[Tests] Clearing tenant/layout env vars (to keep acceptance tests stable)"
+Write-Host "[Tests] Clearing run-related env vars (to keep acceptance tests stable)"
 Remove-Item Env:EMBEDDINGSHIFT_TENANT -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_RESULTS_ROOT -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDINGSHIFT_ROOT -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_RESULTS_DOMAIN -ErrorAction SilentlyContinue
 
 dotnet test ".\src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj"
