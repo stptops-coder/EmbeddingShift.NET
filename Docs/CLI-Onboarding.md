@@ -1,14 +1,16 @@
 # EmbeddingShift ConsoleEval CLI – Onboarding (Quickstart)
 
-As of: 2026-02-03
+As of: 2026-02-10
 
 Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Validate → Eval → Compare/activate runs.
 
-## 0) Blank Start – Run Activation Sweep (recommended)
+## 0) Deterministic acceptance sweep (recommended)
 
-If you want a single “known good” end-to-end sequence (generate → pipeline → compare → decide → promote → rollback → optional rerun), use the runbook:
+If you want a single “known good” end-to-end sequence (generate → pipeline → compare → decide → optional promote), use:
 
-- `scripts/runbook/21-BlankStart-RunActivation-Sweep.ps1`
+- `scripts/runbook/21-AcceptanceSweep-Deterministic.ps1`
+
+> Note: `21-BlankStart-RunActivation-Sweep.ps1` is kept as a deprecated wrapper for backward compatibility.
 
 Example:
 
@@ -18,18 +20,17 @@ cd <repo-root>
 # If PowerShell blocks script execution, run from a bypass shell:
 #   PowerShell -ExecutionPolicy Bypass -NoProfile
 
-.\scripts\runbook\21-BlankStart-RunActivation-Sweep.ps1 `
+.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1 `
   -Tenant "insurer-b" `
-  -DatasetName "SweepDS" `
+  -DsName "SweepDS" `
   -Seed 1337 `
   -Metric "ndcg@3" `
-  -Top 10 `
-  -DoRerun
+  -Top 10
 ```
 
 Notes:
 - The runbook uses an isolated scratch root (`<repo>\results\_scratch\EmbeddingShift.Sweep\...`) so it does not mutate your normal results tree.
-- “Rerun” is an optional verification step. It replays the *workflow command* (not a bit-for-bit copy of a previous run directory).
+- Edit the sweep grid inside the script once (Policies/Queries) and keep it stable for reproducible comparisons.
 
 
 Mini-Insurance (single run):
@@ -37,6 +38,7 @@ Mini-Insurance (single run):
 .\scripts\runbook\00-Prep.ps1
 .\scripts\runbook\10-Build.ps1
 .\scripts\runbook\20-FullRun-MiniInsurance.ps1
+.\scripts\runbook\30-Tests.ps1
 .\scripts\runbook\40-Health.ps1
 ```
 ---

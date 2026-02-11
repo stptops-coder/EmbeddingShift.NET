@@ -12,6 +12,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 .\scripts\runbook\00-Prep.ps1
 .\scripts\runbook\10-Build.ps1
 .\scripts\runbook\20-FullRun-MiniInsurance.ps1
+.\scripts\runbook\30-Tests.ps1
 .\scripts\runbook\40-Health.ps1
 ```
 
@@ -19,6 +20,7 @@ Notes:
 - The run is isolated under `results\_scratch\EmbeddingShift.MiniInsurance\yyyyMMdd_HHmmss` via `EMBEDDINGSHIFT_ROOT` (process scope).
 - `20-FullRun-MiniInsurance.ps1` generates a dataset, runs the pipeline, creates a compare report, and makes a promotion decision.
 - `40-Health.ps1` prints the most recent compare/decision report locations for the current run root.
+- `30-Tests.ps1` runs the full unit/acceptance test suite (expected: 77/77 green).
 
 ## Deterministic acceptance sweep
 
