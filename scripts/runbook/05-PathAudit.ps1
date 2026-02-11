@@ -1,6 +1,7 @@
 param(
   [string]$RepoRoot = "",
   [string]$Tenant = "",
+  [string]$Layout = "",
   [switch]$ListDeep
 )
 
@@ -104,6 +105,16 @@ if (-not $tenant2) {
 Print-KV "ActiveRunRoot" $activeRunRoot
 Print-KV "DatasetRoot"  $dsRoot
 Print-KV "Tenant(arg/env)" $tenant2
+ 
+$layout = $Layout
+if (-not $layout) {
+  $layout = [Environment]::GetEnvironmentVariable("EMBEDDINGSHIFT_LAYOUT", "Process")
+}
+if (-not $layout) {
+  $layout = 'tenant'
+}
+$layout = $layout.ToLowerInvariant()
+Print-KV "Layout(arg/env)" $layout
 Write-Host ""
 
 Write-Host "=== Existence checks ==="
@@ -119,13 +130,20 @@ List-DirSafe -Path $results -Depth 1
 Write-Host ""
 
 # Common locations we’ve used in this repo
+# Common locations we’ve used in this repo
 $pathsToCheck = @(
   (Join-Path $results "_scratch"),
   (Join-Path $results "insurance"),
-  (Join-Path $results "insurance\datasets"),
-  (Join-Path $results "insurance\runroots"),
   (Join-Path $results "insurance\tenants")
 )
+
+if ($layout -ne 'tenant') {
+  # Legacy/non-tenant layout folders
+  $pathsToCheck += (Join-Path $results "insurance\datasets")
+  $pathsToCheck += (Join-Path $results "insurance\runroots")
+} else {
+  Write-Host "Key folders (tenant layout): insurance\datasets and insurance\runroots are legacy/optional."
+}
 
 Write-Host "Key folders:"
 foreach ($p in $pathsToCheck) {

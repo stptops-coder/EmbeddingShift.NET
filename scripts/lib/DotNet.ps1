@@ -9,6 +9,19 @@ function Invoke-DotNet {
   )
 
   $dotnetExe = (Get-Command dotnet -ErrorAction Stop).Source
+
+  # Ensure UTF-8 so symbols like 'Δ' are not garbled in PowerShell output.
+  if (-not $script:__DotNetUtf8Initialized) {
+    try {
+      [Console]::InputEncoding  = [System.Text.UTF8Encoding]::new($false)
+      [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+      $global:OutputEncoding    = [System.Text.UTF8Encoding]::new($false)
+    } catch {
+      # best-effort; do not fail the run on encoding quirks
+    }
+    $script:__DotNetUtf8Initialized = $true
+  }
+
   $wdPushed = $false
 
   try {
@@ -65,4 +78,3 @@ function DotNet-RunConsoleEval {
 
     Invoke-DotNet -Args $dotnetArgs -WorkingDirectory $RepoRoot
 }
-

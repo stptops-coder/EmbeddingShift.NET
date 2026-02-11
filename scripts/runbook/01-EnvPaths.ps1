@@ -60,6 +60,7 @@ if ($Force -or [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_MINIINSURANCE_DA
 if ($Force -or $Layout -eq 'tenant') {
   # Keep the environment in sync with the CLI argument (prevents "stale tenant" drift).
   $env:EMBEDDINGSHIFT_TENANT = $Tenant
+$env:EMBEDDINGSHIFT_LAYOUT = $Layout
 }
 
 if ($ClearOptional) {
