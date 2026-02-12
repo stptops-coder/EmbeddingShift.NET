@@ -1,6 +1,12 @@
 # PowerShell helper functions for invoking dotnet in a consistent, fail-fast way.
 # Intended to be dot-sourced by scripts under .\scripts\*
 
+
+# Internal state for one-time dotnet output encoding initialization.
+if (-not (Get-Variable -Scope Script -Name '__DotNetUtf8Initialized' -ErrorAction SilentlyContinue)) {
+  $script:__DotNetUtf8Initialized = $false
+}
+
 function Invoke-DotNet {
   [CmdletBinding()]
   param(

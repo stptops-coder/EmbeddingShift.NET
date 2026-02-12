@@ -1,3 +1,4 @@
+[CmdletBinding()]
 param(
   [string]$Tenant = $(if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_TENANT)) { $env:EMBEDDINGSHIFT_TENANT } else { 'insurer-a' }),
   [string]$Root = $env:EMBEDDINGSHIFT_ROOT,
@@ -15,16 +16,17 @@ if (-not [string]::IsNullOrWhiteSpace($Root)) {
   Write-Host "[FullRun] root=$Root"
 }
 
-$args = @(
-  '-Tenant', $Tenant,
-  '-Seed', $Seed,
-  '-Policies', $Policies,
-  '-Queries', $Queries,
-  '-Stages', $Stages
-)
-
-if (-not [string]::IsNullOrWhiteSpace($Root)) {
-  $args += @('-Root', $Root)
+# Use hashtable splatting to avoid any positional/array binding quirks.
+$invokeArgs = @{
+  Tenant   = $Tenant
+  Seed     = $Seed
+  Policies = $Policies
+  Queries  = $Queries
+  Stages   = $Stages
 }
 
-& "$PSScriptRoot\..\run\Run-MiniInsurance-SemHashNgrams1.ps1" @args
+if (-not [string]::IsNullOrWhiteSpace($Root)) {
+  $invokeArgs['Root'] = $Root
+}
+
+& "$PSScriptRoot\..\run\Run-MiniInsurance-SemHashNgrams1.ps1" @invokeArgs
