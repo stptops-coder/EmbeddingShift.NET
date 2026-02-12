@@ -68,7 +68,7 @@ namespace EmbeddingShift.Workflows.Ingest
             CancellationToken ct)
         {
             var manifestsRoot = DirectoryLayout.ResolveDataRoot("manifests");
-            var manifestSpaceDir = Path.Combine(manifestsRoot, request.Dataset, request.Role);
+            var manifestSpaceDir = Path.Combine(manifestsRoot, SpacePath.ToRelativePath(space));
             Directory.CreateDirectory(manifestSpaceDir);
 
             var summary = new PlainIngestManifestSummary(

@@ -16,11 +16,24 @@
 #
 [CmdletBinding()]
 param(
+  [ValidateSet('repo','temp')]
+  [string]$RootMode = 'repo',
+
   [string]$Tenant = 'insurer-a',
+
+  [string]$DsName = 'SweepDS',
+  [int]$Seed      = 1337,
+  [int]$Stages    = 3,
+
+  [int[]]$Policies = @(40, 60, 80),
+  [int[]]$Queries  = @(80, 120),
+
+  [string]$Metric = 'ndcg@3',
+  [int]$Top       = 10,
 
   [switch]$Promote,
 
-  # Pass-through to the underlying sweep script (e.g. -Metric 'ndcg@3' -Top 10 -Policies 40,60 -Queries 80,120 ...)
+  # Additional pass-through to the underlying sweep script (rare; prefer explicit parameters above).
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$InputArgs = @()
 )
@@ -28,26 +41,38 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-try {
-  $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-  if (-not (Test-Path $repoRoot)) { throw "Repo root not found: $repoRoot" }
-  Set-Location $repoRoot
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+Set-Location $repoRoot
 
-  $sweepScript = Join-Path $PSScriptRoot '21-AcceptanceSweep-Deterministic.ps1'
-  if (-not (Test-Path $sweepScript)) { throw "Sweep script not found: $sweepScript" }
+$sweepScript = Join-Path $PSScriptRoot '21-AcceptanceSweep-Deterministic.ps1'
+if (-not (Test-Path $sweepScript)) {
+  throw "Sweep script not found: $sweepScript"
+}
+
+try {
+  Write-Host "[Runbook21] TENANT  = $Tenant"
+  Write-Host "[Runbook21] PROMOTE = $($Promote.IsPresent)"
+  Write-Host "[Runbook21] ROOTMODE= $RootMode"
+  Write-Host "[Runbook21] METRIC  = $Metric"
+  if ($InputArgs.Count -gt 0) {
+    Write-Host ("[Runbook21] PASS-THRU ARGS: " + ($InputArgs -join ' '))
+  } else {
+    Write-Host "[Runbook21] PASS-THRU ARGS: <none>"
+  }
 
   $argsMap = @{
-    RootMode = 'repo'
+    RootMode = $RootMode
     Tenant   = $Tenant
+    DsName   = $DsName
+    Seed     = $Seed
+    Stages   = $Stages
+    Policies = $Policies
+    Queries  = $Queries
+    Metric   = $Metric
+    Top      = $Top
   }
 
   if ($Promote.IsPresent) { $argsMap['Promote'] = $true }
-
-  Write-Host "[Runbook21] TENANT  = $Tenant"
-  Write-Host "[Runbook21] PROMOTE = $($Promote.IsPresent)"
-  if ($InputArgs.Count -gt 0) {
-    Write-Host "[Runbook21] PASS-THRU ARGS: $($InputArgs -join ' ')"
-  }
 
   & $sweepScript @argsMap @InputArgs
 }

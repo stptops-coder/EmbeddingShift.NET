@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Core.Runs;
 
 namespace EmbeddingShift.ConsoleEval.Commands
@@ -45,8 +46,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
             {
                 var tenant = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT");
                 if (string.IsNullOrWhiteSpace(tenant)) tenant = "insurer-a";
+                Environment.SetEnvironmentVariable("EMBEDDINGSHIFT_TENANT", tenant);
 
-                runsRoot = Path.Combine(Environment.CurrentDirectory, "results", domainKey, "tenants", tenant, "runs");
+                runsRoot = Path.Combine(DirectoryLayout.ResolveResultsRoot(domainKey), "runs");
             }
 
             if (!Directory.Exists(runsRoot))
