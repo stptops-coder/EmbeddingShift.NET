@@ -30,4 +30,12 @@ Use:
 .\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1
 ```
 
+Legacy wrapper (kept for older notes):
+
+```powershell
+.\scripts\runbook\21-BlankStart-RunActivation-Sweep.ps1
+```
+
+
+
 This generates multiple datasets/runs into a separate scratch root under `results\_scratch\EmbeddingShift.Sweep\...`.

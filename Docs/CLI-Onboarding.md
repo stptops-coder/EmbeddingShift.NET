@@ -91,7 +91,7 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a run-sm
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance dataset-generate MyDS --stages 3 --policies 40 --queries 80 --seed 1337 --overwrite
 
-$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results/insurance/datasets/MyDS/stage-00"
+$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results\insurance\datasets\MyDS\stage-00"
 ```
 
 ---
