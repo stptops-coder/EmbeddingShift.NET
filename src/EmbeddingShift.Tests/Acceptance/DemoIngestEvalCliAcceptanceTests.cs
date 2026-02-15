@@ -45,6 +45,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["EMBEDDINGSHIFT_ROOT"] = tempRoot,
+                    ["EMBEDDINGSHIFT_DATA_ROOT"] = Path.Combine(tempRoot, "data"),
                     ["EMBEDDING_BACKEND"] = "sim",
                     ["EMBEDDING_SIM_MODE"] = "deterministic",
                 };
@@ -206,6 +207,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["EMBEDDINGSHIFT_ROOT"] = tempRoot,
+                    ["EMBEDDINGSHIFT_DATA_ROOT"] = Path.Combine(tempRoot, "data"),
                     ["EMBEDDING_BACKEND"] = "sim",
                     ["EMBEDDING_SIM_MODE"] = "deterministic",
                 };
@@ -325,6 +327,7 @@ namespace EmbeddingShift.Tests.Acceptance
                 var env = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 {
                     ["EMBEDDINGSHIFT_ROOT"] = tempRoot,
+                    ["EMBEDDINGSHIFT_DATA_ROOT"] = Path.Combine(tempRoot, "data"),
                     ["EMBEDDING_BACKEND"] = "sim",
                     ["EMBEDDING_SIM_MODE"] = "deterministic",
                 };

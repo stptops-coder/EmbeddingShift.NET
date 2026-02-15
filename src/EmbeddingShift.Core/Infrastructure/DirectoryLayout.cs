@@ -84,7 +84,19 @@ private static string? GetTenantKeyOrNull()
 
 
         public static string ResolveDataRoot(string? domainSubfolder = null)
-            => ResolveRoot("data", domainSubfolder);
+        {
+            // Optional override: pin *data* root directly (useful for tests/CI).
+            var envDataRoot = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_DATA_ROOT");
+            if (!string.IsNullOrWhiteSpace(envDataRoot))
+            {
+                var basePath = Path.GetFullPath(envDataRoot);
+                var path = domainSubfolder is null ? basePath : Path.Combine(basePath, domainSubfolder);
+                Directory.CreateDirectory(path);
+                return path;
+            }
+
+            return ResolveRoot("data", domainSubfolder);
+        }
 
         private static string ResolveRoot(string rootFolderName, string? domainSubfolder)
         {

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+﻿﻿using System.Text.Json;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Abstractions;
 
@@ -21,9 +21,8 @@ namespace EmbeddingShift.Core.Persistence
         public FileStore(string root)
         {
             _root = root;
-            Directory.CreateDirectory(Path.Combine(_root, "embeddings"));
-            Directory.CreateDirectory(Path.Combine(_root, "shifts"));
-            Directory.CreateDirectory(Path.Combine(_root, "runs"));
+
+            // Note: subfolders are created lazily on first write, to keep startup/help side-effect free.
         }
 
         public async Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
@@ -64,6 +63,8 @@ namespace EmbeddingShift.Core.Persistence
         public async Task SaveShiftAsync(Guid id, string type, string parametersJson)
         {
             var rec = new ShiftRec(id, type, parametersJson, DateTime.UtcNow);
+
+            Directory.CreateDirectory(Path.Combine(_root, "shifts"));
             var path = Path.Combine(_root, "shifts", $"{id:N}.json");
             await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
         }
@@ -87,6 +88,8 @@ namespace EmbeddingShift.Core.Persistence
         public async Task SaveRunAsync(Guid runId, string kind, string dataset, DateTime startedAt, DateTime completedAt, string resultsPath)
         {
             var rec = new RunRec(runId, kind, dataset, startedAt, completedAt, resultsPath);
+
+            Directory.CreateDirectory(Path.Combine(_root, "runs"));
             var path = Path.Combine(_root, "runs", $"{runId:N}.json");
             await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
         }

@@ -7,7 +7,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using EmbeddingShift.Core.Stats;
 using EmbeddingShift.Core.Workflows;
+using EmbeddingShift.Abstractions;
 using EmbeddingShift.Abstractions.Shifts;
+using EmbeddingShift.Core.Infrastructure;
+using EmbeddingShift.Core.Persistence;
 using EmbeddingShift.Core.Shifts;
 
 namespace EmbeddingShift.Workflows
@@ -21,9 +24,13 @@ namespace EmbeddingShift.Workflows
     /// </summary>
     public sealed class FileBasedInsuranceMiniWorkflow : IWorkflow, IPerQueryEvalProvider
     {
+        private const string PersistProviderKey = "kwcount";
+        private const string PersistDocsSpace = "mini-insurance/kwcount/raw/docs";
+        private const string PersistQueriesSpace = "mini-insurance/kwcount/raw/queries";
+
         private readonly ILocalEmbeddingProvider _embeddingProvider;
         private readonly IEmbeddingShiftPipeline _shiftPipeline;
-
+        private readonly IVectorStore? _vectorStore;
         /// <summary>
         /// Per-query evaluation breakdown from the last RunAsync execution.
         /// This is persisted by the pipeline as an extra artifact.
@@ -50,6 +57,48 @@ namespace EmbeddingShift.Workflows
         {
             _embeddingProvider = embeddingProvider ?? throw new ArgumentNullException(nameof(embeddingProvider));
             _shiftPipeline = shiftPipeline ?? CreateDefaultPipeline();
+            _vectorStore = CreateVectorStoreIfEnabled();
+        }
+
+        private static bool GetBoolEnv(string name, bool defaultValue)
+        {
+            var raw = Environment.GetEnvironmentVariable(name);
+            if (string.IsNullOrWhiteSpace(raw))
+                return defaultValue;
+
+            if (bool.TryParse(raw, out var b))
+                return b;
+
+            if (int.TryParse(raw, out var i))
+                return i != 0;
+
+            return defaultValue;
+        }
+
+        private static IVectorStore? CreateVectorStoreIfEnabled()
+        {
+            if (!GetBoolEnv("EMBEDDINGSHIFT_PERSIST_EMBEDDINGS", defaultValue: true))
+                return null;
+
+            // Data is intended to be stable across runs; results may live under scratch roots.
+            var dataRoot = DirectoryLayout.ResolveDataRoot();
+            return new FileStore(dataRoot);
+        }
+
+        private async Task<float[]> LoadOrComputeRawEmbeddingAsync(string space, string idKey, string text, CancellationToken ct)
+        {
+            var dimensions = _embeddingProvider.Dimension;
+            if (_vectorStore is null)
+                return _embeddingProvider.Embed(text);
+
+            var id = StableGuid.FromString($"{space}\n{PersistProviderKey}\n{idKey}\n{text}");
+            var loaded = await _vectorStore.LoadEmbeddingAsync(id);
+            if (loaded.Length == dimensions)
+                return loaded;
+
+            var embedding = _embeddingProvider.Embed(text);
+            await _vectorStore.SaveEmbeddingAsync(id, embedding, space, PersistProviderKey, dimensions);
+            return embedding;
         }
 
         public string Name => "FileBased-Insurance-Mini";
@@ -82,15 +131,22 @@ namespace EmbeddingShift.Workflows
 
             if (queries.Count == 0)
                 throw new InvalidOperationException("No queries found in queries.json.");
+            var docEmbeddings = new Dictionary<string, float[]>(StringComparer.OrdinalIgnoreCase);
 
-            var docEmbeddings = docs.ToDictionary(
-                kvp => kvp.Key,
-                kvp =>
-                {
-                    var emb = _embeddingProvider.Embed(kvp.Value);
-                    _shiftPipeline.ApplyInPlace(emb);
-                    return emb;
-                });
+            foreach (var docId in docs.Keys)
+            {
+                var docText = docs[docId];
+                var rawDocEmb = await LoadOrComputeRawEmbeddingAsync(
+                    space: PersistDocsSpace,
+                    idKey: docId,
+                    text: docText,
+                    ct: ct);
+
+                var docEmb = (float[])rawDocEmb.Clone();
+                _shiftPipeline.ApplyInPlace(docEmb);
+                docEmbeddings[docId] = docEmb;
+            }
+
             var apValues = new List<double>();
             var ndcgValues = new List<double>();
             var perQuery = new List<PerQueryEval>(queries.Count);
@@ -118,7 +174,13 @@ namespace EmbeddingShift.Workflows
                         continue;
                     }
 
-                    var qEmb = _embeddingProvider.Embed(q.Text ?? string.Empty);
+                    var rawQEmb = await LoadOrComputeRawEmbeddingAsync(
+                        space: PersistQueriesSpace,
+                        idKey: q.Id,
+                        text: q.Text ?? string.Empty,
+                        ct: ct);
+
+                    var qEmb = (float[])rawQEmb.Clone();
                     using (QueryShiftContext.Push(q.Id))
                     {
                         _shiftPipeline.ApplyInPlace(qEmb);
