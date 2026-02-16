@@ -10,7 +10,7 @@ namespace EmbeddingShift.ConsoleEval.Repositories;
 /// File-system based implementation of <see cref="IShiftTrainingResultRepository"/>.
 /// 
 /// Layout convention:
-///   rootDirectory/
+///   rootDirectory/training/
 ///     {workflowName}-training_{timestamp}/
 ///       shift-training-result.json
 ///
@@ -18,7 +18,8 @@ namespace EmbeddingShift.ConsoleEval.Repositories;
 /// </summary>
 public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResultRepository
 {
-    private readonly string _rootDirectory;
+    private readonly string _trainingRootDirectory;
+    private readonly string _legacyRootDirectory;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly Encoding _utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
@@ -27,6 +28,10 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
     /// </summary>
     /// <param name="rootDirectory">
     /// Root directory under which training results should be stored.
+    ///
+    /// If you pass a domain results root, results will be stored under a 'training' subfolder.
+    /// If you pass a 'training' folder directly, it will be used as-is.
+    /// Reads are backward-compatible and also consider legacy results stored directly under the domain root.
     /// This directory will be created if it does not exist.
     /// </param>
     public FileSystemShiftTrainingResultRepository(string rootDirectory)
@@ -34,14 +39,61 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
         if (string.IsNullOrWhiteSpace(rootDirectory))
             throw new ArgumentException("Root directory must not be null or empty.", nameof(rootDirectory));
 
-        _rootDirectory = rootDirectory;
-        Directory.CreateDirectory(_rootDirectory);
+        var normalized = NormalizeDirectory(rootDirectory);
+        var isTrainingDir = IsTrainingDirectory(normalized);
+
+        _trainingRootDirectory = isTrainingDir
+            ? normalized
+            : Path.Combine(normalized, "training");
+
+        _legacyRootDirectory = isTrainingDir
+            ? GetParentDirectoryOrEmpty(normalized)
+            : normalized;
+
+        Directory.CreateDirectory(_trainingRootDirectory);
 
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
             WriteIndented = true
         };
+    }
+
+
+    private static string NormalizeDirectory(string path)
+    {
+        var trimmed = path.Trim();
+        // Normalize trailing separators to make "EndsWith('training')" checks stable.
+        return trimmed.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static bool IsTrainingDirectory(string path)
+    {
+        var name = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        return string.Equals(name, "training", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetParentDirectoryOrEmpty(string path)
+    {
+        try
+        {
+            return Path.GetDirectoryName(path) ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private string[] GetCandidateRootsForRead()
+    {
+        if (string.Equals(_trainingRootDirectory, _legacyRootDirectory, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(_legacyRootDirectory))
+        {
+            return new[] { _trainingRootDirectory };
+        }
+
+        return new[] { _trainingRootDirectory, _legacyRootDirectory };
     }
 
     /// <inheritdoc />
@@ -61,7 +113,7 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
         // Directory layout: {workflowName}-training_yyyyMMdd_HHmmss_fff
         var stamp = createdUtc.ToString("yyyyMMdd_HHmmss_fff");
         var directoryName = $"{result.WorkflowName}-training_{stamp}";
-        var targetDirectory = Path.Combine(_rootDirectory, directoryName);
+        var targetDirectory = Path.Combine(_trainingRootDirectory, directoryName);
 
         Directory.CreateDirectory(targetDirectory);
 
@@ -155,43 +207,43 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
         if (string.IsNullOrWhiteSpace(workflowName))
             throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
 
-        if (!Directory.Exists(_rootDirectory))
-            return null;
-
-        // Pattern: {workflowName}-training_*
-        var prefix = $"{workflowName}-training_";
-        var candidates = Directory.GetDirectories(_rootDirectory, $"{workflowName}-training_*", SearchOption.TopDirectoryOnly);
-
-        if (candidates.Length == 0)
-            return null;
-
-        Array.Sort(candidates, StringComparer.Ordinal);
-        Array.Reverse(candidates);
-
-        foreach (var dir in candidates)
+        foreach (var root in GetCandidateRootsForRead())
         {
-            var jsonPath = Path.Combine(dir, "shift-training-result.json");
+            if (!Directory.Exists(root))
+                continue;
 
-            // Legacy fallback (older runs might have used a different filename).
-            if (!File.Exists(jsonPath))
-            {
-                var legacyPath = Path.Combine(dir, "result.json");
-                if (!File.Exists(legacyPath))
-                    continue;
+            var candidates = Directory.GetDirectories(root, $"{workflowName}-training_*", SearchOption.TopDirectoryOnly);
+            if (candidates.Length == 0)
+                continue;
 
-                jsonPath = legacyPath;
-            }
+            Array.Sort(candidates, StringComparer.Ordinal);
+            Array.Reverse(candidates);
 
-            try
+            foreach (var dir in candidates)
             {
-                var json = File.ReadAllText(jsonPath, _utf8NoBom);
-                var result = JsonSerializer.Deserialize<ShiftTrainingResult>(json, _jsonOptions);
-                if (result != null)
-                    return result;
-            }
-            catch
-            {
-                // Ignore malformed entries and continue with older ones.
+                var jsonPath = Path.Combine(dir, "shift-training-result.json");
+
+                // Legacy fallback (older runs might have used a different filename).
+                if (!File.Exists(jsonPath))
+                {
+                    var legacyPath = Path.Combine(dir, "result.json");
+                    if (!File.Exists(legacyPath))
+                        continue;
+
+                    jsonPath = legacyPath;
+                }
+
+                try
+                {
+                    var json = File.ReadAllText(jsonPath, _utf8NoBom);
+                    var result = JsonSerializer.Deserialize<ShiftTrainingResult>(json, _jsonOptions);
+                    if (result != null)
+                        return result;
+                }
+                catch
+                {
+                    // Ignore malformed entries and continue with older ones.
+                }
             }
         }
 
@@ -200,73 +252,75 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
 
     /// <inheritdoc />
     public ShiftTrainingResult? LoadBest(string workflowName, bool includeCancelled = false)
-    {
-        if (string.IsNullOrWhiteSpace(workflowName))
-            throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
-
-        if (!Directory.Exists(_rootDirectory))
-            return null;
-
-        // Pattern: {workflowName}-training_*
-        var candidates = Directory.GetDirectories(
-            _rootDirectory,
-            $"{workflowName}-training_*",
-            SearchOption.TopDirectoryOnly);
-
-        if (candidates.Length == 0)
-            return null;
-
-        ShiftTrainingResult? best = null;
-        double bestScore = double.NegativeInfinity;
-        DateTime bestCreatedUtc = DateTime.MinValue;
-
-        foreach (var dir in candidates)
         {
-            var jsonPath = Path.Combine(dir, "shift-training-result.json");
+            if (string.IsNullOrWhiteSpace(workflowName))
+                throw new ArgumentException("Workflow name must not be null or empty.", nameof(workflowName));
 
-            // Legacy fallback (older runs might have used a different filename).
-            if (!File.Exists(jsonPath))
+            ShiftTrainingResult? best = null;
+            double bestScore = double.NegativeInfinity;
+            DateTime bestCreatedUtc = DateTime.MinValue;
+
+            foreach (var root in GetCandidateRootsForRead())
             {
-                var legacyPath = Path.Combine(dir, "result.json");
-                if (!File.Exists(legacyPath))
+                if (!Directory.Exists(root))
                     continue;
 
-                jsonPath = legacyPath;
-            }
+                var candidates = Directory.GetDirectories(
+                    root,
+                    $"{workflowName}-training_*",
+                    SearchOption.TopDirectoryOnly);
 
-            try
-            {
-                var json = File.ReadAllText(jsonPath, _utf8NoBom);
-                var result = JsonSerializer.Deserialize<ShiftTrainingResult>(json, _jsonOptions);
-                if (result is null)
+                if (candidates.Length == 0)
                     continue;
 
-                if (!includeCancelled && result.IsCancelled)
-                    continue;
-
-                // Primary score: First+Delta improvement; fallback: First improvement.
-                var score = (double)result.ImprovementFirstPlusDelta;
-                if (Math.Abs(score) < 1e-12)
-                    score = (double)result.ImprovementFirst;
-
-                var createdUtc = result.CreatedUtc;
-
-                // Prefer higher score; break ties by most recent creation time.
-                if (best is null ||
-                    score > bestScore + 1e-12 ||
-                    (Math.Abs(score - bestScore) < 1e-12 && createdUtc > bestCreatedUtc))
+                foreach (var dir in candidates)
                 {
-                    best = result;
-                    bestScore = score;
-                    bestCreatedUtc = createdUtc;
+                    var jsonPath = Path.Combine(dir, "shift-training-result.json");
+
+                    // Legacy fallback (older runs might have used a different filename).
+                    if (!File.Exists(jsonPath))
+                    {
+                        var legacyPath = Path.Combine(dir, "result.json");
+                        if (!File.Exists(legacyPath))
+                            continue;
+
+                        jsonPath = legacyPath;
+                    }
+
+                    try
+                    {
+                        var json = File.ReadAllText(jsonPath, _utf8NoBom);
+                        var result = JsonSerializer.Deserialize<ShiftTrainingResult>(json, _jsonOptions);
+                        if (result is null)
+                            continue;
+
+                        if (!includeCancelled && result.IsCancelled)
+                            continue;
+
+                        // Primary score: First+Delta improvement; fallback: First improvement.
+                        var score = (double)result.ImprovementFirstPlusDelta;
+                        if (Math.Abs(score) < 1e-12)
+                            score = (double)result.ImprovementFirst;
+
+                        var createdUtc = result.CreatedUtc;
+
+                        // Prefer higher score; break ties by most recent creation time.
+                        if (best is null ||
+                            score > bestScore + 1e-12 ||
+                            (Math.Abs(score - bestScore) < 1e-12 && createdUtc > bestCreatedUtc))
+                        {
+                            best = result;
+                            bestScore = score;
+                            bestCreatedUtc = createdUtc;
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore malformed entries and continue.
+                    }
                 }
             }
-            catch
-            {
-                // Ignore malformed entries and continue.
-            }
-        }
 
-        return best;
-    }
+            return best;
+        }
 }

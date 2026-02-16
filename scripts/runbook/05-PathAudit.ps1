@@ -156,6 +156,41 @@ if ($tenant2) {
   $tenantPath = Join-Path $results ("insurance\tenants\{0}" -f $tenant2)
   List-DirSafe -Path $tenantPath -Depth 2
   Write-Host ""
+
+# Also show the run roots inside the tenant (keeps the main map compact but makes _best/_active visible).
+$runsDir = Join-Path $tenantPath 'runs'
+if (Test-Path -LiteralPath $runsDir) {
+  Write-Host "Runs (tenant):"
+  List-DirSafe -Path $runsDir -Indent '  ' -Depth 2
+
+  $bestDir = Join-Path $runsDir '_best'
+  $activeDir = Join-Path $runsDir '_active'
+  $historyDir = Join-Path $activeDir 'history'
+
+  Write-Host ""
+  Write-Host "Run pointers:"
+  Write-Host ("  _best   : {0}" -f (Test-Path -LiteralPath $bestDir))
+  Write-Host ("  _active : {0}" -f (Test-Path -LiteralPath $activeDir))
+  Write-Host ("  history : {0}" -f (Test-Path -LiteralPath $historyDir))
+
+  if (Test-Path -LiteralPath $bestDir) {
+    $bestFiles = Get-ChildItem -LiteralPath $bestDir -File -Filter 'best_*.json' -ErrorAction SilentlyContinue
+    if ($bestFiles) {
+      Write-Host "  best files:"
+      foreach ($f in $bestFiles) { Write-Host ("    - {0}" -f $f.Name) }
+    }
+  }
+
+  if (Test-Path -LiteralPath $activeDir) {
+    $activeFiles = Get-ChildItem -LiteralPath $activeDir -File -Filter 'active_*.json' -ErrorAction SilentlyContinue
+    if ($activeFiles) {
+      Write-Host "  active files:"
+      foreach ($f in $activeFiles) { Write-Host ("    - {0}" -f $f.Name) }
+    }
+  }
+
+  Write-Host ""
+}
 }
 
 if ($activeRunRoot) {

@@ -58,9 +58,9 @@ function Diff([string]$Prev, [string]$Now) {
   if ($NoSnapshots) { return @() }
   if ([string]::IsNullOrWhiteSpace($Prev) -or [string]::IsNullOrWhiteSpace($Now)) { return @() }
 
-  Compare-Object (Get-Content -LiteralPath $Prev) (Get-Content -LiteralPath $Now) -PassThru |
+  Compare-Object (Get-Content -LiteralPath $Prev) (Get-Content -LiteralPath $Now) |
     Where-Object { $_.SideIndicator -eq "=>" } |
-    ForEach-Object { $_.InputObject }
+    Select-Object -ExpandProperty InputObject
 }
 
 $repoRoot = Resolve-RepoRoot -StartPath $PSScriptRoot

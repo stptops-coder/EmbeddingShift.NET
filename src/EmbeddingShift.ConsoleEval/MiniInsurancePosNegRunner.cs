@@ -261,11 +261,13 @@ namespace EmbeddingShift.ConsoleEval
             Console.WriteLine($"             NDCG@3 = {ndcg3Shifted - ndcg3Baseline:+0.000;-0.000;0.000}");
 
             // Persist metrics for later inspection/aggregation.
-            // We create a small run directory under resultsRoot:
-            //   mini-insurance-posneg-run_YYYYMMDD_HHMMSS_fff
+            // Keep all run-related artifacts under the standard runs folder to avoid clutter at tenant root.
+            //   <tenant>\runs\mini-insurance-posneg-run_YYYYMMDD_HHMMSS_fff
+            var runsRoot = MiniInsurancePaths.GetRunsRoot();
+            Directory.CreateDirectory(runsRoot);
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
             var runDirName = $"mini-insurance-posneg-run_{timestamp}";
-            var runDir = Path.Combine(resultsRoot, runDirName);
+            var runDir = Path.Combine(runsRoot, runDirName);
             Directory.CreateDirectory(runDir);
 
             var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
@@ -326,7 +328,6 @@ namespace EmbeddingShift.ConsoleEval
             // This intentionally produces two comparable runs:
             //  - MiniInsurance-PosNeg-Baseline
             //  - MiniInsurance-PosNeg
-            var runsRoot = MiniInsurancePaths.GetRunsRoot();
             var runRepo = new FileRunRepository(runsRoot);
 
             var baselineArtifact = new WorkflowRunArtifact(

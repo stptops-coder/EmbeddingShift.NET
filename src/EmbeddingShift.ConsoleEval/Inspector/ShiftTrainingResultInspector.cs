@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Text.Json;
+using System.Linq;
 using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.ConsoleEval.Repositories;
 
@@ -13,6 +14,53 @@ namespace EmbeddingShift.ConsoleEval.Inspector;
 /// </summary>
 internal static class ShiftTrainingResultInspector
 {
+    private static string NormalizeDirectory(string path)
+    {
+        return path.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static bool IsTrainingDirectory(string path)
+    {
+        var name = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        return string.Equals(name, "training", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static (string TrainingRoot, string LegacyRoot) ResolveTrainingAndLegacyRoots(string rootDirectory)
+    {
+        var normalized = NormalizeDirectory(rootDirectory);
+        if (IsTrainingDirectory(normalized))
+        {
+            var legacy = Path.GetDirectoryName(normalized) ?? normalized;
+            return (normalized, legacy);
+        }
+
+        return (Path.Combine(normalized, "training"), normalized);
+    }
+
+    private static string[] GetTrainingResultDirectories(string rootDirectory, string pattern)
+    {
+        var (trainingRoot, legacyRoot) = ResolveTrainingAndLegacyRoots(rootDirectory);
+
+        var dirs = new System.Collections.Generic.List<string>();
+
+        if (Directory.Exists(trainingRoot))
+            dirs.AddRange(Directory.GetDirectories(trainingRoot, pattern, SearchOption.TopDirectoryOnly));
+        if (Directory.Exists(legacyRoot) &&
+            !string.Equals(trainingRoot, legacyRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            dirs.AddRange(Directory.GetDirectories(legacyRoot, pattern, SearchOption.TopDirectoryOnly));
+        }
+        // De-dup, then sort newest-first (directory names include sortable timestamps).
+        var distinct = dirs
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Array.Sort(distinct, StringComparer.Ordinal);
+        Array.Reverse(distinct);
+
+        return distinct;
+    }
+
     /// <summary>
     /// Loads and prints the latest training result for the specified
     /// workflow from the given root directory. If no result is found,
@@ -113,7 +161,6 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine();
         Console.WriteLine("[ShiftTraining] Inspection done.");
     }
-
     /// <summary>
     /// Lists the latest training results for the specified workflow in
     /// descending order (newest first).
@@ -132,23 +179,13 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine($"[ShiftTraining] History for workflow '{workflowName}'");
         Console.WriteLine($"[ShiftTraining] Root directory: {rootDirectory}");
         Console.WriteLine();
-
-        if (!Directory.Exists(rootDirectory))
-        {
-            Console.WriteLine("[ShiftTraining] Root directory does not exist.");
-            return;
-        }
-
         var pattern = $"{workflowName}-training_*";
-        var directories = Directory.GetDirectories(rootDirectory, pattern, SearchOption.TopDirectoryOnly);
+        var directories = GetTrainingResultDirectories(rootDirectory, pattern);
         if (directories.Length == 0)
         {
             Console.WriteLine("[ShiftTraining] No training result directories found.");
             return;
         }
-
-        Array.Sort(directories, StringComparer.Ordinal);
-        Array.Reverse(directories);
 
         var jsonOptions = new JsonSerializerOptions
         {
@@ -203,7 +240,6 @@ internal static class ShiftTrainingResultInspector
             Console.WriteLine(
                 $"{printed,3} | {createdText} | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,8:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000} | {scopeId}");
 
-
             printed++;
         }
 
@@ -216,7 +252,6 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine();
         Console.WriteLine($"[ShiftTraining] Listed {printed} training result(s).");
     }
-
     /// <summary>
     /// Finds and prints the best training result for the specified workflow
     /// based on the combined improvement (First+Delta vs Baseline).
@@ -234,23 +269,13 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine($"[ShiftTraining] Best training result for workflow '{workflowName}'");
         Console.WriteLine($"[ShiftTraining] Root directory: {rootDirectory}");
         Console.WriteLine();
-
-        if (!Directory.Exists(rootDirectory))
-        {
-            Console.WriteLine("[ShiftTraining] Root directory does not exist.");
-            return;
-        }
-
         var pattern = $"{workflowName}-training_*";
-        var directories = Directory.GetDirectories(rootDirectory, pattern, SearchOption.TopDirectoryOnly);
+        var directories = GetTrainingResultDirectories(rootDirectory, pattern);
         if (directories.Length == 0)
         {
             Console.WriteLine("[ShiftTraining] No training result directories found.");
             return;
         }
-
-        Array.Sort(directories, StringComparer.Ordinal);
-        Array.Reverse(directories);
 
         var jsonOptions = new JsonSerializerOptions
         {
