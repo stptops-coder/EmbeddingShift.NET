@@ -37,9 +37,26 @@ namespace EmbeddingShift.ConsoleEval
 
             if (trainingResult is null)
             {
-                Console.WriteLine(
-                    $"[MiniInsurancePosNegRunner] No training result found for workflow '{WorkflowName}' under '{resultsRoot}'.");
-            }
+                if (!useLatest)
+                {
+                    // LoadBest() filters cancelled results by default. If everything is cancelled (|Δ|≈0), prefer baseline.
+                    var cancelled = repository.LoadBest(WorkflowName, includeCancelled: true);
+                    if (cancelled is not null && cancelled.IsCancelled)
+                    {
+                        Console.WriteLine("[MiniInsurancePosNegRunner] Training results exist but are cancelled (|Δ|≈0). Running baseline.");
+                    }
+                    else
+                    {
+                        Console.WriteLine(
+                            $"[MiniInsurancePosNegRunner] No training result found for workflow '{WorkflowName}' under '{resultsRoot}'.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine(
+                        $"[MiniInsurancePosNegRunner] No training result found for workflow '{WorkflowName}' under '{resultsRoot}'.");
+                }
+}
             else
             {
                 var len = trainingResult.DeltaVector?.Length ?? 0;

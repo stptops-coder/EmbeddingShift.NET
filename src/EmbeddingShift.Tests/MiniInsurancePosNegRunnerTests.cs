@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
@@ -23,16 +23,17 @@ namespace EmbeddingShift.Tests
         {
             // Arrange: resolve the same results root that the runner uses.
             var root = DirectoryLayout.ResolveResultsRoot("insurance");
-            Directory.CreateDirectory(root);
+            var runsRoot = Path.Combine(root, "runs");
+            Directory.CreateDirectory(runsRoot);
 
             var pattern = "mini-insurance-posneg-run_*";
-            var before = Directory.GetDirectories(root, pattern, SearchOption.TopDirectoryOnly);
+            var before = Directory.GetDirectories(runsRoot, pattern, SearchOption.TopDirectoryOnly);
 
             // Act
             await MiniInsurancePosNegRunner.RunAsync(EmbeddingBackend.Sim);
 
             // Assert: there should be at least one (new) run directory
-            var after = Directory.GetDirectories(root, pattern, SearchOption.TopDirectoryOnly);
+            var after = Directory.GetDirectories(runsRoot, pattern, SearchOption.TopDirectoryOnly);
             Assert.NotEmpty(after);
 
             var newDirs = after.Except(before).ToArray();

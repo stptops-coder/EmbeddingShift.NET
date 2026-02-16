@@ -38,22 +38,35 @@ function Print-KV {
 }
 
 function List-DirSafe {
-  param([string]$Path, [int]$Depth = 1)
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path,
+
+    [int]$Depth = 1,
+
+    [string]$Indent = ""
+  )
 
   if (-not (Test-Path -LiteralPath $Path)) {
-    Write-Host ("  (missing) {0}" -f $Path)
+    Write-Host ("{0}(missing) {1}" -f $Indent, $Path)
     return
   }
 
-  Write-Host ("  {0}" -f $Path)
-  if ($Depth -le 0) { return }
+  # Print a compact, stable listing (directories first, then files)
+  $dirs = Get-ChildItem -LiteralPath $Path -Directory -Force -ErrorAction SilentlyContinue | Sort-Object Name
+  $files = Get-ChildItem -LiteralPath $Path -File -Force -ErrorAction SilentlyContinue | Sort-Object Name
 
-  Get-ChildItem -LiteralPath $Path -Directory -ErrorAction SilentlyContinue |
-    Sort-Object Name |
-    ForEach-Object {
-      Write-Host ("    [{0}]  {1}" -f $_.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"), $_.Name)
-    }
+  foreach ($d in $dirs) { Write-Host ("{0}[d] {1}" -f $Indent, $d.Name) }
+  foreach ($f in $files) { Write-Host ("{0}[f] {1}" -f $Indent, $f.Name) }
+
+  if ($Depth -le 1) { return }
+
+  foreach ($d in $dirs) {
+    Write-Host ("{0}{1}/" -f $Indent, $d.Name)
+    List-DirSafe -Path $d.FullName -Depth ($Depth - 1) -Indent ("{0}  " -f $Indent)
+  }
 }
+
 
 $root = Resolve-RepoRoot -Hint $RepoRoot
 $results = Join-Path $root "results"
@@ -155,6 +168,23 @@ if ($tenant2) {
   Write-Host "Tenant-specific (if present):"
   $tenantPath = Join-Path $results ("insurance\tenants\{0}" -f $tenant2)
   List-DirSafe -Path $tenantPath -Depth 2
+  # Legacy top-level PosNeg directories (backwards-compat only; prefer training/ + runs/)
+  $legacyTrain = @(Get-ChildItem -LiteralPath $tenantPath -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "mini-insurance-posneg-training_*" })
+  $legacyRun = @(Get-ChildItem -LiteralPath $tenantPath -Directory -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "mini-insurance-posneg-run_*" })
+
+  if ($legacyTrain.Count -gt 0 -or $legacyRun.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Legacy layout detected at tenant root:"
+    if ($legacyTrain) { Write-Host ("  training dirs: {0}" -f $legacyTrain.Count) }
+    if ($legacyRun) { Write-Host ("  run dirs:      {0}" -f $legacyRun.Count) }
+    Write-Host "Preferred layout is:"
+    Write-Host "  <tenant>\\training\\mini-insurance-posneg-training_*"
+    Write-Host "  <tenant>\\runs\\mini-insurance-posneg-run_*"
+    Write-Host "Keeping legacy dirs is OK, but it increases clutter during audits."
+  }
+
   Write-Host ""
 
 # Also show the run roots inside the tenant (keeps the main map compact but makes _best/_active visible).

@@ -1,4 +1,6 @@
-﻿﻿using System.Text.Json;
+using System.Text.Json;
+using System.Collections.Concurrent;
+using System.Threading;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Abstractions;
 
@@ -18,6 +20,16 @@ namespace EmbeddingShift.Core.Persistence
             WriteIndented = false
         };
 
+// Prevent concurrent writers (e.g., parallel tests) from colliding on the same embedding file.
+// Embeddings are deterministic for a given (space, provider, idKey, text), so a "first writer wins"
+// policy is safe and avoids flaky IO exceptions on Windows.
+private static readonly ConcurrentDictionary<string, SemaphoreSlim> PathLocks =
+    new(StringComparer.OrdinalIgnoreCase);
+
+private static SemaphoreSlim GetPathLock(string path)
+    => PathLocks.GetOrAdd(path, static _ => new SemaphoreSlim(1, 1));
+
+
         public FileStore(string root)
         {
             _root = root;
@@ -26,19 +38,71 @@ namespace EmbeddingShift.Core.Persistence
         }
 
         public async Task SaveEmbeddingAsync(Guid id, float[] vector, string space, string provider, int dimensions)
+{
+    // Keep the logical space as-is (e.g., "DemoDataset:queries") in JSON,
+    // but map it to a filesystem-safe subpath for directories.
+    var logicalSpace = string.IsNullOrWhiteSpace(space) ? "default" : space.Trim();
+    var spaceSubPath = SpaceToPath(logicalSpace); // e.g., "DemoDataset\queries"
+
+    var spaceDir = Path.Combine(_root, "embeddings", spaceSubPath);
+    Directory.CreateDirectory(spaceDir);
+
+    var rec = new EmbeddingRec(id, logicalSpace, provider, dimensions, vector);
+    var path = Path.Combine(spaceDir, $"{id:N}.json");
+
+    // If the embedding already exists, treat it as immutable and skip rewriting.
+    if (File.Exists(path))
+        return;
+
+    var json = JsonSerializer.Serialize(rec, J);
+
+    var gate = GetPathLock(path);
+    await gate.WaitAsync().ConfigureAwait(false);
+
+    try
+    {
+        // Double-check once inside the gate.
+        if (File.Exists(path))
+            return;
+
+        // Write to a temp file and move atomically to avoid partial reads on crashes.
+        var tmp = path + ".tmp." + Guid.NewGuid().ToString("N");
+
+        try
         {
-            // Keep the logical space as-is (e.g., "DemoDataset:queries") in JSON,
-            // but map it to a filesystem-safe subpath for directories.
-            var logicalSpace = string.IsNullOrWhiteSpace(space) ? "default" : space.Trim();
-            var spaceSubPath = SpaceToPath(logicalSpace); // e.g., "DemoDataset\queries"
-
-            var spaceDir = Path.Combine(_root, "embeddings", spaceSubPath);
-            Directory.CreateDirectory(spaceDir);
-
-            var rec = new EmbeddingRec(id, logicalSpace, provider, dimensions, vector);
-            var path = Path.Combine(spaceDir, $"{id:N}.json");
-            await File.WriteAllTextAsync(path, JsonSerializer.Serialize(rec, J));
+            // Small retry loop: Windows can transiently lock files during AV/indexing.
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    await File.WriteAllTextAsync(tmp, json).ConfigureAwait(false);
+                    File.Move(tmp, path, overwrite: true);
+                    return;
+                }
+                catch (IOException) when (attempt < 2)
+                {
+                    await Task.Delay(15 * (attempt + 1)).ConfigureAwait(false);
+                }
+            }
         }
+        finally
+        {
+            try
+            {
+                if (File.Exists(tmp))
+                    File.Delete(tmp);
+            }
+            catch
+            {
+                // best effort cleanup only
+            }
+        }
+    }
+    finally
+    {
+        gate.Release();
+    }
+}
 
         // --- add these helpers inside the FileStore class ---
         private static string SpaceToPath(string space)
