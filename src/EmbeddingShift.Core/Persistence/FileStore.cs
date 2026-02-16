@@ -104,27 +104,62 @@ private static SemaphoreSlim GetPathLock(string path)
     }
 }
 
-        // --- add these helpers inside the FileStore class ---
         private static string SpaceToPath(string space)
             => SpacePath.ToRelativePath(space);
 
-        public async Task<float[]> LoadEmbeddingAsync(Guid id)
+                public async Task<float[]> LoadEmbeddingAsync(Guid id)
         {
-            // search in all space folders
+            // Search in all space folders (space is not known at this callsite).
             var rootDir = Path.Combine(_root, "embeddings");
-            if (!Directory.Exists(rootDir)) return Array.Empty<float>();
+            if (!Directory.Exists(rootDir))
+                return Array.Empty<float>();
 
             foreach (var file in Directory.EnumerateFiles(rootDir, $"{id:N}.json", SearchOption.AllDirectories))
             {
-                var json = await File.ReadAllTextAsync(file);
-                var rec = JsonSerializer.Deserialize<EmbeddingRec>(json, J);
-                if (rec?.vector is { Length: > 0 })
-                    return rec.vector;
+                var gate = GetPathLock(file);
+                await gate.WaitAsync().ConfigureAwait(false);
+
+                try
+                {
+                    // Small retry loop: Windows can transiently lock files during AV/indexing.
+                    string? json = null;
+
+                    for (var attempt = 0; attempt < 3; attempt++)
+                    {
+                        try
+                        {
+                            json = await File.ReadAllTextAsync(file).ConfigureAwait(false);
+                            break;
+                        }
+                        catch (IOException) when (attempt < 2)
+                        {
+                            await Task.Delay(15 * (attempt + 1)).ConfigureAwait(false);
+                        }
+                        catch (FileNotFoundException)
+                        {
+                            // File disappeared between enumeration and read. Skip.
+                            json = null;
+                            break;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(json))
+                        continue;
+
+                    var rec = JsonSerializer.Deserialize<EmbeddingRec>(json, J);
+                    if (rec?.vector is { Length: > 0 })
+                        return rec.vector;
+                }
+                finally
+                {
+                    gate.Release();
+                }
             }
+
             return Array.Empty<float>();
         }
 
-        public async Task SaveShiftAsync(Guid id, string type, string parametersJson)
+public async Task SaveShiftAsync(Guid id, string type, string parametersJson)
         {
             var rec = new ShiftRec(id, type, parametersJson, DateTime.UtcNow);
 
