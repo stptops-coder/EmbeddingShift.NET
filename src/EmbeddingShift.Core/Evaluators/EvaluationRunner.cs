@@ -200,7 +200,12 @@ namespace EmbeddingShift.Core.Evaluators
 
         private static string CreateResultsDirectory(string kind, Guid runId)
         {
-            var root = Path.Combine(DirectoryLayout.ResolveResultsRoot(), "runs");
+            var domainKeyRaw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_RESULTS_DOMAIN");
+            var domainKey = string.IsNullOrWhiteSpace(domainKeyRaw)
+                ? "insurance"
+                : SanitizePathPart(domainKeyRaw);
+
+            var root = Path.Combine(DirectoryLayout.ResolveResultsRoot(domainKey), "runs");
             var safeKind = SanitizePathPart(kind);
             var dirName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{safeKind}_{runId:N}";
             var path = Path.Combine(root, dirName);

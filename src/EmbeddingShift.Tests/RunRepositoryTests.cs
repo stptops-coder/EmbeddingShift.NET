@@ -14,10 +14,12 @@ namespace EmbeddingShift.Tests
         [Fact]
         public async Task FileRunRepository_writes_run_artifact_as_json()
         {
-            var baseDir = AppContext.BaseDirectory;
-            var root = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", ".."));
-            var targetDir = Path.Combine(root, "results", "tests", "runs");
-
+            var targetDir = Path.Combine(
+                Path.GetTempPath(),
+                "EmbeddingShift.Tests",
+                "RunRepositoryTests",
+                Guid.NewGuid().ToString("N"),
+                "runs");
             if (Directory.Exists(targetDir))
             {
                 Directory.Delete(targetDir, recursive: true);
@@ -57,6 +59,19 @@ namespace EmbeddingShift.Tests
             // Check metric payload
             var metrics1 = root1.GetProperty("Metrics");
             Assert.Equal(1.23, metrics1.GetProperty("test_metric").GetDouble());
+
+            // Best-effort cleanup
+            try
+            {
+                if (Directory.Exists(Path.GetDirectoryName(targetDir)!))
+                {
+                    Directory.Delete(Path.GetDirectoryName(targetDir)!, recursive: true);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
         }
     }
 }
