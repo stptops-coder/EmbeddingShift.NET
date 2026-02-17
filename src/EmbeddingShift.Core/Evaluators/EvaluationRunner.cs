@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.Json;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -114,7 +115,7 @@ namespace EmbeddingShift.Core.Evaluators
 
             var completedAtUtc = DateTime.UtcNow;
 
-            return new EvaluationRunSummary(
+            var summary = new EvaluationRunSummary(
                 RunId: runId,
                 Kind: "evaluation",
                 Dataset: datasetName,
@@ -122,7 +123,10 @@ namespace EmbeddingShift.Core.Evaluators
                 CompletedAtUtc: completedAtUtc,
                 ResultsPath: resultsPath,
                 Metrics: metrics);
-        }
+
+            TryWriteRunSummaryFile(summary);
+            return summary;
+}
 
         /// <summary>
         /// Runs evaluation for the provided shift and compares it against a NoShift baseline.
@@ -188,7 +192,7 @@ namespace EmbeddingShift.Core.Evaluators
 
             var completedAtUtc = DateTime.UtcNow;
 
-            return new EvaluationRunSummary(
+            var summary = new EvaluationRunSummary(
                 RunId: runId,
                 Kind: "evaluation+baseline",
                 Dataset: datasetName,
@@ -196,7 +200,10 @@ namespace EmbeddingShift.Core.Evaluators
                 CompletedAtUtc: completedAtUtc,
                 ResultsPath: resultsPath,
                 Metrics: metrics);
-        }
+
+            TryWriteRunSummaryFile(summary);
+            return summary;
+}
 
         private static string CreateResultsDirectory(string kind, Guid runId)
         {
@@ -205,13 +212,39 @@ namespace EmbeddingShift.Core.Evaluators
                 ? "insurance"
                 : SanitizePathPart(domainKeyRaw);
 
-            var root = Path.Combine(DirectoryLayout.ResolveResultsRoot(domainKey), "runs");
+            var root = DirectoryLayout.ResolveRunsRoot(domainKey);
             var safeKind = SanitizePathPart(kind);
             var dirName = $"{DateTime.UtcNow:yyyyMMdd_HHmmss}_{safeKind}_{runId:N}";
             var path = Path.Combine(root, dirName);
             Directory.CreateDirectory(path);
             return path;
         }
+
+    private static void TryWriteRunSummaryFile(EvaluationRunSummary summary)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(summary.ResultsPath))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(summary.ResultsPath);
+
+            var outPath = Path.Combine(summary.ResultsPath, "run-summary.json");
+            var json = JsonSerializer.Serialize(summary, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            File.WriteAllText(outPath, json);
+        }
+        catch
+        {
+            // Best-effort only: never fail evaluation because summary persistence failed.
+        }
+    }
+
 
         private static string SanitizePathPart(string name)
         {

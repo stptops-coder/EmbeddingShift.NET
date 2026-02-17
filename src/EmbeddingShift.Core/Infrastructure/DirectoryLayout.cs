@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 
 namespace EmbeddingShift.Core.Infrastructure
@@ -6,32 +6,91 @@ namespace EmbeddingShift.Core.Infrastructure
     /// <summary>
     /// Central helper for resolving the physical layout of data and results folders.
     /// Keeps runtime code independent from Debug/Release and current working directory.
-    /// This is intentionally conservative and falls back to the current directory
+    ///
+    /// Layout principles:
+    /// - Default layout is "tenant".
+    /// - Tenant layout (when tenant is present): results/<domain>/tenants/<tenant>/...
+    /// - Legacy layout (or when tenant is absent): results/<domain>/...
+    ///
+    /// This helper is intentionally conservative and falls back to the current directory
     /// if all primary candidates fail.
     /// </summary>
     public static class DirectoryLayout
     {
-        public static string ResolveResultsRoot(string? domainSubfolder = null)
+        public static string ResolveRoot(string folderName, string? domainSubfolder = null)
+            => ResolveRoot_INTERNAL(folderName, domainSubfolder);
+
+        public static string ResolveResultsRoot(string domainName, string? tenantKey = null)
         {
             // Tenant-aware result layout (unified):
-            // - No tenant: results[/<domainSubfolder>]
-            // - With tenant: results/<domainKey>/tenants/<tenant>[/...]
+            // - No tenant (or legacy layout): results/<domain>
+            // - With tenant (tenant layout): results/<domain>/tenants/<tenant>
             //
             // Historically, some commands wrote to results/tenants/<tenant>/..., while others used
-            // results/<domainKey>/tenants/<tenant>/... (e.g. "insurance"). This created confusing
+            // results/<domain>/tenants/<tenant>/... (e.g. "insurance"). This created confusing
             // cross-command inconsistencies. We now always route tenant results through the
-            // domainKey layout, using a stable default domainKey when none is provided.
-            var tenant = GetTenantKeyOrNull();
-            if (tenant is null)
-                return ResolveRoot("results", domainSubfolder);
+            // domain layout.
 
-            var domainKey = domainSubfolder ?? GetDefaultResultsDomainKeyOrNull() ?? "insurance";
+            var domainKey = string.IsNullOrWhiteSpace(domainName)
+                ? (GetDefaultResultsDomainKeyOrNull() ?? "insurance")
+                : domainName;
             domainKey = SanitizeFolderKey(domainKey);
 
-            var tenantPart = Path.Combine("tenants", tenant);
-            var effective = Path.Combine(domainKey, tenantPart);
+            var layout = GetLayoutOrDefault();
+            tenantKey ??= GetTenantKeyOrNull();
 
-            return ResolveRoot("results", effective);
+            if (string.Equals(layout, "tenant", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(tenantKey))
+            {
+                var effective = Path.Combine(domainKey, "tenants", tenantKey);
+                return ResolveRoot_INTERNAL("results", effective);
+            }
+
+            return ResolveRoot_INTERNAL("results", domainKey);
+        }
+
+        public static string ResolveRunsRoot(string domainName, string? tenantKey = null)
+        {
+            // Always derive from ResolveResultsRoot to avoid duplicated tenant segments.
+            var baseRoot = ResolveResultsRoot(domainName, tenantKey);
+            return Path.Combine(baseRoot, "runs");
+        }
+
+        public static string ResolveDatasetsRoot(string domainName, string? tenantKey = null)
+        {
+            // Always derive from ResolveResultsRoot to avoid duplicated tenant segments.
+            var baseRoot = ResolveResultsRoot(domainName, tenantKey);
+            return Path.Combine(baseRoot, "datasets");
+        }
+
+        public static string ResolveDataRoot(string? domainSubfolder = null)
+        {
+            // Optional override: pin *data* root directly (useful for tests/CI).
+            var envDataRoot = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_DATA_ROOT");
+            if (!string.IsNullOrWhiteSpace(envDataRoot))
+            {
+                var basePath = Path.GetFullPath(envDataRoot);
+                var path = domainSubfolder is null ? basePath : Path.Combine(basePath, domainSubfolder);
+                Directory.CreateDirectory(path);
+                return path;
+            }
+
+            return ResolveRoot_INTERNAL("data", domainSubfolder);
+        }
+
+        private static string GetLayoutOrDefault()
+        {
+            // Default = tenant (consistent with runbooks + multi-tenant result folders).
+            var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_LAYOUT");
+            if (string.IsNullOrWhiteSpace(raw))
+                return "tenant";
+
+            var v = raw.Trim();
+            if (string.Equals(v, "legacy", StringComparison.OrdinalIgnoreCase))
+                return "legacy";
+
+            // Any other value is treated as tenant to stay predictable.
+            return "tenant";
         }
 
         private static string? GetDefaultResultsDomainKeyOrNull()
@@ -45,7 +104,7 @@ namespace EmbeddingShift.Core.Infrastructure
             return raw;
         }
 
-private static string? GetTenantKeyOrNull()
+        private static string? GetTenantKeyOrNull()
         {
             var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT");
             if (string.IsNullOrWhiteSpace(raw))
@@ -82,28 +141,12 @@ private static string? GetTenantKeyOrNull()
             return cleaned.Length == 0 ? "tenant" : cleaned;
         }
 
-
-        public static string ResolveDataRoot(string? domainSubfolder = null)
-        {
-            // Optional override: pin *data* root directly (useful for tests/CI).
-            var envDataRoot = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_DATA_ROOT");
-            if (!string.IsNullOrWhiteSpace(envDataRoot))
-            {
-                var basePath = Path.GetFullPath(envDataRoot);
-                var path = domainSubfolder is null ? basePath : Path.Combine(basePath, domainSubfolder);
-                Directory.CreateDirectory(path);
-                return path;
-            }
-
-            return ResolveRoot("data", domainSubfolder);
-        }
-
-        private static string ResolveRoot(string rootFolderName, string? domainSubfolder)
+        private static string ResolveRoot_INTERNAL(string rootFolderName, string? domainSubfolder)
         {
             if (string.IsNullOrWhiteSpace(rootFolderName))
                 throw new ArgumentException("Root folder name must be provided.", nameof(rootFolderName));
 
-            string Combine(params string[] parts) => Path.Combine(parts);
+            static string Combine(params string[] parts) => Path.Combine(parts);
 
             var envRoot = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_ROOT");
 
@@ -143,7 +186,6 @@ private static string? GetTenantKeyOrNull()
                     // try next candidate, keep this silent and robust
                 }
             }
-
 
             // Last-resort fallback: current directory (+ optional subfolder)
             var fallback = domainSubfolder is null
