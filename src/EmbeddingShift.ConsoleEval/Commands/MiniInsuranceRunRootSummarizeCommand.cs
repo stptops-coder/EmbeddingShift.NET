@@ -76,31 +76,14 @@ namespace EmbeddingShift.ConsoleEval.Commands
             Console.WriteLine($"  {outPath}");
             return Task.CompletedTask;
         }
-
         private static void EnsureRunRootLayout(string runRoot, string domainKey)
         {
-            if (!Directory.Exists(runRoot))
-                Directory.CreateDirectory(runRoot);
-
+            // Minimal folders needed by this command:
+            // <runroot>\results\<domain>\reports
             var domainRoot = Path.Combine(runRoot, "results", domainKey);
+
             Directory.CreateDirectory(domainRoot);
-
-            // Standard contract folders (create even if empty)
-            var standard = new[]
-            {
-                "datasets",
-                "training",
-                "runs",
-                "reports",
-                "experiments",
-                "aggregates",
-                "inspect"
-            };
-
-            foreach (var folder in standard)
-            {
-                Directory.CreateDirectory(Path.Combine(domainRoot, folder));
-            }
+            Directory.CreateDirectory(Path.Combine(domainRoot, "reports"));
         }
 
         private static List<CaseRow> LoadCases(string casesPath)
@@ -180,7 +163,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             sb.AppendLine("Notes");
             sb.AppendLine("------------------------------------------------------------");
             sb.AppendLine("- This summary is derived from cases.json (runner output).");
-            sb.AppendLine("- Standard folders under results/insurance/ are ensured by this command.");
+            sb.AppendLine("- This command ensures only results/<domain>/reports/ (no datasets/runs/training folder creation).");
             sb.AppendLine("============================================================");
 
             return sb.ToString();

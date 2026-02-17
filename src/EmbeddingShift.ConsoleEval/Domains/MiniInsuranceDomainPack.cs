@@ -300,10 +300,8 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
 
             case "runroot-summarize":
                 {
-                    // Creates stable standard folders under:
-                    //   <runroot>\results\insurance\{datasets,training,runs,reports,experiments,aggregates,inspect}
-                    // and writes:
-                    //   <runroot>\results\insurance\reports\summary.txt
+                    // Writes a compact summary report under:
+                    //   <runroot>\\results\\insurance\\reports\\summary.txt
                     //
                     // Uses --runroot=<path> or ENV:EMBEDDINGSHIFT_ROOT
                     await MiniInsuranceRunRootSummarizeCommand.RunAsync(args);
