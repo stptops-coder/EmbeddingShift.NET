@@ -71,6 +71,7 @@ else {
 }
 
 $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $DatasetRoot
+$env:EMBEDDINGSHIFT_DATASET_ROOT = $DatasetRoot
 
 
 # Derive the tenant base and the runs root from the dataset root (works for both scratch and repo layouts).

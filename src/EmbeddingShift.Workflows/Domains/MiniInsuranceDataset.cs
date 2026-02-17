@@ -12,7 +12,8 @@ using System.IO;
 /// </summary>
 public static class MiniInsuranceDataset
 {
-    private const string DatasetRootEnvVar = "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT";
+    private const string DatasetRootEnvVarPrimary = "EMBEDDINGSHIFT_DATASET_ROOT";
+    private const string DatasetRootEnvVarLegacy = "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT";
 
     /// <summary>
     /// Returns the root directory of the Mini-Insurance sample dataset
@@ -24,7 +25,11 @@ public static class MiniInsuranceDataset
 
         // Optional override (absolute or repo-relative), e.g.:
         //   results/insurance/datasets/<name>/stage-00
-        var overrideValue = Environment.GetEnvironmentVariable(DatasetRootEnvVar);
+        var overrideValue = Environment.GetEnvironmentVariable(DatasetRootEnvVarPrimary);
+        if (string.IsNullOrWhiteSpace(overrideValue))
+        {
+            overrideValue = Environment.GetEnvironmentVariable(DatasetRootEnvVarLegacy);
+        }
         if (!string.IsNullOrWhiteSpace(overrideValue))
         {
             var trimmed = overrideValue.Trim();

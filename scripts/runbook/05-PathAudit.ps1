@@ -1,249 +1,133 @@
-param(
-  [string]$RepoRoot = "",
-  [string]$Tenant = "",
-  [string]$Layout = "",
-  [switch]$ListDeep
-)
+# EmbeddingShift Path Audit (Runbook)
+# Purpose: diagnose path/layout settings used by runbooks & CLI.
+# Notes:
+# - Hardened script: StrictMode + Stop on errors.
+# - Must never crash when env vars are absent.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Resolve-RepoRoot {
-  param([string]$Hint)
+function Get-RepoRoot {
+  # Note: In PowerShell, $MyInvocation inside a function refers to the function invocation,
+  # not the script file. $PSScriptRoot / $PSCommandPath are the robust choices.
+  $scriptDir = $PSScriptRoot
 
-  if ($Hint -and (Test-Path -LiteralPath $Hint)) { return (Resolve-Path -LiteralPath $Hint).Path }
-
-  # 1) Git root if available
-  try {
-    $gitRoot = (git rev-parse --show-toplevel 2>$null)
-    if ($gitRoot -and (Test-Path -LiteralPath $gitRoot)) { return (Resolve-Path -LiteralPath $gitRoot).Path }
-  } catch { }
-
-  # 2) Walk up from script location until we find src/ and scripts/
-  $p = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
-  while ($p -and (Test-Path -LiteralPath $p)) {
-    if ((Test-Path (Join-Path $p "src")) -and (Test-Path (Join-Path $p "scripts"))) { return $p }
-    $parent = Split-Path -Path $p -Parent
-    if ($parent -eq $p) { break }
-    $p = $parent
+  if ([string]::IsNullOrWhiteSpace($scriptDir)) {
+    $scriptPath = $PSCommandPath
+    if (-not [string]::IsNullOrWhiteSpace($scriptPath)) {
+      $scriptDir = Split-Path -Parent $scriptPath
+    }
   }
 
-  throw "Could not resolve RepoRoot. Please pass -RepoRoot <path>."
-}
-
-function Print-KV {
-  param([string]$K, [string]$V)
-  $v2 = if ($V) { $V } else { "<empty>" }
-  Write-Host ("{0} = {1}" -f $K, $v2)
-}
-
-function List-DirSafe {
-  param(
-    [Parameter(Mandatory = $true)]
-    [string]$Path,
-
-    [int]$Depth = 1,
-
-    [string]$Indent = ""
-  )
-
-  if (-not (Test-Path -LiteralPath $Path)) {
-    Write-Host ("{0}(missing) {1}" -f $Indent, $Path)
-    return
+  if ([string]::IsNullOrWhiteSpace($scriptDir)) {
+    throw "[PathAudit] Failed to resolve RepoRoot from script path."
   }
 
-  # Print a compact, stable listing (directories first, then files)
-  $dirs = Get-ChildItem -LiteralPath $Path -Directory -Force -ErrorAction SilentlyContinue | Sort-Object Name
-  $files = Get-ChildItem -LiteralPath $Path -File -Force -ErrorAction SilentlyContinue | Sort-Object Name
-
-  foreach ($d in $dirs) { Write-Host ("{0}[d] {1}" -f $Indent, $d.Name) }
-  foreach ($f in $files) { Write-Host ("{0}[f] {1}" -f $Indent, $f.Name) }
-
-  if ($Depth -le 1) { return }
-
-  foreach ($d in $dirs) {
-    Write-Host ("{0}{1}/" -f $Indent, $d.Name)
-    List-DirSafe -Path $d.FullName -Depth ($Depth - 1) -Indent ("{0}  " -f $Indent)
-  }
+  $repo = Resolve-Path (Join-Path $scriptDir '..\..')
+  return $repo.Path
 }
 
 
-$root = Resolve-RepoRoot -Hint $RepoRoot
-$results = Join-Path $root "results"
+function Format-Empty([string]$value) {
+  if ([string]::IsNullOrWhiteSpace($value)) { return '<empty>' }
+  return $value
+}
 
+function Read-Env([string]$name, [EnvironmentVariableTarget]$target) {
+  # Returns $null if not set.
+  try { return [Environment]::GetEnvironmentVariable($name, $target) } catch { return $null }
+}
+
+function Write-EnvTriple([string]$name) {
+  $p = Read-Env $name ([EnvironmentVariableTarget]::Process)
+  $u = Read-Env $name ([EnvironmentVariableTarget]::User)
+  $m = Read-Env $name ([EnvironmentVariableTarget]::Machine)
+  Write-Host ("Process:{0} = {1}" -f $name, (Format-Empty $p))
+  Write-Host ("User   :{0} = {1}" -f $name, (Format-Empty $u))
+  Write-Host ("Machine:{0} = {1}" -f $name, (Format-Empty $m))
+}
+
+$repoRoot = Get-RepoRoot
+$repoResultsRoot = Join-Path $repoRoot 'results'
+
+$activeRunRoot = $env:EMBEDDINGSHIFT_ROOT
+$activeResults = if (-not [string]::IsNullOrWhiteSpace($activeRunRoot)) {
+  Join-Path $activeRunRoot 'results'
+} elseif (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_DATA_ROOT)) {
+  $env:EMBEDDINGSHIFT_DATA_ROOT
+} elseif (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_RESULTS_ROOT)) {
+  $env:EMBEDDINGSHIFT_RESULTS_ROOT
+} else {
+  $repoResultsRoot
+}
+
+$datasetRoot = if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_DATASET_ROOT)) {
+  $env:EMBEDDINGSHIFT_DATASET_ROOT
+} elseif (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT)) {
+  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT
+} else {
+  $null
+}
+
+$tenant = $env:EMBEDDINGSHIFT_TENANT
+$layout = if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_LAYOUT)) { $env:EMBEDDINGSHIFT_LAYOUT } else { 'tenant' }
+
+$time = Get-Date
 Write-Host ""
 Write-Host "=== EmbeddingShift Path Audit ==="
-Write-Host ("Time      : {0}" -f (Get-Date).ToString("yyyy-MM-dd HH:mm:ss"))
-Write-Host ("RepoRoot  : {0}" -f $root)
-Write-Host ("Results   : {0}" -f $results)
-Write-Host ""
+Write-Host ("Time            : {0}" -f $time.ToString('yyyy-MM-dd HH:mm:ss'))
+Write-Host ("RepoRoot        : {0}" -f $repoRoot)
+Write-Host ("RepoResultsRoot : {0}" -f $repoResultsRoot)
+Write-Host ("ActiveRunRoot   : {0}" -f (Format-Empty $activeRunRoot))
+Write-Host ("ActiveResults   : {0}" -f (Format-Empty $activeResults))
 
+Write-Host ""
 Write-Host "=== Relevant environment variables (Process/User/Machine view) ==="
-# We print Process scope (what matters for scripts)
 $vars = @(
-  "EMBEDDINGSHIFT_ROOT",
-  "EMBEDDINGSHIFT_DATA_ROOT",
-  "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT",
-  "EMBEDDINGSHIFT_TENANT",
-  "EMBEDDINGSHIFT_PROVIDER",
-  "EMBEDDINGSHIFT_BACKEND",
-  "EMBEDDINGSHIFT_SIM_MODE",
-  "EMBEDDINGSHIFT_SIM_ALGO"
+  'EMBEDDINGSHIFT_ROOT',
+  'EMBEDDINGSHIFT_DATA_ROOT',
+  'EMBEDDINGSHIFT_RESULTS_ROOT',
+  'EMBEDDINGSHIFT_RESULTS_DOMAIN',
+  'EMBEDDINGSHIFT_DATASET_ROOT',
+  'EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT',
+  'EMBEDDINGSHIFT_TENANT',
+  'EMBEDDINGSHIFT_LAYOUT',
+  'EMBEDDINGSHIFT_PROVIDER',
+  'EMBEDDINGSHIFT_BACKEND',
+  'EMBEDDINGSHIFT_SIM_MODE',
+  'EMBEDDINGSHIFT_SIM_ALGO'
 )
-
 foreach ($v in $vars) {
-  $p = [Environment]::GetEnvironmentVariable($v, "Process")
-  Print-KV -K ("Process:{0}" -f $v) -V $p
+  Write-EnvTriple $v
+  Write-Host ""
 }
-Write-Host ""
 
 Write-Host "=== Derived key paths ==="
-$activeRunRoot = [Environment]::GetEnvironmentVariable("EMBEDDINGSHIFT_ROOT", "Process")
-if ($activeRunRoot) {
-  try { $activeRunRoot = (Resolve-Path -LiteralPath $activeRunRoot).Path } catch { }
-}
-$dsRoot = [Environment]::GetEnvironmentVariable("EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT", "Process")
-if ($dsRoot) {
-  # Allow relative ds-root (common in docs)
-  if (-not ([System.IO.Path]::IsPathRooted($dsRoot))) {
-    $dsRoot = Join-Path $root $dsRoot
-  }
-  try { $dsRoot = (Resolve-Path -LiteralPath $dsRoot).Path } catch { }
-}
+Write-Host ("DatasetRoot      = {0}" -f (Format-Empty $datasetRoot))
+Write-Host ("Tenant(arg/env)  = {0}" -f (Format-Empty $tenant))
+Write-Host ("Layout(arg/env)  = {0}" -f (Format-Empty $layout))
 
-$tenant2 = $Tenant
-if (-not $tenant2) {
-  $tenant2 = [Environment]::GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT", "Process")
-}
-
-Print-KV "ActiveRunRoot" $activeRunRoot
-Print-KV "DatasetRoot"  $dsRoot
-Print-KV "Tenant(arg/env)" $tenant2
- 
-$layout = $Layout
-if (-not $layout) {
-  $layout = [Environment]::GetEnvironmentVariable("EMBEDDINGSHIFT_LAYOUT", "Process")
-}
-if (-not $layout) {
-  $layout = 'tenant'
-}
-$layout = $layout.ToLowerInvariant()
-Print-KV "Layout(arg/env)" $layout
 Write-Host ""
-
 Write-Host "=== Existence checks ==="
-Write-Host ("RepoRoot exists  : {0}" -f (Test-Path -LiteralPath $root))
-Write-Host ("Results exists   : {0}" -f (Test-Path -LiteralPath $results))
-Write-Host ("RunRoot exists   : {0}" -f ($(if ($activeRunRoot) { Test-Path -LiteralPath $activeRunRoot } else { $false })))
-Write-Host ("Dataset exists   : {0}" -f ($(if ($dsRoot) { Test-Path -LiteralPath $dsRoot } else { $false })))
-Write-Host ""
+Write-Host ("RepoRoot exists  : {0}" -f (Test-Path $repoRoot))
+Write-Host ("Results exists   : {0}" -f (Test-Path $repoResultsRoot))
+Write-Host ("RunRoot exists   : {0}" -f ((-not [string]::IsNullOrWhiteSpace($activeRunRoot)) -and (Test-Path $activeRunRoot)))
+Write-Host ("ActiveResults ok : {0}" -f ((-not [string]::IsNullOrWhiteSpace($activeResults)) -and (Test-Path $activeResults)))
+Write-Host ("Dataset exists   : {0}" -f ((-not [string]::IsNullOrWhiteSpace($datasetRoot)) -and (Test-Path $datasetRoot)))
 
+Write-Host ""
 Write-Host "=== High-level folder map ==="
-Write-Host "Results top:"
-List-DirSafe -Path $results -Depth 1
-Write-Host ""
-
-# Common locations we’ve used in this repo
-# Common locations we’ve used in this repo
-$pathsToCheck = @(
-  (Join-Path $results "_scratch"),
-  (Join-Path $results "insurance"),
-  (Join-Path $results "insurance\tenants")
-)
-
-if ($layout -ne 'tenant') {
-  # Legacy/non-tenant layout folders
-  $pathsToCheck += (Join-Path $results "insurance\datasets")
-  $pathsToCheck += (Join-Path $results "insurance\runroots")
+if (Test-Path $activeResults) {
+  Write-Host "ActiveResults top:"
+  Get-ChildItem $activeResults -Directory -ErrorAction SilentlyContinue |
+    Sort-Object Name |
+    ForEach-Object { Write-Host ("[d] {0}" -f $_.Name) }
 } else {
-  Write-Host "Key folders (tenant layout): insurance\datasets and insurance\runroots are legacy/optional."
+  Write-Host "ActiveResults top: <missing>"
 }
 
-Write-Host "Key folders:"
-foreach ($p in $pathsToCheck) {
-  List-DirSafe -Path $p -Depth 1
-}
 Write-Host ""
-
-if ($tenant2) {
-  Write-Host "Tenant-specific (if present):"
-  $tenantPath = Join-Path $results ("insurance\tenants\{0}" -f $tenant2)
-  List-DirSafe -Path $tenantPath -Depth 2
-  # Legacy top-level PosNeg directories (backwards-compat only; prefer training/ + runs/)
-  $legacyTrain = @(Get-ChildItem -LiteralPath $tenantPath -Directory -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -like "mini-insurance-posneg-training_*" })
-  $legacyRun = @(Get-ChildItem -LiteralPath $tenantPath -Directory -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -like "mini-insurance-posneg-run_*" })
-
-  if ($legacyTrain.Count -gt 0 -or $legacyRun.Count -gt 0) {
-    Write-Host ""
-    Write-Host "Legacy layout detected at tenant root:"
-    if ($legacyTrain) { Write-Host ("  training dirs: {0}" -f $legacyTrain.Count) }
-    if ($legacyRun) { Write-Host ("  run dirs:      {0}" -f $legacyRun.Count) }
-    Write-Host "Preferred layout is:"
-    Write-Host "  <tenant>\\training\\mini-insurance-posneg-training_*"
-    Write-Host "  <tenant>\\runs\\mini-insurance-posneg-run_*"
-    Write-Host "Keeping legacy dirs is OK, but it increases clutter during audits."
-  }
-
-  Write-Host ""
-
-# Also show the run roots inside the tenant (keeps the main map compact but makes _best/_active visible).
-$runsDir = Join-Path $tenantPath 'runs'
-if (Test-Path -LiteralPath $runsDir) {
-  Write-Host "Runs (tenant):"
-  List-DirSafe -Path $runsDir -Indent '  ' -Depth 2
-
-  $bestDir = Join-Path $runsDir '_best'
-  $activeDir = Join-Path $runsDir '_active'
-  $historyDir = Join-Path $activeDir 'history'
-
-  Write-Host ""
-  Write-Host "Run pointers:"
-  Write-Host ("  _best   : {0}" -f (Test-Path -LiteralPath $bestDir))
-  Write-Host ("  _active : {0}" -f (Test-Path -LiteralPath $activeDir))
-  Write-Host ("  history : {0}" -f (Test-Path -LiteralPath $historyDir))
-
-  if (Test-Path -LiteralPath $bestDir) {
-    $bestFiles = Get-ChildItem -LiteralPath $bestDir -File -Filter 'best_*.json' -ErrorAction SilentlyContinue
-    if ($bestFiles) {
-      Write-Host "  best files:"
-      foreach ($f in $bestFiles) { Write-Host ("    - {0}" -f $f.Name) }
-    }
-  }
-
-  if (Test-Path -LiteralPath $activeDir) {
-    $activeFiles = Get-ChildItem -LiteralPath $activeDir -File -Filter 'active_*.json' -ErrorAction SilentlyContinue
-    if ($activeFiles) {
-      Write-Host "  active files:"
-      foreach ($f in $activeFiles) { Write-Host ("    - {0}" -f $f.Name) }
-    }
-  }
-
-  Write-Host ""
-}
-}
-
-if ($activeRunRoot) {
-  Write-Host "Active RunRoot snapshot:"
-  List-DirSafe -Path $activeRunRoot -Depth 2
-  Write-Host ""
-}
-
-if ($ListDeep) {
-  Write-Host "=== DEEP LIST (may be noisy) ==="
-  foreach ($p in $pathsToCheck) {
-    if (Test-Path -LiteralPath $p) {
-      Write-Host ""
-      Write-Host ("[Deep] {0}" -f $p)
-      Get-ChildItem -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue |
-        Select-Object FullName, Length, LastWriteTime |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 200 |
-        Format-Table -AutoSize
-    }
-  }
-}
-
+Write-Host "Key folders (tenant layout): <domain>\\tenants\\<tenant>\\datasets and <domain>\\tenants\\<tenant>\\runs"
+Write-Host "Key folders (legacy): <domain>\\datasets and <domain>\\runroots"
 Write-Host ""
 Write-Host "=== Done. ==="
