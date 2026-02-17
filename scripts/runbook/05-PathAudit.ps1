@@ -82,6 +82,7 @@ Write-Host "=== Relevant environment variables (Process/User/Machine view) ==="
 # We print Process scope (what matters for scripts)
 $vars = @(
   "EMBEDDINGSHIFT_ROOT",
+  "EMBEDDINGSHIFT_DATA_ROOT",
   "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT",
   "EMBEDDINGSHIFT_TENANT",
   "EMBEDDINGSHIFT_PROVIDER",
