@@ -3,7 +3,7 @@ param(
   # Optional override. If not provided, the script auto-detects the repo root.
   [string]$RepoRoot,
 
-  # Folder name under .\results\<ResultsDomain>\...
+  # Domain key used for internal results paths inside a RunRoot (default: insurance)
   [string]$ResultsDomain = "insurance",
 
   # ConsoleEval domain id (argument to the CLI).
@@ -40,7 +40,7 @@ Assert-File $healthScript "Health script"
 Assert-File $inspectScript "Inspect script"
 
 function Get-RunRoots([string]$repoRoot, [string]$resultsDomain) {
-  $base = Join-Path $repoRoot ("results\" + $resultsDomain + "\runroots")
+  $base = Join-Path $repoRoot "results\_scratch\EmbeddingShift.FirstLight"
   if (-not (Test-Path -LiteralPath $base)) { return @() }
   return @(Get-ChildItem -LiteralPath $base -Directory -ErrorAction SilentlyContinue)
 }
@@ -115,10 +115,10 @@ try {
   Write-Host ""
   
   Write-Host "Next commands (copy/paste):"
-  Write-Host ("  `$rr = `"{0}`"" -f $RunRoot)
+  Write-Host ("  `$rr = `"{0}`"" -f $runRoot)
   Write-Host "  [Environment]::SetEnvironmentVariable('EMBEDDINGSHIFT_ROOT', `$rr, 'Process')"
   Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance posneg-best --include-cancelled"
-  Write-Host ("  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance runroot-summarize --runroot=`"{0}`"" -f $RunRoot)
+  Write-Host ("  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance runroot-summarize --runroot=`"{0}`"" -f $runRoot)
   Write-Host "  .\scripts\inspect\Inspect-RunRoot.ps1 -RunRoot `$rr -WriteJsonIndex"
 
   if ($OpenSummary -and (Test-Path -LiteralPath $summaryPath)) {

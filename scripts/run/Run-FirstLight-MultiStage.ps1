@@ -37,7 +37,7 @@ $ErrorActionPreference = 'Stop'
 #   - dotnet SDK installed.
 #
 # Postconditions
-#   - A new runroot is created under: results\insurance\runroots\FirstLight3_yyyyMMdd_HHmmss
+#   - A new runroot is created under: results\_scratch\EmbeddingShift.FirstLight\FirstLight3_yyyyMMdd_HHmmss
 #   - Dataset is generated under tenant layout: results\insurance\tenants\<tenant>\datasets\<dataset>\stage-*
 #   - Mini-insurance pipeline + posneg training are executed using the generated dataset.
 # -------------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ if ($Build) {
 }
 
 $RunId = (Get-Date).ToString("yyyyMMdd_HHmmss")
-$RunRoot = Join-Path $RepoRoot "results\insurance\runroots\FirstLight3_$RunId"
+$RunRoot = Join-Path $RepoRoot "results\_scratch\EmbeddingShift.FirstLight\FirstLight3_$RunId"
 
 # In this run we want a tenant-scoped layout to be compatible with the rest of the runbook.
 $PrevTenant = $env:EMBEDDINGSHIFT_TENANT
@@ -114,3 +114,5 @@ try {
 finally {
   $env:EMBEDDINGSHIFT_TENANT = $PrevTenant
 }
+
+Write-Output $RunRoot

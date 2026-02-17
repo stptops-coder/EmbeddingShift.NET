@@ -128,6 +128,6 @@ if (Test-Path $activeResults) {
 
 Write-Host ""
 Write-Host "Key folders (tenant layout): <domain>\\tenants\\<tenant>\\datasets and <domain>\\tenants\\<tenant>\\runs"
-Write-Host "Key folders (legacy): <domain>\\datasets and <domain>\\runroots"
+Write-Host "Key folders (legacy): <domain>\\datasets and <domain>\\runs (historical: <domain>\\runroots may exist)"
 Write-Host ""
 Write-Host "=== Done. ==="

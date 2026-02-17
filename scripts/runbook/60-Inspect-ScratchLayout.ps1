@@ -113,9 +113,11 @@ if (-not (Test-Path -LiteralPath $runs))     { Add-Warning "Missing runs folder:
 
 # Legacy/non-tenant layout (should normally not be produced by current runbooks)
 $legacyDatasets = Join-Path $Root 'results\insurance\datasets'
-$legacyRunRoots = Join-Path $Root 'results\insurance\runroots'
+$legacyRuns     = Join-Path $Root 'results\insurance\runs'
+$legacyRunRoots = Join-Path $Root 'results\insurance\runroots' # historical
 if (Test-Path -LiteralPath $legacyDatasets) { Add-Warning "Legacy non-tenant folder exists (optional): $legacyDatasets" }
-if (Test-Path -LiteralPath $legacyRunRoots) { Add-Warning "Legacy non-tenant folder exists (optional): $legacyRunRoots" }
+if (Test-Path -LiteralPath $legacyRuns)     { Add-Warning "Legacy non-tenant folder exists (optional): $legacyRuns" }
+if (Test-Path -LiteralPath $legacyRunRoots) { Add-Warning "Historical folder exists (optional): $legacyRunRoots" }
 
 # Summaries
 if (Test-Path -LiteralPath $datasets) {

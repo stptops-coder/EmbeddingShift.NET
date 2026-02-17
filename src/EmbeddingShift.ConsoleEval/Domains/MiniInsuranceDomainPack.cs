@@ -37,10 +37,10 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
         log("  domain mini-insurance posneg-history [maxItems]");
         log("  domain mini-insurance posneg-best");
         log("");
-        log("  domain mini-insurance dataset-generate <name> [--stages=N] [--policies=N] [--queries=N] [--seed=N] [--overwrite]");
-        log("    Writes staged datasets under: results/insurance/datasets/<name>/stage-00 ...");
+        log("  domain mini-insurance dataset-generate <name> [--tenant=<id>] [--stages=N] [--policies=N] [--queries=N] [--seed=N] [--overwrite]");
+        log("    Writes staged datasets under: results/insurance/tenants/<tenant>/datasets/<name>/stage-00 ...");
         log("    Use env var to switch the workflow input:");
-        log("      EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT=<full-or-repo-relative-stage-path>");
+        log("      EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT=<full-or-repo-relative-stage-00-path>");
         log("  domain mini-insurance shift-training-inspect [workflowName]");
         log("  domain mini-insurance shift-training-history [workflowName] [maxItems]");
         log("  domain mini-insurance shift-training-best [workflowName]");

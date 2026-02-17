@@ -74,7 +74,7 @@ Run from repo root:
 
 Expected outputs:
 - A new RunRoot directory under:
-  - `results\insurance\runroots\<RunId>\`
+  - `results\_scratch\EmbeddingShift.FirstLight\<RunId>\`
 - Reports under the RunRoot, typically including:
   - `reports\summary.txt`
   - `reports\health.txt`
@@ -108,7 +108,7 @@ Get-Help .\scripts\run\Run-FirstLight-MultiStage.ps1 -Detailed
 ### 6.1 Find latest RunRoot
 
 ```powershell
-$rr = (Get-ChildItem .\results\insurance\runroots -Directory |
+$rr = (Get-ChildItem .\results\_scratch\EmbeddingShift.FirstLight -Directory |
        Sort-Object LastWriteTime -Descending |
        Select-Object -First 1).FullName
 $rr
@@ -216,11 +216,11 @@ From the repo root:
 .\scripts\runbook\00-Prep.ps1
 .\scripts\runbook\10-Build.ps1
 .\scripts\runbook\20-FullRun-MiniInsurance.ps1
-.\scripts\runbook\30-Tests.ps1
+.\scripts\runbook\90-Tests-Samples.ps1
 .\scripts\runbook\40-Health.ps1
 ```
 
 Notes:
 - The run is isolated under `results\_scratch\EmbeddingShift.MiniInsurance\yyyyMMdd_HHmmss` via `EMBEDDINGSHIFT_ROOT` (process scope).
 - `20-FullRun-MiniInsurance.ps1` generates a dataset, runs the pipeline, creates a compare report, and makes a promotion decision.
-- `30-Tests.ps1` runs the full unit/acceptance test suite (expected: 77/77 green).
+- `90-Tests-Samples.ps1` runs the unit/acceptance test suite against the sample dataset (expected: 77/77 green).
