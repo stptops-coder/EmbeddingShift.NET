@@ -50,7 +50,7 @@ namespace EmbeddingShift.Core.Stats
             if (artifact is null) throw new ArgumentNullException(nameof(artifact));
 
             var safeWorkflowName = SanitizePathSegment(artifact.WorkflowName);
-            var runFolder = Path.Combine(_rootDirectory, safeWorkflowName, artifact.RunId);
+            var runFolder = Path.Combine(_rootDirectory, "_repo", safeWorkflowName, artifact.RunId);
 
             Directory.CreateDirectory(runFolder);
 

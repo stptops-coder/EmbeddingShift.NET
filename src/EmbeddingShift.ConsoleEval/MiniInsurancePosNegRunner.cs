@@ -278,7 +278,7 @@ namespace EmbeddingShift.ConsoleEval
             Console.WriteLine($"             NDCG@3 = {ndcg3Shifted - ndcg3Baseline:+0.000;-0.000;0.000}");
 
             // Persist metrics for later inspection/aggregation.
-            // Keep all run-related artifacts under the standard runs folder to avoid clutter at tenant root.
+            // Keep user-facing artifacts under the standard runs folder; internal run metadata lives under runs\_repo.
             //   <tenant>\runs\mini-insurance-posneg-run_YYYYMMDD_HHMMSS_fff
             var runsRoot = MiniInsurancePaths.GetRunsRoot();
             Directory.CreateDirectory(runsRoot);
