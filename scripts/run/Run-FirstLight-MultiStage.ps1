@@ -1,5 +1,14 @@
 param(
   [Parameter(Mandatory=$false)]
+  [string]$RepoRoot = "",
+
+  [Parameter(Mandatory=$false)]
+  [string]$ResultsDomain = "insurance",
+
+  [Parameter(Mandatory=$false)]
+  [string]$DomainId = "mini-insurance",
+
+  [Parameter(Mandatory=$false)]
   [int]$Seed = 1337,
 
   [Parameter(Mandatory=$false)]
@@ -29,7 +38,7 @@ $ErrorActionPreference = 'Stop'
 
 # -------------------------------------------------------------------------------------------------
 # Purpose
-#   End-to-end "FirstLight" demo run (generate multi-stage dataset -> run mini-insurance pipeline -> train posneg).
+#   End-to-end "FirstLight" demo run (generate multi-stage dataset -> run domain pipeline -> train posneg).
 #   Uses tenant layout to stay compatible with other runbook scripts and ConsoleEval defaults.
 #
 # Preconditions
@@ -38,11 +47,15 @@ $ErrorActionPreference = 'Stop'
 #
 # Postconditions
 #   - A new runroot is created under: results\_scratch\EmbeddingShift.FirstLight\FirstLight3_yyyyMMdd_HHmmss
-#   - Dataset is generated under tenant layout: results\insurance\tenants\<tenant>\datasets\<dataset>\stage-*
-#   - Mini-insurance pipeline + posneg training are executed using the generated dataset.
+#   - Dataset is generated under tenant layout: results\<domain>\tenants\<tenant>\datasets\<dataset>\stage-*
+#   - Domain pipeline + posneg training are executed using the generated dataset.
 # -------------------------------------------------------------------------------------------------
 
-$RepoRoot = Get-RepoRoot -StartPath $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
+    $RepoRoot = Get-RepoRoot -StartPath $PSScriptRoot
+} else {
+    $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+}
 $SlnPath  = Join-Path $RepoRoot "EmbeddingShift.sln"
 
 if ($Build) {
@@ -61,7 +74,7 @@ $env:EMBEDDINGSHIFT_TENANT = $Tenant
 
 try {
   Write-Host ""
-  Write-Host "=== Seed $Seed / dataset $DatasetName / tenant $Tenant ==="
+  Write-Host "=== Seed $Seed / dataset $DatasetName / tenant $Tenant / domain $DomainId ==="
 
   # Scope all output to this run root (ConsoleEval honors EMBEDDINGSHIFT_ROOT).
   $PrevRoot = $env:EMBEDDINGSHIFT_ROOT
@@ -71,27 +84,27 @@ try {
     # 1) Generate multi-stage dataset (tenant layout)
     Invoke-DotNet @(
       "run","--project","src/EmbeddingShift.ConsoleEval","--",
-      "domain","mini-insurance",
+      "domain",$DomainId,
       "--tenant",$Tenant,
       "dataset-generate",$DatasetName,
       "--policies=$Policies","--queries=$Queries","--stages=$Stages","--seed=$Seed"
     )
 
-    $DatasetStage0 = Join-Path $RunRoot "results\insurance\tenants\$Tenant\datasets\$DatasetName\stage-00"
+    $DatasetStage0 = Join-Path $RunRoot "results\$ResultsDomain\tenants\$Tenant\datasets\$DatasetName\stage-00"
 
     Write-Host ""
     Write-Host "Next (PowerShell):"
-    Write-Host "  `$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = `"$DatasetStage0`""
-    Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pipeline"
+    Write-Host "  `$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = `\"$DatasetStage0`\""
+    Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain $DomainId pipeline"
     Write-Host ""
 
-    # 2) Run mini-insurance pipeline against stage-00
+    # 2) Run domain pipeline against stage-00
     $PrevDsRoot = $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT
     $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $DatasetStage0
     try {
       Invoke-DotNet @(
         "run","--project","src/EmbeddingShift.ConsoleEval","--",
-        "domain","mini-insurance",
+        "domain",$DomainId,
         "--tenant",$Tenant,
         "pipeline"
       )
@@ -102,7 +115,7 @@ try {
     # 3) Train PosNeg delta (production mode by default)
     Invoke-DotNet @(
       "run","--project","src/EmbeddingShift.ConsoleEval","--",
-      "domain","mini-insurance",
+      "domain",$DomainId,
       "--tenant",$Tenant,
       "posneg-train","--mode=production","--cancel-epsilon=0.001"
     )

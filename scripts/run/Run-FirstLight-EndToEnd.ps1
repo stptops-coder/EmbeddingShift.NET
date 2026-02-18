@@ -1,19 +1,23 @@
 [CmdletBinding()]
 param(
-  # Optional override. If not provided, the script auto-detects the repo root.
-  [string]$RepoRoot,
+    [switch]$Build,
+    [string]$RepoRoot,
+    [string]$ResultsDomain = 'insurance',
+    [string]$DomainId = 'mini-insurance',
 
-  # Domain key used for internal results paths inside a RunRoot (default: insurance)
-  [string]$ResultsDomain = "insurance",
+    [string]$Tenant = 'insurer-a',
+    [int]$Seed = 1006,
+    [int]$Policies = 80,
+    [int]$Queries = 160,
+    [int]$Stages = 3,
+    [switch]$Overwrite,
 
-  # ConsoleEval domain id (argument to the CLI).
-  [string]$DomainId = "mini-insurance",
+    [ValidateSet('deterministic','stochastic')]
+    [string]$SimMode = 'deterministic',
 
-  # Optional behavior
-  [switch]$Build,
-  [bool]$WriteJsonIndex = $true,
-  [switch]$OpenSummary,
-  [switch]$OpenHealth
+    [switch]$WriteJsonIndex = $true,
+    [switch]$OpenSummary,
+    [switch]$OpenHealth
 )
 
 Set-StrictMode -Version Latest
@@ -29,6 +33,31 @@ if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
   $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
 }
 $RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+
+function Assert-Dir {
+  param(
+    [Parameter(Mandatory=$true)][string]$Path,
+    [string]$Hint = $null
+  )
+  if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+    $msg = "Directory not found: $Path"
+    if (-not [string]::IsNullOrWhiteSpace($Hint)) { $msg += " | $Hint" }
+    throw $msg
+  }
+}
+
+function Assert-File {
+  param(
+    [Parameter(Mandatory=$true)][string]$Path,
+    [string]$Hint = $null
+  )
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    $msg = "File not found: $Path"
+    if (-not [string]::IsNullOrWhiteSpace($Hint)) { $msg += " | $Hint" }
+    throw $msg
+  }
+}
+
 
 $runScript    = Join-Path $RepoRoot "scripts\run\Run-FirstLight-MultiStage.ps1"
 $healthScript = Join-Path $RepoRoot "scripts\inspect\Inspect-RunRootHealth.ps1"
@@ -57,7 +86,7 @@ try {
 
   Write-Host ("[Run] " + $runScript)
   # Capture the last output line if the script prints the runRoot.
-  $runOutput = & $runScript -RepoRoot $RepoRoot -ResultsDomain $ResultsDomain -DomainId $DomainId
+  $runOutput = & $runScript -RepoRoot $RepoRoot -ResultsDomain $ResultsDomain -DomainId $DomainId -Tenant $Tenant -Seed $Seed -Policies $Policies -Queries $Queries -Stages $Stages -Overwrite:$Overwrite -SimMode $SimMode
   $lastLine = $null
   if ($runOutput) {
     $lastLine = @($runOutput | Select-Object -Last 1)[0]
