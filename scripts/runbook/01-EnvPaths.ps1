@@ -1,78 +1,85 @@
-param(
-  [string]$Tenant = "",
-  [ValidateSet("scratch","tenant")][string]$Layout = "scratch",
-  [string]$Domain = "insurance",
-  [string]$Scenario = "EmbeddingShift.MiniInsurance",
-  [string]$DatasetRelative = "samples\insurance",
-  [switch]$Force,
-  [switch]$ClearOptional,
-  [switch]$CreateFolders
-)
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Get-RepoRoot {
-  # scripts/runbook -> scripts -> repo root
-  return (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-}
+# Sets a coherent set of environment variables for running the CLI.
+# This script is intentionally conservative: it applies defaults that match the repo layout,
+# but still allows explicit overrides via parameters.
 
-function New-Timestamp {
-  return (Get-Date).ToString('yyyyMMdd_HHmmss')
-}
+param(
+    [Parameter(Mandatory = $false)]
+    [string] $ResultsRoot = "",
 
-function Ensure-Dir([string]$Path) {
-  if (-not (Test-Path -LiteralPath $Path)) {
-    New-Item -ItemType Directory -Force -Path $Path | Out-Null
-  }
-}
+    [Parameter(Mandatory = $false)]
+    [string] $DataRoot = "",
 
-$repoRoot = Get-RepoRoot
-$resultsRoot = Join-Path $repoRoot 'results'
-$datasetRoot = Join-Path $repoRoot $DatasetRelative
+    [Parameter(Mandatory = $false)]
+    [string] $Root = "",
 
-if ($CreateFolders) {
-  Ensure-Dir $resultsRoot
-  Ensure-Dir $datasetRoot
-}
+    [Parameter(Mandatory = $false)]
+    [string] $DatasetRoot = "",
 
-$ts = New-Timestamp
+    [Parameter(Mandatory = $false)]
+    [string] $Tenant = "",
 
-# Run roots are always created under results\_scratch to avoid duplicating domain/tenant segments.
-# (Domain/tenant are already added inside the run root by DirectoryLayout.)
-$activeRunRoot = Join-Path $resultsRoot (Join-Path '_scratch' (Join-Path $Scenario $ts))
-if ($CreateFolders) {
-  Ensure-Dir $activeRunRoot
-}
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("scratch", "tenant")]
+    [string] $Layout = "scratch",
 
-# Always set process-level roots for this session.
-$env:EMBEDDINGSHIFT_RESULTS_ROOT = $resultsRoot
-$env:EMBEDDINGSHIFT_ROOT = $activeRunRoot
+    [Parameter(Mandatory = $false)]
+    [string] $Domain = "insurance",
 
-if ($Force -or [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT)) {
-  $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $datasetRoot
-}
+    [Parameter(Mandatory = $false)]
+    [switch] $Force
+)
 
-if ($Force -or $Layout -eq 'tenant') {
-  # Keep the environment in sync with the CLI argument (prevents "stale tenant" drift).
-  $env:EMBEDDINGSHIFT_TENANT = $Tenant
+. "$PSScriptRoot\..\lib\RepoRoot.ps1"
+
+# Defaults
+if ([string]::IsNullOrWhiteSpace($ResultsRoot)) { $ResultsRoot = Join-Path $RepoRoot "results" }
+if ([string]::IsNullOrWhiteSpace($DataRoot))    { $DataRoot = Join-Path $RepoRoot "data" }
+if ([string]::IsNullOrWhiteSpace($Root))        { $Root = Join-Path $ResultsRoot "_scratch" }
+if ([string]::IsNullOrWhiteSpace($DatasetRoot)) { $DatasetRoot = Join-Path $RepoRoot "samples\insurance" }
+
+# Apply core roots
+if ($Force -or -not [string]::IsNullOrWhiteSpace($ResultsRoot)) { $env:EMBEDDINGSHIFT_RESULTS_ROOT = $ResultsRoot }
+if ($Force -or -not [string]::IsNullOrWhiteSpace($DataRoot))    { $env:EMBEDDINGSHIFT_DATA_ROOT = $DataRoot }
+if ($Force -or -not [string]::IsNullOrWhiteSpace($Root))        { $env:EMBEDDINGSHIFT_ROOT = $Root }
+if ($Force -or -not [string]::IsNullOrWhiteSpace($DatasetRoot)) { $env:EMBEDDINGSHIFT_DATASET_ROOT = $DatasetRoot }
+
+# Keep domain/layout in sync with how the CLI will resolve paths
+$env:EMBEDDINGSHIFT_RESULTS_DOMAIN = $Domain
 $env:EMBEDDINGSHIFT_LAYOUT = $Layout
+
+if ($Layout -eq 'tenant') {
+    if ([string]::IsNullOrWhiteSpace($Tenant)) {
+        throw "Tenant is required when Layout='tenant'."
+    }
+    $env:EMBEDDINGSHIFT_TENANT = $Tenant
+}
+else {
+    # Avoid stale values from previous runs.
+    $env:EMBEDDINGSHIFT_TENANT = ""
 }
 
-if ($ClearOptional) {
-  $env:EMBEDDINGSHIFT_PROVIDER = ""
-  $env:EMBEDDINGSHIFT_BACKEND = ""
-  $env:EMBEDDINGSHIFT_SIM_MODE = ""
-  $env:EMBEDDINGSHIFT_SIM_ALGO = ""
+Write-Host "[Paths] RepoRoot=$RepoRoot"
+Write-Host "[Paths] ResultsRoot=$ResultsRoot"
+Write-Host "[Paths] DataRoot=$DataRoot"
+Write-Host "[Paths] Root=$Root"
+Write-Host "[Paths] DatasetRoot=$DatasetRoot"
+Write-Host "[Paths] Domain=$Domain"
+Write-Host "[Paths] Layout=$Layout"
+
+if ($Layout -eq 'tenant') {
+    Write-Host "[Paths] Tenant=$Tenant"
 }
 
-# Emit a compact summary (copy-safe).
 [PSCustomObject]@{
-  RepoRoot      = $repoRoot
-  ResultsRoot   = $resultsRoot
-  ActiveRunRoot = $activeRunRoot
-  DatasetRoot   = $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT
-  Tenant        = $env:EMBEDDINGSHIFT_TENANT
-  Layout        = $Layout
-  Scenario      = $Scenario
+    RepoRoot     = $RepoRoot
+    ResultsRoot  = $ResultsRoot
+    DataRoot     = $DataRoot
+    Root         = $Root
+    DatasetRoot  = $DatasetRoot
+    Domain       = $Domain
+    Layout       = $Layout
+    Tenant       = if ($Layout -eq 'tenant') { $Tenant } else { "" }
 }

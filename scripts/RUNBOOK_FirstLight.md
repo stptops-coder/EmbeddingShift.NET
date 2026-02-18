@@ -42,24 +42,24 @@ Notes:
 ## 3) Script map
 
 ### Run scripts
-- `scripts\run\Run-FirstLight-EndToEnd.ps1`  
-  Full end-to-end run (build + dataset generate + training + multi-stage runs + reports).
+- `scripts\run\Run-FirstLight-EndToEnd.ps1`
+  Full end-to-end run (multi-stage pipeline + summary + index + health). Returns the RunRoot via pipeline output.
 
-- `scripts\run\Run-FirstLight-MultiStage.ps1`  
-  Configurable runner; useful for quicker smoke runs.
+- `scripts\run\Run-FirstLight-MultiStage.ps1`
+  Configurable runner; useful for quicker smoke runs. Returns the RunRoot via pipeline output.
 
 ### Inspect scripts
-- `scripts\inspect\Inspect-RunRootHealth.ps1`  
-  Validates the RunRoot folder contract (expected folders/files).
+- `scripts\inspect\Inspect-RunRootHealth.ps1`
+  Validates the RunRoot folder contract (expected folders/files) and writes `reports\health.txt`.
 
-- `scripts\inspect\Inspect-RunRoot.ps1`  
+- `scripts\inspect\Inspect-RunRoot.ps1`
   Summarizes a RunRoot and can generate `index.json` via `-WriteJsonIndex`.
 
 ### Shared helpers
-- `scripts\lib\RepoRoot.ps1`  
+- `scripts\lib\RepoRoot.ps1`
   Repo-root discovery helper.
 
-- `scripts\lib\DotNet.ps1`  
+- `scripts\lib\DotNet.ps1`
   Helper for `dotnet` invocation and related functionality.
 
 ---
@@ -69,17 +69,19 @@ Notes:
 Run from repo root:
 
 ```powershell
-.\scripts\run\Run-FirstLight-EndToEnd.ps1 -Build -OpenSummary -OpenHealth
+$rr = .\scripts\run\Run-FirstLight-EndToEnd.ps1 -Stages 3 -Seed 1006 -SimMode deterministic -Tenant insurer-a
+$rr
 ```
 
 Expected outputs:
 - A new RunRoot directory under:
   - `results\_scratch\EmbeddingShift.FirstLight\<RunId>\`
 - Reports under the RunRoot, typically including:
-  - `reports\summary.txt`
-  - `reports\health.txt`
+  - `results\insurance\tenants\<Tenant>\reports\summary.txt`
+  - `results\insurance\tenants\<Tenant>\reports\health.txt`
+  - `index.json` in the RunRoot root
 
-To see script parameters (if help is available):
+To see script parameters:
 
 ```powershell
 Get-Help .\scripts\run\Run-FirstLight-EndToEnd.ps1 -Detailed
@@ -92,10 +94,11 @@ Get-Help .\scripts\run\Run-FirstLight-EndToEnd.ps1 -Detailed
 Use MultiStage directly for faster iterations:
 
 ```powershell
-.\scripts\run\Run-FirstLight-MultiStage.ps1 -Build -Policies 50 -Queries 120 -Stages 2 -Seeds @(1337)
+$rr = .\scripts\run\Run-FirstLight-MultiStage.ps1 -Stages 2 -Seed 1337 -SimMode deterministic -Tenant insurer-a
+$rr
 ```
 
-To see script parameters (if help is available):
+To see script parameters:
 
 ```powershell
 Get-Help .\scripts\run\Run-FirstLight-MultiStage.ps1 -Detailed
@@ -117,13 +120,13 @@ $rr
 ### 6.2 Health check + create index
 
 ```powershell
-.\scripts\inspect\Inspect-RunRootHealth.ps1 -RunRoot $rr
-.\scripts\inspect\Inspect-RunRoot.ps1 -RunRoot $rr -WriteJsonIndex
+.\scripts\inspect\Inspect-RunRoot.ps1 -RunRoot $rr -Domain insurance -Tenant insurer-a -WriteJsonIndex
+.\scripts\inspect\Inspect-RunRootHealth.ps1 -RunRoot $rr -Domain insurance -Tenant insurer-a
 ```
 
-Important note:
-- `index.json` is created by `Inspect-RunRoot.ps1 -WriteJsonIndex`.
-  If Health reports `index.json` as missing **before** you run Inspect, that is expected.
+Notes:
+- `manifest.json` and `cases.json` are currently **optional** placeholders (reserved for future tooling).
+- `index.json` is optional as well, but recommended because it makes navigation and inspection faster.
 
 ---
 
@@ -157,70 +160,3 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pos
 
 If these commands show “unexpected history”, it is usually because the RunRoot context differs
 (or you did not set `EMBEDDINGSHIFT_ROOT` for the session).
-
----
-
-## 9) Typical RunRoot contents
-
-A RunRoot typically contains (names may evolve over time):
-
-- `datasets/` — generated policies/queries/cases inputs
-- `training/` — shift training results (PosNeg etc.)
-- `runs/` — per-stage / per-seed run outputs
-- `reports/` — `summary.txt`, `health.txt`, etc.
-- `manifest.json` — high-level run metadata
-- `cases.json` — evaluated cases and metrics
-
-Some folders may be empty depending on the current feature set (e.g., `vectorstore/`).
-
----
-
-## 10) Troubleshooting
-
-### 10.1 “Script is not digitally signed” / cannot load
-Run the one-time setup (ExecutionPolicy Process + Unblock-File):
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-Get-ChildItem .\scripts -Recurse -Filter *.ps1 | Unblock-File
-```
-
-To check whether a script is blocked (Zone.Identifier):
-
-```powershell
-Get-Item .\scripts\run\Run-FirstLight-EndToEnd.ps1 -Stream Zone.Identifier -ErrorAction SilentlyContinue
-```
-
-### 10.2 Health says `index.json` is missing
-Run:
-
-```powershell
-.\scripts\inspect\Inspect-RunRoot.ps1 -RunRoot $rr -WriteJsonIndex
-```
-
-### 10.3 PosNeg cancel-out / all improvements are zero
-In deterministic simulation, the embedding algorithm choice can matter a lot.
-Mitigations:
-- Ensure a stable deterministic sim algorithm is used (e.g., `sha256`)
-- Increase dataset size (Policies/Queries)
-- Use production training mode (if exposed by the scripts)
-
-
----
-
-## Mini-Insurance runbook scripts (single run)
-
-From the repo root:
-
-```powershell
-.\scripts\runbook\00-Prep.ps1
-.\scripts\runbook\10-Build.ps1
-.\scripts\runbook\20-FullRun-MiniInsurance.ps1
-.\scripts\runbook\90-Tests-Samples.ps1
-.\scripts\runbook\40-Health.ps1
-```
-
-Notes:
-- The run is isolated under `results\_scratch\EmbeddingShift.MiniInsurance\yyyyMMdd_HHmmss` via `EMBEDDINGSHIFT_ROOT` (process scope).
-- `20-FullRun-MiniInsurance.ps1` generates a dataset, runs the pipeline, creates a compare report, and makes a promotion decision.
-- `90-Tests-Samples.ps1` runs the unit/acceptance test suite against the sample dataset (expected: 77/77 green).

@@ -39,6 +39,11 @@ $env:EMBEDDINGSHIFT_RESULTS_DOMAIN = $ResultsDomain
 $env:EMBEDDINGSHIFT_TENANT = $Tenant
 $env:EMBEDDINGSHIFT_LAYOUT = 'tenant'
 
+# Keep the run configuration visible in PathAudit output.
+$env:EMBEDDINGSHIFT_BACKEND = 'sim'
+$env:EMBEDDINGSHIFT_SIM_MODE = $SimMode
+$env:EMBEDDINGSHIFT_SIM_ALGO = 'sha256'
+
 $datasetName = ("FirstLight{0}-{1}" -f $Stages, $Seed)
 $datasetStage0 = Join-Path (Join-Path (Join-Path (Join-Path (Join-Path (Join-Path $runRoot "results") $ResultsDomain) "tenants") $Tenant) "datasets") $datasetName
 $datasetStage0 = Join-Path $datasetStage0 "stage-00"
@@ -57,18 +62,18 @@ catch {
     Write-Warning "runroot-summarize failed: $($_.Exception.Message)"
 }
 
-# Health report (best-effort)
-try {
-    & $healthScript -RunRoot $runRoot -Domain $ResultsDomain -Tenant $Tenant -WriteReport | Out-Host
-}
-catch {
-    Write-Warning "Inspect-RunRootHealth failed: $($_.Exception.Message)"
-}
-
 # Index JSON for quick navigation (best-effort)
 try {
     & $inspectScript -RunRoot $runRoot -Domain $ResultsDomain -Tenant $Tenant -WriteJsonIndex | Out-Host
 }
 catch {
     Write-Warning "Inspect-RunRoot failed: $($_.Exception.Message)"
+}
+
+# Health report (best-effort)
+try {
+    & $healthScript -RunRoot $runRoot -Domain $ResultsDomain -Tenant $Tenant | Out-Host
+}
+catch {
+    Write-Warning "Inspect-RunRootHealth failed: $($_.Exception.Message)"
 }
