@@ -38,13 +38,9 @@ if ($CreateFolders) {
 
 $ts = New-Timestamp
 
-if ($Layout -eq 'tenant' -and -not [string]::IsNullOrWhiteSpace($Tenant)) {
-  $activeRunRoot = Join-Path $resultsRoot (Join-Path $Domain (Join-Path 'tenants' (Join-Path $Tenant (Join-Path '_scratch' (Join-Path $Scenario $ts)))))
-}
-else {
-  $activeRunRoot = Join-Path $resultsRoot (Join-Path '_scratch' (Join-Path $Scenario $ts))
-}
-
+# Run roots are always created under results\_scratch to avoid duplicating domain/tenant segments.
+# (Domain/tenant are already added inside the run root by DirectoryLayout.)
+$activeRunRoot = Join-Path $resultsRoot (Join-Path '_scratch' (Join-Path $Scenario $ts))
 if ($CreateFolders) {
   Ensure-Dir $activeRunRoot
 }

@@ -1,162 +1,74 @@
 [CmdletBinding()]
 param(
-    [switch]$Build,
-    [string]$RepoRoot,
-    [string]$ResultsDomain = 'insurance',
-    [string]$DomainId = 'mini-insurance',
-
-    [string]$Tenant = 'insurer-a',
-    [int]$Seed = 1006,
-    [int]$Policies = 80,
-    [int]$Queries = 160,
     [int]$Stages = 3,
-    [switch]$Overwrite,
-
-    [ValidateSet('deterministic','stochastic')]
-    [string]$SimMode = 'deterministic',
-
-    [switch]$WriteJsonIndex = $true,
-    [switch]$OpenSummary,
-    [switch]$OpenHealth
+    [int]$Seed = 1006,
+    [ValidateSet('deterministic','stochastic')][string]$SimMode = 'deterministic',
+    [string]$Tenant = 'insurer-a',
+    [string]$Domain = 'mini-insurance',
+    [string]$ResultsDomain = 'insurance',
+    [switch]$Overwrite
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# --- Import helpers
-. (Join-Path $PSScriptRoot "..\lib\RepoRoot.ps1")
-. (Join-Path $PSScriptRoot "..\lib\DotNet.ps1")
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$runScript = Join-Path $RepoRoot 'scripts\run\Run-FirstLight-MultiStage.ps1'
+$inspectScript = Join-Path $RepoRoot 'scripts\inspect\Inspect-RunRoot.ps1'
+$healthScript = Join-Path $RepoRoot 'scripts\inspect\Inspect-RunRootHealth.ps1'
 
-if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
-  # Convention: scripts\run\... lives under <RepoRoot>\scripts\...
-  # So the repo root is two levels up from this script folder.
-  $RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..\..")).Path
-}
-$RepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+Write-Host "[Run] $runScript"
 
-function Assert-Dir {
-  param(
-    [Parameter(Mandatory=$true)][string]$Path,
-    [string]$Hint = $null
-  )
-  if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
-    $msg = "Directory not found: $Path"
-    if (-not [string]::IsNullOrWhiteSpace($Hint)) { $msg += " | $Hint" }
-    throw $msg
-  }
+# Multi-stage runner returns the RunRoot via pipeline output.
+# IMPORTANT: dotnet wrapper output can pollute the pipeline; therefore we only take the last output item as the RunRoot.
+$runRootOut = & $runScript -Stages $Stages -Seed $Seed -SimMode $SimMode -Tenant $Tenant -Domain $Domain -ResultsDomain $ResultsDomain -Overwrite:$Overwrite
+
+$runRoot = ($runRootOut | Where-Object { $_ -is [string] -and $_ -match '^[A-Za-z]:\\' } | Select-Object -Last 1)
+
+if ([string]::IsNullOrWhiteSpace($runRoot)) {
+    throw "Run-FirstLight-MultiStage.ps1 did not return a RunRoot path. Output: $runRootOut"
 }
 
-function Assert-File {
-  param(
-    [Parameter(Mandatory=$true)][string]$Path,
-    [string]$Hint = $null
-  )
-  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-    $msg = "File not found: $Path"
-    if (-not [string]::IsNullOrWhiteSpace($Hint)) { $msg += " | $Hint" }
-    throw $msg
-  }
-}
+$runRoot = (Resolve-Path -LiteralPath $runRoot).Path
 
+Write-Host "[RunRoot] $runRoot"
 
-$runScript    = Join-Path $RepoRoot "scripts\run\Run-FirstLight-MultiStage.ps1"
-$healthScript = Join-Path $RepoRoot "scripts\inspect\Inspect-RunRootHealth.ps1"
-$inspectScript = Join-Path $RepoRoot "scripts\inspect\Inspect-RunRoot.ps1"
+# Persist for follow-up runbook scripts in the current PowerShell session.
+$env:EMBEDDINGSHIFT_ROOT = $runRoot
+$env:EMBEDDINGSHIFT_RESULTS_DOMAIN = $ResultsDomain
+$env:EMBEDDINGSHIFT_TENANT = $Tenant
+$env:EMBEDDINGSHIFT_LAYOUT = 'tenant'
 
-Assert-Dir  $RepoRoot "RepoRoot"
-Assert-File $runScript "Run script"
-Assert-File $healthScript "Health script"
-Assert-File $inspectScript "Inspect script"
+$datasetName = ("FirstLight{0}-{1}" -f $Stages, $Seed)
+$datasetStage0 = Join-Path (Join-Path (Join-Path (Join-Path (Join-Path (Join-Path $runRoot "results") $ResultsDomain) "tenants") $Tenant) "datasets") $datasetName
+$datasetStage0 = Join-Path $datasetStage0 "stage-00"
+$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $datasetStage0
 
-function Get-RunRoots([string]$repoRoot, [string]$resultsDomain) {
-  $base = Join-Path $repoRoot "results\_scratch\EmbeddingShift.FirstLight"
-  if (-not (Test-Path -LiteralPath $base)) { return @() }
-  return @(Get-ChildItem -LiteralPath $base -Directory -ErrorAction SilentlyContinue)
-}
+# Make RunRoot easy to capture: return it via pipeline output.
+# (Callers often do: $runRoot = .\scripts\run\Run-FirstLight-EndToEnd.ps1 ...)
+Write-Output $runRoot
 
-$before = Get-RunRoots $RepoRoot $ResultsDomain
-$beforeSet = @{}
-foreach ($d in $before) { $beforeSet[$d.FullName] = $true }
-
-Push-Location -LiteralPath $RepoRoot
+# Summary report (best-effort)
 try {
-  if ($Build) {
-    Invoke-DotNet -Args @("build") | Out-Host
-  }
-
-  Write-Host ("[Run] " + $runScript)
-  # Capture the last output line if the script prints the runRoot.
-  $runOutput = & $runScript -RepoRoot $RepoRoot -ResultsDomain $ResultsDomain -DomainId $DomainId -Tenant $Tenant -Seed $Seed -Policies $Policies -Queries $Queries -Stages $Stages -Overwrite:$Overwrite -SimMode $SimMode
-  $lastLine = $null
-  if ($runOutput) {
-    $lastLine = @($runOutput | Select-Object -Last 1)[0]
-  }
-
-  $after = Get-RunRoots $RepoRoot $ResultsDomain | Sort-Object LastWriteTime -Descending
-
-  # Determine the new runroot
-  $runRoot = $null
-  if ($lastLine -and (Test-Path -LiteralPath $lastLine -PathType Container)) {
-    $runRoot = (Resolve-Path -LiteralPath $lastLine).Path
-  } else {
-    foreach ($d in $after) {
-      if (-not $beforeSet.ContainsKey($d.FullName)) { $runRoot = $d.FullName; break }
-    }
-  }
-
-  if (-not $runRoot) {
-    throw "Could not determine the newly created RunRoot."
-  }
-
-  Write-Host ""
-  Write-Host ("[RunRoot] " + $runRoot)
-
-  # 1) Summary (ConsoleEval)
-  Write-Host "[Summary] runroot-summarize"
-  Invoke-DotNet -Args @(
-    "run",
-    "--project", "src/EmbeddingShift.ConsoleEval",
-    "--",
-    "domain", $DomainId, "runroot-summarize",
-    ("--runroot=" + $runRoot)
-  ) | Out-Host
-
-  # 2) Health
-  Write-Host "[Health] Inspect-RunRootHealth -WriteReport"
-  & $healthScript -RunRoot $runRoot -Domain $ResultsDomain -WriteReport
-  if ($LASTEXITCODE -ne 0) { throw "Health script failed (exit=$LASTEXITCODE)" }
-
-  # 3) Inspect (optional JSON index)
-  if ($WriteJsonIndex) {
-    Write-Host "[Inspect] Inspect-RunRoot -WriteJsonIndex"
-    & $inspectScript -RunRoot $runRoot -Domain $ResultsDomain -WriteJsonIndex
-    if ($LASTEXITCODE -ne 0) { throw "Inspect script failed (exit=$LASTEXITCODE)" }
-  }
-
-  $summaryPath = Join-Path $runRoot ("results\" + $ResultsDomain + "\reports\summary.txt")
-  $healthPath  = Join-Path $runRoot ("results\" + $ResultsDomain + "\reports\health.txt")
-
-  Write-Host ""
-  Write-Host "[Artifacts]"
-  Write-Host ("  Summary: " + $summaryPath)
-  Write-Host ("  Health : " + $healthPath)
-  
-  Write-Host ""
-  
-  Write-Host "Next commands (copy/paste):"
-  Write-Host ("  `$rr = `"{0}`"" -f $runRoot)
-  Write-Host "  [Environment]::SetEnvironmentVariable('EMBEDDINGSHIFT_ROOT', `$rr, 'Process')"
-  Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance posneg-best --include-cancelled"
-  Write-Host ("  dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance runroot-summarize --runroot=`"{0}`"" -f $runRoot)
-  Write-Host "  .\scripts\inspect\Inspect-RunRoot.ps1 -RunRoot `$rr -WriteJsonIndex"
-
-  if ($OpenSummary -and (Test-Path -LiteralPath $summaryPath)) {
-    Start-Process notepad.exe -ArgumentList @($summaryPath) | Out-Null
-  }
-  if ($OpenHealth -and (Test-Path -LiteralPath $healthPath)) {
-    Start-Process notepad.exe -ArgumentList @($healthPath) | Out-Null
-  }
+    Write-Host "[Summary] runroot-summarize"
+    & dotnet run --project (Join-Path $RepoRoot 'src\EmbeddingShift.ConsoleEval') -- domain $Domain runroot-summarize --runroot=$runRoot | Out-Host
 }
-finally {
-  Pop-Location
+catch {
+    Write-Warning "runroot-summarize failed: $($_.Exception.Message)"
+}
+
+# Health report (best-effort)
+try {
+    & $healthScript -RunRoot $runRoot -Domain $ResultsDomain -Tenant $Tenant -WriteReport | Out-Host
+}
+catch {
+    Write-Warning "Inspect-RunRootHealth failed: $($_.Exception.Message)"
+}
+
+# Index JSON for quick navigation (best-effort)
+try {
+    & $inspectScript -RunRoot $runRoot -Domain $ResultsDomain -Tenant $Tenant -WriteJsonIndex | Out-Host
+}
+catch {
+    Write-Warning "Inspect-RunRoot failed: $($_.Exception.Message)"
 }

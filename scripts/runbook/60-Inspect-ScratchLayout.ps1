@@ -54,7 +54,9 @@ if ([string]::IsNullOrWhiteSpace($Scenario)) {
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1 -ExpandProperty Name)
   if ([string]::IsNullOrWhiteSpace($Scenario)) {
-    throw "No scratch scenario folders found under: $ScratchBase"
+    Write-Warning "No scratch scenario folders found under: $ScratchBase"
+    Write-Host "Hint: run a scenario first (e.g. .\\scripts\\runbook\\20-FullRun-MiniInsurance.ps1) or pass -Scenario / -Root."
+    return
   }
   Write-Host ("[Inspect] Auto-selected Scenario = {0}" -f $Scenario)
 }
