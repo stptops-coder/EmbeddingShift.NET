@@ -38,7 +38,11 @@ param(
   # Compare/Decide/Promote
   [string]$Metric   = 'ndcg@3',
   [int]$Top         = 10,
-  [switch]$Promote
+  [switch]$Promote,
+
+  [string]$SimAlgo = "sha256",
+
+  [int]$SimSemanticCharNGrams = 3
 )
 
 Set-StrictMode -Version Latest
@@ -89,7 +93,10 @@ $env:EMBEDDINGSHIFT_TENANT         = $Tenant
 
 $env:EMBEDDINGSHIFT_BACKEND        = $backend
 $env:EMBEDDINGSHIFT_SIM_MODE       = $simMode
-$env:EMBEDDINGSHIFT_SIM_ALGO       = 'sha256'
+$env:EMBEDDINGSHIFT_SIM_ALGO       = $SimAlgo
+$env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
+$env:EMBEDDING_SIM_ALGO            = $SimAlgo
+$env:EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
 
 Write-Host "[Sweep] ROOT    = $env:EMBEDDINGSHIFT_ROOT"
 Write-Host "[Sweep] DOMAIN  = $env:EMBEDDINGSHIFT_RESULTS_DOMAIN"
@@ -108,6 +115,7 @@ foreach ($p in $Policies) {
     # 1) Generate dataset (stage-00)
     dotnet run --project $proj -- `
       --tenant $Tenant `
+      --backend=$backend --sim-mode=$simMode --sim-algo=$SimAlgo --sim-char-ngrams=$SimSemanticCharNGrams `
       domain mini-insurance dataset-generate $DsName `
       --stages $Stages --policies $p --queries $q --seed $Seed --overwrite
 
@@ -118,7 +126,7 @@ foreach ($p in $Policies) {
 
     # 3) End-to-end Mini-Insurance pipeline (Baseline -> FirstShift -> First+Delta -> LearnedDelta)
     dotnet run --project $proj -- `
-      --tenant $Tenant --backend=$backend --sim-mode=$simMode `
+      --tenant $Tenant --backend=$backend --sim-mode=$simMode --sim-algo=$SimAlgo --sim-char-ngrams=$SimSemanticCharNGrams `
       domain mini-insurance pipeline
 
     # 4) Compare + decide (+ optional promote)
@@ -128,7 +136,10 @@ foreach ($p in $Policies) {
     $activeFile = Join-Path $activeDir $activeFileName
 
     $useSharedActive = ($RootMode -eq 'scratch')
-    $sharedActiveDir = Join-Path $repoRoot ("results\_scratch\_active\{0}\tenants\{1}\runs\_active" -f $domain, $Tenant)
+    $profileKey = "sim_{0}__{1}__ng{2}__p{3}__q{4}__st{5}" -f $simMode, $SimAlgo, $SimSemanticCharNGrams, $Policies, $Queries, $Stages
+    $profileKey = ($profileKey -replace '[^a-zA-Z0-9_\-\.]+', '_')
+    Write-Host "[Sweep] ActiveProfileKey = $profileKey"
+    $sharedActiveDir = Join-Path $repoRoot ("results\_scratch\_active\profiles\{2}\{0}\tenants\{1}\runs\_active" -f $domain, $Tenant, $profileKey)
     $sharedActiveFile = Join-Path $sharedActiveDir $activeFileName
 
     if ($useSharedActive) {
@@ -141,9 +152,19 @@ foreach ($p in $Policies) {
       }
     }
 
+    $compareDir = Join-Path $runsRoot "_compare"
+
     dotnet run --project $proj -- `
       --tenant $Tenant `
-      runs-compare --runs-root $runsRoot --metric $Metric --top $Top --write
+      runs-compare --runs-root $runsRoot --metric $Metric --top $Top --write --out $compareDir
+
+    # Optional: compare PosNeg repo runs separately (kept under runs\_repo)
+    $posNegRoot = Join-Path $runsRoot "_repo\MiniInsurance-PosNeg"
+    if (Test-Path $posNegRoot) {
+      dotnet run --project $proj -- `
+        --tenant $Tenant `
+        runs-compare --runs-root $posNegRoot --metric $Metric --top $Top --write --out $compareDir
+    }
 
     dotnet run --project $proj -- `
       --tenant $Tenant `

@@ -35,6 +35,16 @@ namespace EmbeddingShift.Core.Runs
 
             foreach (var path in Directory.EnumerateFiles(runsRoot, "run.json", SearchOption.AllDirectories))
             {
+                // Skip internal repo runs when discovering runs under a normal runs root.
+                // If runsRoot itself points inside "_repo", the relative path will not include "_repo" and will be kept.
+                var rel = Path.GetRelativePath(runsRoot, path);
+                var sep = Path.DirectorySeparatorChar;
+                if (rel.StartsWith($"_repo{sep}", StringComparison.OrdinalIgnoreCase) ||
+                    rel.IndexOf($"{sep}_repo{sep}", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    continue;
+                }
+
                 try
                 {
                     var json = File.ReadAllText(path);
