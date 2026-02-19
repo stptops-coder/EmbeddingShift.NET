@@ -33,29 +33,27 @@ function Get-SingleChildDirectoryNameOrThrow {
   )
 
   if (-not (Test-Path -LiteralPath $Parent -PathType Container)) {
-    throw ("{0} root not found: {1}" -f $Label, $Parent)
+    throw "$Label root not found: $Parent"
   }
 
   $names = @(Get-ChildItem -LiteralPath $Parent -Directory | Select-Object -ExpandProperty Name)
 
   if ($names.Count -eq 0) {
-    throw ("Cannot auto-detect {0}: no directories found under {1}" -f $Label, $Parent)
+    throw "Cannot auto-detect $Label: no directories found under $Parent"
   }
 
   if ($names.Count -gt 1) {
     $list = ($names | Sort-Object) -join ', '
-    throw ("Cannot auto-detect {0}: multiple directories found under {1}: {2}. Please pass -{0} <name>." -f $Label, $Parent, $list)
+    throw "Cannot auto-detect $Label: multiple directories found under $Parent: $list. Please pass -$Label <name>."
   }
 
   return $names[0]
 }
 
-# Validate first (avoid Resolve-Path throwing a noisy error).
-if (-not (Test-Path -LiteralPath $RunRoot -PathType Container)) {
-  throw "RunRoot not found: $RunRoot"
-}
-
 $runRootFull = (Resolve-Path -LiteralPath $RunRoot).Path
+if (-not (Test-Path -LiteralPath $runRootFull -PathType Container)) {
+  throw "RunRoot not found: $runRootFull"
+}
 
 $resultsRoot = Join-Path $runRootFull 'results'
 if (-not (Test-Path -LiteralPath $resultsRoot -PathType Container)) {
@@ -73,16 +71,11 @@ if (-not (Test-Path -LiteralPath $domainRoot -PathType Container)) {
 
 if ([string]::IsNullOrWhiteSpace($Layout)) {
   $tenantsCandidate = Join-Path $domainRoot 'tenants'
-  if (Test-Path -LiteralPath $tenantsCandidate -PathType Container) {
-    $Layout = 'tenant'
-  }
-  else {
-    $Layout = 'domain'
-  }
+  $Layout = (Test-Path -LiteralPath $tenantsCandidate -PathType Container) ? 'tenant' : 'domain'
 }
 
-$tenantsRoot  = $null
-$tenantRoot   = $null
+$tenantsRoot = $null
+$tenantRoot  = $null
 $contractRoot = $null
 
 if ($Layout -eq 'tenant') {
@@ -127,13 +120,7 @@ $reportsOk     = Test-Path $reportsRoot
 $experimentsOk = Test-Path (Join-Path $contractRoot 'experiments')
 $inspectOk     = Test-Path (Join-Path $contractRoot 'inspect')
 
-if ($Layout -eq 'tenant') {
-  $layoutInfo = "tenant ($Tenant)"
-}
-else {
-  $layoutInfo = 'domain'
-}
-
+$layoutInfo = ($Layout -eq 'tenant') ? "tenant ($Tenant)" : 'domain'
 Write-Host "[RunRootHealth] RunRoot   : $runRootFull"
 Write-Host "[RunRootHealth] Results   : $resultsRoot"
 Write-Host "[RunRootHealth] Domain    : $Domain"
@@ -189,25 +176,25 @@ if ($WriteIndex) {
   $indexPath = Join-Path $runRootFull 'index.json'
 
   $obj = [ordered]@{
-    runRoot      = $runRootFull
-    resultsRoot  = $resultsRoot
-    domain       = $Domain
-    layout       = $Layout
-    tenant       = $Tenant
+    runRoot     = $runRootFull
+    resultsRoot = $resultsRoot
+    domain      = $Domain
+    layout      = $Layout
+    tenant      = $Tenant
     contractRoot = $contractRoot
-    reportsRoot  = $reportsRoot
+    reportsRoot = $reportsRoot
     checks = [ordered]@{
-      manifest    = $manifestOk
-      cases       = $casesOk
-      index       = $indexOk
-      embeddings  = $dataEmbeddingsOk
-      datasets    = $datasetsOk
-      runs        = $runsOk
-      training    = $trainingOk
-      aggregates  = $aggregatesOk
-      reports     = $reportsOk
-      experiments = $experimentsOk
-      inspect     = $inspectOk
+      manifest   = $manifestOk
+      cases      = $casesOk
+      index      = $indexOk
+      embeddings = $dataEmbeddingsOk
+      datasets   = $datasetsOk
+      runs       = $runsOk
+      training   = $trainingOk
+      aggregates = $aggregatesOk
+      reports    = $reportsOk
+      experiments= $experimentsOk
+      inspect    = $inspectOk
     }
   }
 
