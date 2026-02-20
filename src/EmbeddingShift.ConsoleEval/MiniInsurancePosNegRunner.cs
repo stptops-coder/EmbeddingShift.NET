@@ -394,7 +394,7 @@ namespace EmbeddingShift.ConsoleEval
         }
 
         
-        private static void TryWriteExamplesMarkdown(
+                private static void TryWriteExamplesMarkdown(
             string runDir,
             IReadOnlyList<PerQueryEval> baseline,
             IReadOnlyList<PerQueryEval> posneg,
@@ -404,6 +404,7 @@ namespace EmbeddingShift.ConsoleEval
             try
             {
                 const int defaultTopN = 10;
+                const int topK = 3;
 
                 var topN = defaultTopN;
                 var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_EXAMPLES_TOPN");
@@ -413,6 +414,9 @@ namespace EmbeddingShift.ConsoleEval
                 {
                     topN = parsed;
                 }
+
+                static int NormRank(int rank) => rank <= 0 ? 1_000_000 : rank;
+                static bool InTopK(int rank, int k) => rank > 0 && rank <= k;
 
                 var qText = queries
                     .Where(q => !string.IsNullOrWhiteSpace(q.Id))
@@ -432,50 +436,103 @@ namespace EmbeddingShift.ConsoleEval
                     var bb = kv.Value;
 
                     // delta > 0 => improvement (rank got smaller)
-                    var delta = bb.Rank - pp.Rank;
+                    // Note: rank can be <=0 (not found). Normalize so "not found -> found" is treated as improvement.
+                    var delta = NormRank(bb.Rank) - NormRank(pp.Rank);
+
                     rows.Add((bb.QueryId, bb.Rank, pp.Rank, delta, bb, pp));
                 }
 
-                var improvements = rows
-                    .Where(r => r.Delta > 0)
-                    .OrderByDescending(r => r.Delta)
-                    .ThenBy(r => r.RankP)
-                    .Take(topN)
-                    .ToList();
+                var improvedCount = rows.Count(r => r.Delta > 0);
+                var regressedCount = rows.Count(r => r.Delta < 0);
 
-                var regressions = rows
-                    .Where(r => r.Delta < 0)
-                    .OrderBy(r => r.Delta)
-                    .ThenBy(r => r.RankP)
-                    .Take(topN)
-                    .ToList();
+                var promotedToTop1Count = rows.Count(r => r.RankP == 1 && r.RankB != 1);
+                var promotedToTop3Count = rows.Count(r => !InTopK(r.RankB, topK) && InTopK(r.RankP, topK));
+                var demotedFromTop3Count = rows.Count(r => InTopK(r.RankB, topK) && !InTopK(r.RankP, topK));
+
+                // Selection strategy for demo impact:
+                // 1) Threshold crossings (Top-1 / Top-3)
+                // 2) Largest rank gains
+                // 3) Demotions out of Top-3 (honest downside)
+                // 4) Worst regressions
+                var selected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                List<(string QueryId, int RankB, int RankP, int Delta, PerQueryEval B, PerQueryEval P)> TakeUnique(
+                    IEnumerable<(string QueryId, int RankB, int RankP, int Delta, PerQueryEval B, PerQueryEval P)> src,
+                    int n)
+                {
+                    var list = new List<(string, int, int, int, PerQueryEval, PerQueryEval)>(n);
+                    foreach (var r in src)
+                    {
+                        if (list.Count >= n) break;
+                        if (selected.Add(r.QueryId))
+                            list.Add(r);
+                    }
+                    return list;
+                }
+
+                var promotedToTop1 = TakeUnique(
+                    rows.Where(r => r.RankP == 1 && r.RankB != 1)
+                        .OrderByDescending(r => NormRank(r.RankB))
+                        .ThenBy(r => r.QueryId),
+                    topN);
+
+                var promotedToTop3 = TakeUnique(
+                    rows.Where(r => !InTopK(r.RankB, topK) && InTopK(r.RankP, topK))
+                        .OrderByDescending(r => r.Delta)
+                        .ThenBy(r => r.RankP)
+                        .ThenBy(r => r.QueryId),
+                    topN);
+
+                var largestGains = TakeUnique(
+                    rows.Where(r => r.Delta > 0)
+                        .OrderByDescending(r => r.Delta)
+                        .ThenBy(r => r.RankP)
+                        .ThenBy(r => r.QueryId),
+                    topN);
+
+                var demotedFromTop3 = TakeUnique(
+                    rows.Where(r => InTopK(r.RankB, topK) && !InTopK(r.RankP, topK))
+                        .OrderBy(r => r.Delta) // most negative first
+                        .ThenBy(r => r.RankP)
+                        .ThenBy(r => r.QueryId),
+                    topN);
+
+                var worstRegressions = TakeUnique(
+                    rows.Where(r => r.Delta < 0)
+                        .OrderBy(r => r.Delta) // most negative first
+                        .ThenBy(r => r.RankP)
+                        .ThenBy(r => r.QueryId),
+                    topN);
 
                 var sb = new StringBuilder();
                 sb.AppendLine("# Mini Insurance PosNeg Examples");
                 sb.AppendLine();
                 sb.AppendLine($"Generated (UTC): {DateTime.UtcNow:O}");
                 sb.AppendLine($"TopN: {topN}");
+                sb.AppendLine($"TopK: {topK}");
                 sb.AppendLine();
                 sb.AppendLine($"Total comparable queries: {rows.Count}");
-                sb.AppendLine($"Improved (Δrank>0): {rows.Count(r => r.Delta > 0)}");
-                sb.AppendLine($"Regressed (Δrank<0): {rows.Count(r => r.Delta < 0)}");
+                sb.AppendLine($"Improved (dRank>0): {improvedCount}");
+                sb.AppendLine($"Regressed (dRank<0): {regressedCount}");
+                sb.AppendLine($"Promoted to #1: {promotedToTop1Count}");
+                sb.AppendLine($"Promoted into Top-{topK}: {promotedToTop3Count}");
+                sb.AppendLine($"Demoted out of Top-{topK}: {demotedFromTop3Count}");
                 sb.AppendLine();
 
-                if (improvements.Count > 0)
+                void AppendSection(string title, IReadOnlyList<(string QueryId, int RankB, int RankP, int Delta, PerQueryEval B, PerQueryEval P)> section)
                 {
-                    sb.AppendLine("## Top improvements");
+                    if (section.Count <= 0) return;
+                    sb.AppendLine($"## {title}");
                     sb.AppendLine();
-                    AppendExamples(sb, improvements, qText, docs);
+                    AppendExamples(sb, section, qText, docs, topK);
                     sb.AppendLine();
                 }
 
-                if (regressions.Count > 0)
-                {
-                    sb.AppendLine("## Top regressions");
-                    sb.AppendLine();
-                    AppendExamples(sb, regressions, qText, docs);
-                    sb.AppendLine();
-                }
+                AppendSection("Promoted into #1", promotedToTop1);
+                AppendSection($"Promoted into Top-{topK}", promotedToTop3);
+                AppendSection("Largest rank gains", largestGains);
+                AppendSection($"Demoted out of Top-{topK}", demotedFromTop3);
+                AppendSection("Worst regressions", worstRegressions);
 
                 var path = Path.Combine(runDir, "examples-posneg.md");
                 File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
@@ -490,27 +547,63 @@ namespace EmbeddingShift.ConsoleEval
             StringBuilder sb,
             IReadOnlyList<(string QueryId, int RankB, int RankP, int Delta, PerQueryEval B, PerQueryEval P)> rows,
             IReadOnlyDictionary<string, string> queryText,
-            IReadOnlyDictionary<string, string> docs)
+            IReadOnlyDictionary<string, string> docs,
+            int topK)
         {
             static string Trunc(string? s, int max)
             {
                 if (string.IsNullOrWhiteSpace(s)) return string.Empty;
                 s = s.Replace('\r', ' ').Replace('\n', ' ').Trim();
-                return s.Length <= max ? s : s.Substring(0, max) + "…";
+                return s.Length <= max ? s : s.Substring(0, max) + "...";
             }
 
-            static string HitLine(PerQueryEval e)
+            static string RankText(int rank)
+                => rank <= 0 ? "<not-found>" : rank.ToString(CultureInfo.InvariantCulture);
+
+            static bool InTopK(int rank, int k) => rank > 0 && rank <= k;
+
+            static string FormatHit(string? docId, double score, string relevantDocId)
+            {
+                if (string.IsNullOrWhiteSpace(docId))
+                    return string.Empty;
+
+                var s = $"{docId} ({score:0.###})";
+                return string.Equals(docId, relevantDocId, StringComparison.OrdinalIgnoreCase)
+                    ? $"**{s}**"
+                    : s;
+            }
+
+            static string HitLine(PerQueryEval e, string relevantDocId)
             {
                 var hits = new List<string>(3);
 
-                if (!string.IsNullOrWhiteSpace(e.TopDocId))
-                    hits.Add($"{e.TopDocId} ({e.TopScore:0.###})");
-                if (!string.IsNullOrWhiteSpace(e.Top2DocId))
-                    hits.Add($"{e.Top2DocId} ({e.Top2Score:0.###})");
-                if (!string.IsNullOrWhiteSpace(e.Top3DocId))
-                    hits.Add($"{e.Top3DocId} ({e.Top3Score:0.###})");
+                var h1 = FormatHit(e.TopDocId, e.TopScore, relevantDocId);
+                if (!string.IsNullOrWhiteSpace(h1)) hits.Add(h1);
+
+                var h2 = FormatHit(e.Top2DocId, e.Top2Score, relevantDocId);
+                if (!string.IsNullOrWhiteSpace(h2)) hits.Add(h2);
+
+                var h3 = FormatHit(e.Top3DocId, e.Top3Score, relevantDocId);
+                if (!string.IsNullOrWhiteSpace(h3)) hits.Add(h3);
 
                 return hits.Count == 0 ? "<none>" : string.Join(", ", hits);
+            }
+
+            static (int Pos, double Score) FindRelevantInTop3(PerQueryEval e, string relevantDocId)
+            {
+                if (!string.IsNullOrWhiteSpace(e.TopDocId) &&
+                    string.Equals(e.TopDocId, relevantDocId, StringComparison.OrdinalIgnoreCase))
+                    return (1, e.TopScore);
+
+                if (!string.IsNullOrWhiteSpace(e.Top2DocId) &&
+                    string.Equals(e.Top2DocId, relevantDocId, StringComparison.OrdinalIgnoreCase))
+                    return (2, e.Top2Score);
+
+                if (!string.IsNullOrWhiteSpace(e.Top3DocId) &&
+                    string.Equals(e.Top3DocId, relevantDocId, StringComparison.OrdinalIgnoreCase))
+                    return (3, e.Top3Score);
+
+                return (0, 0.0);
             }
 
             static string DocHint(IReadOnlyDictionary<string, string> docs, string? docId)
@@ -527,26 +620,52 @@ namespace EmbeddingShift.ConsoleEval
                 return string.IsNullOrWhiteSpace(line) ? string.Empty : Trunc(line, 80);
             }
 
+            static string DRankText(int rankB, int rankP, int delta)
+            {
+                if (rankB <= 0 && rankP <= 0) return "0";
+                if (rankB <= 0) return $"+NF→{rankP}";
+                if (rankP <= 0) return $"-{rankB}→NF";
+                return delta.ToString("+0;-0;0", CultureInfo.InvariantCulture);
+            }
+
             var i = 1;
             foreach (var r in rows)
             {
-                sb.AppendLine($"### {i}) {r.QueryId} (Δrank {r.Delta:+#;-#;0})");
+                var rel = r.B.RelevantDocId;
+
+                sb.AppendLine($"### {i}) {r.QueryId} (dRank {DRankText(r.RankB, r.RankP, r.Delta)})");
                 sb.AppendLine();
 
                 if (queryText.TryGetValue(r.QueryId, out var qt) && !string.IsNullOrWhiteSpace(qt))
-                    sb.AppendLine($"Query: {Trunc(qt, 140)}");
-                sb.AppendLine($"RelevantDocId: {r.B.RelevantDocId}");
+                    sb.AppendLine($"Query: {Trunc(qt, 160)}");
 
-                var relHint = DocHint(docs, r.B.RelevantDocId);
+                sb.AppendLine($"RelevantDocId: {rel}");
+
+                var relHint = DocHint(docs, rel);
                 if (!string.IsNullOrWhiteSpace(relHint))
                     sb.AppendLine($"Relevant hint: {relHint}");
 
+                var inTopB = FindRelevantInTop3(r.B, rel);
+                var inTopP = FindRelevantInTop3(r.P, rel);
+
                 sb.AppendLine();
-                sb.AppendLine($"Baseline rank: {r.RankB}");
-                sb.AppendLine($"PosNeg   rank: {r.RankP}");
+                sb.AppendLine($"Baseline rank: {RankText(r.RankB)}");
+                sb.AppendLine($"PosNeg   rank: {RankText(r.RankP)}");
+                sb.AppendLine($"Relevant in Top-{topK}: baseline={(InTopK(r.RankB, topK) ? "YES" : "NO")}, posneg={(InTopK(r.RankP, topK) ? "YES" : "NO")}");
+                if (inTopB.Pos > 0 || inTopP.Pos > 0)
+                {
+                    var bInfo = inTopB.Pos > 0 ? $"#{inTopB.Pos} ({inTopB.Score:0.###})" : "NO";
+                    var pInfo = inTopP.Pos > 0 ? $"#{inTopP.Pos} ({inTopP.Score:0.###})" : "NO";
+                    sb.AppendLine($"Relevant in Top3 details: baseline={bInfo}, posneg={pInfo}");
+                }
+
+                var bTop1 = r.B.TopDocId ?? "<none>";
+                var pTop1 = r.P.TopDocId ?? "<none>";
+                sb.AppendLine($"Top1: baseline={bTop1}, posneg={pTop1}{(string.Equals(bTop1, pTop1, StringComparison.OrdinalIgnoreCase) ? "" : " (changed)")}");
+
                 sb.AppendLine();
-                sb.AppendLine($"Baseline top3: {HitLine(r.B)}");
-                sb.AppendLine($"PosNeg   top3: {HitLine(r.P)}");
+                sb.AppendLine($"Baseline top3: {HitLine(r.B, rel)}");
+                sb.AppendLine($"PosNeg   top3: {HitLine(r.P, rel)}");
                 sb.AppendLine();
                 i++;
             }
