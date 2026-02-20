@@ -12,7 +12,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-rollback [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open]
+            //   runs-rollback [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--open]
             //
             // Defaults:
             //   domainKey = insurance
@@ -23,6 +23,8 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var runsRoot = GetOpt(args, "--runs-root");
             var domainKey = GetOpt(args, "--domainKey") ?? "insurance";
             var metricKey = GetOpt(args, "--metric") ?? "ndcg@3";
+            var profileKey = GetOpt(args, "--profile");
+            if (string.IsNullOrWhiteSpace(profileKey)) profileKey = null;
             var open = HasSwitch(args, "--open");
 
             if (string.IsNullOrWhiteSpace(runsRoot))
@@ -44,7 +46,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             RunActivation.RollbackResult result;
             try
             {
-                result = RunActivation.RollbackLatest(runsRoot, metricKey);
+                result = RunActivation.RollbackLatest(runsRoot, metricKey, profileKey);
             }
             catch (Exception ex)
             {
@@ -55,6 +57,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             Console.WriteLine($"[runs-rollback] root   = {runsRoot}");
             Console.WriteLine($"[runs-rollback] metric = {metricKey}");
+            if (!string.IsNullOrWhiteSpace(profileKey)) Console.WriteLine($"[runs-rollback] profile= {profileKey}");
             Console.WriteLine();
             Console.WriteLine($"Active directory: {result.Pointer.RunDirectory}");
             Console.WriteLine($"WorkflowName    : {result.Pointer.WorkflowName}");

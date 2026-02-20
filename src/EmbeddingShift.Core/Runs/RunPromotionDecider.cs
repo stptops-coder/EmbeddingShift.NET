@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace EmbeddingShift.Core.Runs
 {
@@ -12,6 +12,13 @@ namespace EmbeddingShift.Core.Runs
         /// - Else: PROMOTE iff (candidate.Score - active.Score) > epsilon.
         /// </summary>
         public static RunPromotionDecision Decide(string runsRoot, string metricKey, double epsilon = 1e-6)
+            => Decide(runsRoot, metricKey, profileKey: null, epsilon: epsilon);
+
+        /// <summary>
+        /// Same as <see cref="Decide(string,string,double)"/>, but scopes the active pointer to a profile key.
+        /// If profileKey is null/empty, the legacy (non-profile) active pointer is used.
+        /// </summary>
+        public static RunPromotionDecision Decide(string runsRoot, string metricKey, string? profileKey, double epsilon = 1e-6)
         {
             if (string.IsNullOrWhiteSpace(runsRoot))
                 throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
@@ -37,7 +44,7 @@ namespace EmbeddingShift.Core.Runs
                 RunDirectory: best.Run.RunDirectory,
                 RunJsonPath: best.Run.RunJsonPath);
 
-            if (!RunActivation.TryLoadActive(runsRoot, metricKey, out var activePointer) || activePointer is null)
+            if (!RunActivation.TryLoadActive(runsRoot, metricKey, profileKey, out var activePointer) || activePointer is null)
             {
                 return new RunPromotionDecision(
                     MetricKey: metricKey,

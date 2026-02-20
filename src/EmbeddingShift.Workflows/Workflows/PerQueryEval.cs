@@ -15,7 +15,9 @@ namespace EmbeddingShift.Workflows
         string? TopDocId,
         double TopScore,
         string? Top2DocId = null,
-        double Top2Score = 0.0);
+        double Top2Score = 0.0,
+        string? Top3DocId = null,
+        double Top3Score = 0.0);
 
     /// <summary>
     /// Optional capability interface: workflows that can expose per-query metrics.

@@ -16,7 +16,7 @@
 #
 # Notes:
 #   - In scratch mode, each run uses a fresh RunRoot. To enable reproducible "active" decisions across runs,
-#     we maintain a shared active pointer at: results\_scratch\_active\<domain>\tenants\<tenant>\runs\_active\active_<metric>.json
+#     we maintain a shared active pointer at: results\_scratch\_active\<domain>\tenants\<tenant>\runs\_active\profiles\<profile>\active_<metric>.json
 #
 [CmdletBinding()]
 param(
@@ -39,6 +39,9 @@ param(
   [string]$Metric   = 'ndcg@3',
   [int]$Top         = 10,
   [switch]$Promote,
+
+  # Optional: additionally run a dedicated compare for the internal repo workflow (MiniInsurance-PosNeg)
+  [switch]$CompareRepoPosNeg,
 
   [string]$SimAlgo = "sha256",
 
@@ -131,15 +134,17 @@ foreach ($p in $Policies) {
 
     # 4) Compare + decide (+ optional promote)
     $runsRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\{0}\tenants\{1}\runs" -f $domain, $Tenant)
-    $activeDir = Join-Path $runsRoot '_active'
+
+    $useSharedActive = ($RootMode -eq 'scratch' -or $RootMode -eq 'repo')
+    $profileKey = "{0}_{1}__{2}__ng{3}__ds{4}__seed{5}__st{6}__p{7}__q{8}" -f $backend, $simMode, $SimAlgo, $SimSemanticCharNGrams, $DsName, $Seed, $Stages, $p, $q
+    $profileKey = ($profileKey -replace '[^a-zA-Z0-9_\-\.]+', '_')
+    Write-Host "[Sweep] ActiveProfileKey = $profileKey"
+
+    $activeDir = Join-Path $runsRoot ("_active\profiles\{0}" -f $profileKey)
     $activeFileName = "active_{0}.json" -f $Metric
     $activeFile = Join-Path $activeDir $activeFileName
 
-    $useSharedActive = ($RootMode -eq 'scratch')
-    $profileKey = "sim_{0}__{1}__ng{2}__p{3}__q{4}__st{5}" -f $simMode, $SimAlgo, $SimSemanticCharNGrams, $Policies, $Queries, $Stages
-    $profileKey = ($profileKey -replace '[^a-zA-Z0-9_\-\.]+', '_')
-    Write-Host "[Sweep] ActiveProfileKey = $profileKey"
-    $sharedActiveDir = Join-Path $repoRoot ("results\_scratch\_active\profiles\{2}\{0}\tenants\{1}\runs\_active" -f $domain, $Tenant, $profileKey)
+    $sharedActiveDir = Join-Path $repoRoot ("results\_scratch\_active\{0}\tenants\{1}\runs\_active\profiles\{2}" -f $domain, $Tenant, $profileKey)
     $sharedActiveFile = Join-Path $sharedActiveDir $activeFileName
 
     if ($useSharedActive) {
@@ -159,16 +164,22 @@ foreach ($p in $Policies) {
       runs-compare --runs-root $runsRoot --metric $Metric --top $Top --write --out $compareDir
 
     # Optional: compare PosNeg repo runs separately (kept under runs\_repo)
-    $posNegRoot = Join-Path $runsRoot "_repo\MiniInsurance-PosNeg"
-    if (Test-Path $posNegRoot) {
-      dotnet run --project $proj -- `
-        --tenant $Tenant `
-        runs-compare --runs-root $posNegRoot --metric $Metric --top $Top --write --out $compareDir
+    if ($CompareRepoPosNeg) {
+      $posNegRoot = Join-Path $runsRoot "_repo\MiniInsurance-PosNeg"
+      if (Test-Path $posNegRoot) {
+        $compareRepoDir = Join-Path $compareDir "repo-posneg"
+        dotnet run --project $proj -- `
+          --tenant $Tenant `
+          runs-compare --runs-root $posNegRoot --metric $Metric --top $Top --write --out $compareRepoDir
+      }
+      else {
+        Write-Host ("[Sweep] repo-posneg root not found: {0} (skipping repo compare)" -f $posNegRoot)
+      }
     }
 
     dotnet run --project $proj -- `
       --tenant $Tenant `
-      runs-decide --runs-root $runsRoot --metric $Metric --write
+      runs-decide --runs-root $runsRoot --metric $Metric --profile $profileKey --write
 
     $doPromote = $false
     if ($Promote) {
@@ -195,7 +206,7 @@ foreach ($p in $Policies) {
     if ($doPromote) {
       dotnet run --project $proj -- `
         --tenant $Tenant `
-        runs-promote --runs-root $runsRoot --metric $Metric
+        runs-promote --runs-root $runsRoot --metric $Metric --profile $profileKey
 
       if ($useSharedActive) {
         New-Item -ItemType Directory -Force -Path $sharedActiveDir | Out-Null

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
@@ -234,9 +236,11 @@ namespace EmbeddingShift.ConsoleEval
 
                 var topB = rankedBaseline.Count > 0 ? rankedBaseline[0] : null;
                 var topB2 = rankedBaseline.Count > 1 ? rankedBaseline[1] : null;
+                var topB3 = rankedBaseline.Count > 2 ? rankedBaseline[2] : null;
 
                 var topS = rankedShifted.Count > 0 ? rankedShifted[0] : null;
                 var topS2 = rankedShifted.Count > 1 ? rankedShifted[1] : null;
+                var topS3 = rankedShifted.Count > 2 ? rankedShifted[2] : null;
 
                 // when writing PerQueryEval for baseline
                 perQueryBaseline.Add(new PerQueryEval(
@@ -248,7 +252,9 @@ namespace EmbeddingShift.ConsoleEval
                     TopDocId: topB?.DocId,
                     TopScore: topB?.Score ?? 0.0,
                     Top2DocId: topB2?.DocId,
-                    Top2Score: topB2?.Score ?? 0.0));
+                    Top2Score: topB2?.Score ?? 0.0,
+                    Top3DocId: topB3?.DocId,
+                    Top3Score: topB3?.Score ?? 0.0));
 
                 // when writing PerQueryEval for posneg
                 perQueryPosNeg.Add(new PerQueryEval(
@@ -260,7 +266,9 @@ namespace EmbeddingShift.ConsoleEval
                     TopDocId: topS?.DocId,
                     TopScore: topS?.Score ?? 0.0,
                     Top2DocId: topS2?.DocId,
-                    Top2Score: topS2?.Score ?? 0.0));
+                    Top2Score: topS2?.Score ?? 0.0,
+                    Top3DocId: topS3?.DocId,
+                    Top3Score: topS3?.Score ?? 0.0));
             }
 
             var usedCases = apBaseline.Count;
@@ -338,6 +346,11 @@ namespace EmbeddingShift.ConsoleEval
             var mdPath = Path.Combine(runDir, "metrics-posneg.md");
             await File.WriteAllTextAsync(mdPath, mdBuilder.ToString())
                 .ConfigureAwait(false);
+
+            // Demo boost: write top-N per-query examples (rank changes + top hits) for quick inspection.
+            // This is intentionally a human-readable artifact under the same run directory.
+            TryWriteExamplesMarkdown(runDir, perQueryBaseline, perQueryPosNeg, queries, docs);
+
             var finishedAtUtc = DateTimeOffset.UtcNow;
 
             // Additionally persist run.json artifacts under results/.../runs so generic tooling
@@ -380,7 +393,166 @@ namespace EmbeddingShift.ConsoleEval
 
         }
 
-        private static int FindRank(
+        
+        private static void TryWriteExamplesMarkdown(
+            string runDir,
+            IReadOnlyList<PerQueryEval> baseline,
+            IReadOnlyList<PerQueryEval> posneg,
+            IReadOnlyList<QueryDefinition> queries,
+            IReadOnlyDictionary<string, string> docs)
+        {
+            try
+            {
+                const int defaultTopN = 10;
+
+                var topN = defaultTopN;
+                var raw = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_EXAMPLES_TOPN");
+                if (!string.IsNullOrWhiteSpace(raw) &&
+                    int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) &&
+                    parsed > 0)
+                {
+                    topN = parsed;
+                }
+
+                var qText = queries
+                    .Where(q => !string.IsNullOrWhiteSpace(q.Id))
+                    .GroupBy(q => q.Id)
+                    .ToDictionary(g => g.Key, g => g.First().Text ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+
+                var b = baseline.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
+                var p = posneg.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
+
+                var rows = new List<(string QueryId, int RankB, int RankP, int Delta, PerQueryEval B, PerQueryEval P)>();
+
+                foreach (var kv in b)
+                {
+                    if (!p.TryGetValue(kv.Key, out var pp))
+                        continue;
+
+                    var bb = kv.Value;
+
+                    // delta > 0 => improvement (rank got smaller)
+                    var delta = bb.Rank - pp.Rank;
+                    rows.Add((bb.QueryId, bb.Rank, pp.Rank, delta, bb, pp));
+                }
+
+                var improvements = rows
+                    .Where(r => r.Delta > 0)
+                    .OrderByDescending(r => r.Delta)
+                    .ThenBy(r => r.RankP)
+                    .Take(topN)
+                    .ToList();
+
+                var regressions = rows
+                    .Where(r => r.Delta < 0)
+                    .OrderBy(r => r.Delta)
+                    .ThenBy(r => r.RankP)
+                    .Take(topN)
+                    .ToList();
+
+                var sb = new StringBuilder();
+                sb.AppendLine("# Mini Insurance PosNeg Examples");
+                sb.AppendLine();
+                sb.AppendLine($"Generated (UTC): {DateTime.UtcNow:O}");
+                sb.AppendLine($"TopN: {topN}");
+                sb.AppendLine();
+                sb.AppendLine($"Total comparable queries: {rows.Count}");
+                sb.AppendLine($"Improved (Δrank>0): {rows.Count(r => r.Delta > 0)}");
+                sb.AppendLine($"Regressed (Δrank<0): {rows.Count(r => r.Delta < 0)}");
+                sb.AppendLine();
+
+                if (improvements.Count > 0)
+                {
+                    sb.AppendLine("## Top improvements");
+                    sb.AppendLine();
+                    AppendExamples(sb, improvements, qText, docs);
+                    sb.AppendLine();
+                }
+
+                if (regressions.Count > 0)
+                {
+                    sb.AppendLine("## Top regressions");
+                    sb.AppendLine();
+                    AppendExamples(sb, regressions, qText, docs);
+                    sb.AppendLine();
+                }
+
+                var path = Path.Combine(runDir, "examples-posneg.md");
+                File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
+            }
+            catch
+            {
+                // best-effort only
+            }
+        }
+
+        private static void AppendExamples(
+            StringBuilder sb,
+            IReadOnlyList<(string QueryId, int RankB, int RankP, int Delta, PerQueryEval B, PerQueryEval P)> rows,
+            IReadOnlyDictionary<string, string> queryText,
+            IReadOnlyDictionary<string, string> docs)
+        {
+            static string Trunc(string? s, int max)
+            {
+                if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+                s = s.Replace('\r', ' ').Replace('\n', ' ').Trim();
+                return s.Length <= max ? s : s.Substring(0, max) + "…";
+            }
+
+            static string HitLine(PerQueryEval e)
+            {
+                var hits = new List<string>(3);
+
+                if (!string.IsNullOrWhiteSpace(e.TopDocId))
+                    hits.Add($"{e.TopDocId} ({e.TopScore:0.###})");
+                if (!string.IsNullOrWhiteSpace(e.Top2DocId))
+                    hits.Add($"{e.Top2DocId} ({e.Top2Score:0.###})");
+                if (!string.IsNullOrWhiteSpace(e.Top3DocId))
+                    hits.Add($"{e.Top3DocId} ({e.Top3Score:0.###})");
+
+                return hits.Count == 0 ? "<none>" : string.Join(", ", hits);
+            }
+
+            static string DocHint(IReadOnlyDictionary<string, string> docs, string? docId)
+            {
+                if (string.IsNullOrWhiteSpace(docId)) return string.Empty;
+                if (!docs.TryGetValue(docId, out var text)) return string.Empty;
+
+                // Use the first non-empty line as a lightweight hint.
+                var line = text
+                    .Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+
+                return string.IsNullOrWhiteSpace(line) ? string.Empty : Trunc(line, 80);
+            }
+
+            var i = 1;
+            foreach (var r in rows)
+            {
+                sb.AppendLine($"### {i}) {r.QueryId} (Δrank {r.Delta:+#;-#;0})");
+                sb.AppendLine();
+
+                if (queryText.TryGetValue(r.QueryId, out var qt) && !string.IsNullOrWhiteSpace(qt))
+                    sb.AppendLine($"Query: {Trunc(qt, 140)}");
+                sb.AppendLine($"RelevantDocId: {r.B.RelevantDocId}");
+
+                var relHint = DocHint(docs, r.B.RelevantDocId);
+                if (!string.IsNullOrWhiteSpace(relHint))
+                    sb.AppendLine($"Relevant hint: {relHint}");
+
+                sb.AppendLine();
+                sb.AppendLine($"Baseline rank: {r.RankB}");
+                sb.AppendLine($"PosNeg   rank: {r.RankP}");
+                sb.AppendLine();
+                sb.AppendLine($"Baseline top3: {HitLine(r.B)}");
+                sb.AppendLine($"PosNeg   top3: {HitLine(r.P)}");
+                sb.AppendLine();
+                i++;
+            }
+        }
+
+private static int FindRank(
             IReadOnlyList<dynamic> ranked,
             string relevantDocId)
         {

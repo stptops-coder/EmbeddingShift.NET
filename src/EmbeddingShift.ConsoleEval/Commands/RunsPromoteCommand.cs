@@ -13,7 +13,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--rank=<n>] [--runid=<id>] [--open]
+            //   runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--rank=<n>] [--runid=<id>] [--open]
             //
             // Defaults:
             //   domainKey = insurance
@@ -24,6 +24,9 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var runsRoot = GetOpt(args, "--runs-root");
             var domainKey = GetOpt(args, "--domainKey") ?? "insurance";
             var metricKey = GetOpt(args, "--metric") ?? "ndcg@3";
+
+            var profileKey = GetOpt(args, "--profile");
+            if (string.IsNullOrWhiteSpace(profileKey)) profileKey = null;
 
             var rankText = GetOpt(args, "--rank");
             int? pickRank = null;
@@ -61,7 +64,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             RunActivation.PromoteResult result;
             try
             {
-                result = RunActivation.Promote(runsRoot, metricKey, pickRank, pickRunId);
+                result = RunActivation.Promote(runsRoot, metricKey, profileKey, pickRank, pickRunId);
             }
             catch (Exception ex)
             {
@@ -74,6 +77,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             {
                 Console.WriteLine($"[runs-promote] root   = {runsRoot}");
                 Console.WriteLine($"[runs-promote] metric = {metricKey}");
+            if (!string.IsNullOrWhiteSpace(profileKey)) Console.WriteLine($"[runs-promote] profile= {profileKey}");
                 if (pickRank is not null) Console.WriteLine($"[runs-promote] rank   = {pickRank}");
                 if (pickRunId is not null) Console.WriteLine($"[runs-promote] runid  = {pickRunId}");
                 Console.WriteLine();
@@ -84,6 +88,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             Console.WriteLine($"[runs-promote] root   = {runsRoot}");
             Console.WriteLine($"[runs-promote] metric = {metricKey}");
+            if (!string.IsNullOrWhiteSpace(profileKey)) Console.WriteLine($"[runs-promote] profile= {profileKey}");
             if (pickRank is not null) Console.WriteLine($"[runs-promote] rank   = {pickRank}");
             if (pickRunId is not null) Console.WriteLine($"[runs-promote] runid  = {pickRunId}");
             Console.WriteLine();

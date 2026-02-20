@@ -16,7 +16,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--eps=<double>] [--write] [--apply] [--open]
+            //   runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--eps=<double>] [--write] [--apply] [--open]
             //
             // Defaults:
             //   domainKey = insurance
@@ -34,6 +34,8 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var runsRoot = GetOpt(args, "--runs-root");
             var domainKey = GetOpt(args, "--domainKey") ?? "insurance";
             var metricKey = GetOpt(args, "--metric") ?? "ndcg@3";
+            var profileKey = GetOpt(args, "--profile");
+            if (string.IsNullOrWhiteSpace(profileKey)) profileKey = null;
             var epsText = GetOpt(args, "--eps");
             var write = HasSwitch(args, "--write") || !HasSwitch(args, "--no-write");
             var apply = HasSwitch(args, "--apply");
@@ -67,7 +69,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             RunPromotionDecision decision;
             try
             {
-                decision = RunPromotionDecider.Decide(runsRoot, metricKey, eps);
+                decision = RunPromotionDecider.Decide(runsRoot, metricKey, profileKey, eps);
             }
             catch (Exception ex)
             {
@@ -76,7 +78,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 return Task.CompletedTask;
             }
 
-            PrintConsole(decision);
+            PrintConsole(decision, profileKey);
 
             string? decisionDir = null;
             string? mdPath = null;
@@ -93,7 +95,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 mdPath = Path.Combine(outDir, $"decision_{safeMetric}_{stamp}.md");
                 jsonPath = Path.Combine(outDir, $"decision_{safeMetric}_{stamp}.json");
 
-                File.WriteAllText(mdPath, RenderMarkdown(decision), new UTF8Encoding(false));
+                File.WriteAllText(mdPath, RenderMarkdown(decision, profileKey), new UTF8Encoding(false));
 
                 var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web)
                 {
@@ -115,7 +117,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             {
                 try
                 {
-                    var result = RunActivation.Promote(runsRoot, metricKey);
+                    var result = RunActivation.Promote(runsRoot, metricKey, profileKey);
 
                     Console.WriteLine();
                     Console.WriteLine($"[runs-decide] PROMOTED → Active directory: {result.Pointer.RunDirectory}");
@@ -155,10 +157,12 @@ namespace EmbeddingShift.ConsoleEval.Commands
             return Task.CompletedTask;
         }
 
-        private static void PrintConsole(RunPromotionDecision d)
+        private static void PrintConsole(RunPromotionDecision d, string? profileKey)
         {
             Console.WriteLine($"[runs-decide] root   = {d.RunsRoot}");
             Console.WriteLine($"[runs-decide] metric = {d.MetricKey}");
+            if (!string.IsNullOrWhiteSpace(profileKey))
+                Console.WriteLine($"[runs-decide] profile= {profileKey}");
             Console.WriteLine($"[runs-decide] eps    = {d.Epsilon.ToString("0.######", CultureInfo.InvariantCulture)}");
             Console.WriteLine($"[runs-decide] runs   = {d.TotalRunsFound}");
             Console.WriteLine();
@@ -187,7 +191,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             Console.WriteLine($"Reason   : {d.Reason}");
         }
 
-        private static string RenderMarkdown(RunPromotionDecision d)
+        private static string RenderMarkdown(RunPromotionDecision d, string? profileKey)
         {
             var sb = new StringBuilder();
 
@@ -195,6 +199,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             sb.AppendLine();
             sb.AppendLine($"- utc: `{d.CreatedUtc:O}`");
             sb.AppendLine($"- runsRoot: `{d.RunsRoot}`");
+            if (!string.IsNullOrWhiteSpace(profileKey)) sb.AppendLine($"- profile: `{profileKey}`");
             sb.AppendLine($"- metric: `{d.MetricKey}`");
             sb.AppendLine($"- eps: `{d.Epsilon.ToString("0.######", CultureInfo.InvariantCulture)}`");
             sb.AppendLine($"- totalRunsFound: `{d.TotalRunsFound}`");

@@ -26,13 +26,16 @@ namespace EmbeddingShift.Core.Runs
             string? PreviousActiveArchivedTo);
 
         public static bool TryLoadActive(string runsRoot, string metricKey, out ActiveRunPointer? pointer)
+            => TryLoadActive(runsRoot, metricKey, profileKey: null, out pointer);
+
+        public static bool TryLoadActive(string runsRoot, string metricKey, string? profileKey, out ActiveRunPointer? pointer)
         {
             pointer = null;
 
             if (string.IsNullOrWhiteSpace(runsRoot))
                 return false;
 
-            var activePath = GetActivePath(runsRoot, metricKey);
+            var activePath = GetActivePath(runsRoot, metricKey, profileKey);
             if (!File.Exists(activePath))
                 return false;
 
@@ -53,7 +56,13 @@ namespace EmbeddingShift.Core.Runs
         }
 
         public static PromoteResult Promote(string runsRoot, string metricKey)
-            => Promote(runsRoot, metricKey, pickRank: null, pickRunId: null);
+            => Promote(runsRoot, metricKey, profileKey: null, pickRank: null, pickRunId: null);
+
+        public static PromoteResult Promote(string runsRoot, string metricKey, string? profileKey)
+            => Promote(runsRoot, metricKey, profileKey, pickRank: null, pickRunId: null);
+
+        public static PromoteResult Promote(string runsRoot, string metricKey, int? pickRank, string? pickRunId)
+            => Promote(runsRoot, metricKey, profileKey: null, pickRank, pickRunId);
 
         /// <summary>
         /// Promotes the selected run to be the active pointer for the given metric.
@@ -62,7 +71,7 @@ namespace EmbeddingShift.Core.Runs
         /// - Else if pickRank is provided, the N-th run by score (1-based) is used.
         /// - Else the best run by score is used.
         /// </summary>
-        public static PromoteResult Promote(string runsRoot, string metricKey, int? pickRank, string? pickRunId)
+        public static PromoteResult Promote(string runsRoot, string metricKey, string? profileKey, int? pickRank, string? pickRunId)
         {
             if (string.IsNullOrWhiteSpace(runsRoot))
                 throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
@@ -97,10 +106,9 @@ namespace EmbeddingShift.Core.Runs
 
             var chosen = SelectCandidate(candidates, pickRank, pickRunId);
 
-            var activeDir = Path.Combine(runsRoot, "_active");
+            var activePath = GetActivePath(runsRoot, metricKey, profileKey);
+            var activeDir = Path.GetDirectoryName(activePath) ?? Path.Combine(runsRoot, "_active");
             Directory.CreateDirectory(activeDir);
-
-            var activePath = GetActivePath(runsRoot, metricKey);
 
             // Archive previous active pointer (if any)
             string? archivedTo = null;
@@ -173,6 +181,9 @@ namespace EmbeddingShift.Core.Runs
             string? CurrentActiveArchivedTo);
 
         public static RollbackResult RollbackLatest(string runsRoot, string metricKey)
+            => RollbackLatest(runsRoot, metricKey, profileKey: null);
+
+        public static RollbackResult RollbackLatest(string runsRoot, string metricKey, string? profileKey)
         {
             if (string.IsNullOrWhiteSpace(runsRoot))
                 throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
@@ -183,8 +194,8 @@ namespace EmbeddingShift.Core.Runs
             if (string.IsNullOrWhiteSpace(metricKey))
                 throw new ArgumentException("Metric key must not be null/empty.", nameof(metricKey));
 
-            var activePath = GetActivePath(runsRoot, metricKey);
-            var activeDir = Path.Combine(runsRoot, "_active");
+            var activePath = GetActivePath(runsRoot, metricKey, profileKey);
+            var activeDir = Path.GetDirectoryName(activePath) ?? Path.Combine(runsRoot, "_active");
             var historyDir = Path.Combine(activeDir, "history");
 
             if (!Directory.Exists(historyDir))
@@ -214,7 +225,7 @@ namespace EmbeddingShift.Core.Runs
             File.Copy(latest.Path, activePath, overwrite: true);
 
             // Load restored pointer for return value.
-            if (!TryLoadActive(runsRoot, metricKey, out var pointer) || pointer is null)
+            if (!TryLoadActive(runsRoot, metricKey, profileKey, out var pointer) || pointer is null)
                 throw new InvalidOperationException($"Rollback wrote active pointer, but it could not be loaded: {activePath}");
 
             return new RollbackResult(pointer, activePath, latest.Path, archivedCurrent);
@@ -231,6 +242,14 @@ namespace EmbeddingShift.Core.Runs
             string metricKey,
             int maxItems = 20,
             bool includePreRollback = true)
+            => ListHistory(runsRoot, metricKey, profileKey: null, maxItems, includePreRollback);
+
+        public static System.Collections.Generic.IReadOnlyList<HistoryEntry> ListHistory(
+            string runsRoot,
+            string metricKey,
+            string? profileKey,
+            int maxItems = 20,
+            bool includePreRollback = true)
         {
             if (string.IsNullOrWhiteSpace(runsRoot))
                 throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
@@ -243,7 +262,8 @@ namespace EmbeddingShift.Core.Runs
 
             if (maxItems <= 0) maxItems = 20;
 
-            var activeDir = Path.Combine(runsRoot, "_active");
+            var activePath = GetActivePath(runsRoot, metricKey, profileKey);
+            var activeDir = Path.GetDirectoryName(activePath) ?? Path.Combine(runsRoot, "_active");
             var historyDir = Path.Combine(activeDir, "history");
             if (!Directory.Exists(historyDir))
                 return Array.Empty<HistoryEntry>();
@@ -291,11 +311,38 @@ namespace EmbeddingShift.Core.Runs
             return list;
         }
 
-        private static string GetActivePath(string runsRoot, string metricKey)
+        private static string GetActivePath(string runsRoot, string metricKey, string? profileKey)
         {
-            var activeDir = Path.Combine(runsRoot, "_active");
             var safeMetric = SanitizeFileName(metricKey);
-            return Path.Combine(activeDir, $"active_{safeMetric}.json");
+
+            if (string.IsNullOrWhiteSpace(profileKey))
+            {
+                var activeDir = Path.Combine(runsRoot, "_active");
+                return Path.Combine(activeDir, $"active_{safeMetric}.json");
+            }
+
+            var safeProfile = NormalizeProfileKey(profileKey);
+            var activeDirProfile = Path.Combine(runsRoot, "_active", "profiles", safeProfile);
+            return Path.Combine(activeDirProfile, $"active_{safeMetric}.json");
+        }
+
+        private static string NormalizeProfileKey(string profileKey)
+        {
+            // Keep profile keys file-system friendly and stable.
+            if (string.IsNullOrWhiteSpace(profileKey))
+                return "default";
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var sb = new StringBuilder(profileKey.Length);
+
+            foreach (var ch in profileKey.Trim())
+                sb.Append(invalid.Contains(ch) ? '_' : ch);
+
+            var s = sb.ToString();
+            s = s.Replace(' ', '_');
+
+            // Avoid pathological long folder names.
+            return s.Length <= 120 ? s : s.Substring(0, 120);
         }
 
         private static string SanitizeFileName(string name)

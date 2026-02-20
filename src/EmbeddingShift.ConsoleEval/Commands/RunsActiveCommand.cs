@@ -12,7 +12,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-active [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>]
+            //   runs-active [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>]
             //
             // Defaults:
             //   domainKey = insurance
@@ -23,6 +23,8 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var runsRoot = GetOpt(args, "--runs-root");
             var domainKey = GetOpt(args, "--domainKey") ?? "insurance";
             var metricKey = GetOpt(args, "--metric") ?? "ndcg@3";
+            var profileKey = GetOpt(args, "--profile");
+            if (string.IsNullOrWhiteSpace(profileKey)) profileKey = null;
 
             if (string.IsNullOrWhiteSpace(runsRoot))
             {
@@ -40,7 +42,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
                 return Task.CompletedTask;
             }
 
-            if (!RunActivation.TryLoadActive(runsRoot, metricKey, out var pointer) || pointer is null)
+            if (!RunActivation.TryLoadActive(runsRoot, metricKey, profileKey, out var pointer) || pointer is null)
             {
                 Console.WriteLine($"[runs-active] No active pointer found for metric '{metricKey}'.");
                 Console.WriteLine($"[runs-active] Tip: run 'runs-promote --metric={metricKey} --tenant <tenant>' first.");
@@ -50,6 +52,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             Console.WriteLine($"[runs-active] root   = {runsRoot}");
             Console.WriteLine($"[runs-active] metric = {metricKey}");
+            if (!string.IsNullOrWhiteSpace(profileKey)) Console.WriteLine($"[runs-active] profile= {profileKey}");
             Console.WriteLine();
             Console.WriteLine($"Active directory: {pointer.RunDirectory}");
             Console.WriteLine($"WorkflowName    : {pointer.WorkflowName}");

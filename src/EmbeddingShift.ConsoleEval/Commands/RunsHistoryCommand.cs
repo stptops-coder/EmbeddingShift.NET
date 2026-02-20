@@ -12,7 +12,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-history [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--max=N] [--exclude-preRollback] [--open]
+            //   runs-history [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--max=N] [--exclude-preRollback] [--open]
             //
             // Defaults:
             //   domainKey = insurance
@@ -24,6 +24,8 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var runsRoot = GetOpt(args, "--runs-root");
             var domainKey = GetOpt(args, "--domainKey") ?? "insurance";
             var metricKey = GetOpt(args, "--metric") ?? "ndcg@3";
+            var profileKey = GetOpt(args, "--profile");
+            if (string.IsNullOrWhiteSpace(profileKey)) profileKey = null;
             var maxStr = GetOpt(args, "--max");
             var excludePreRollback = HasSwitch(args, "--exclude-preRollback");
             var open = HasSwitch(args, "--open");
@@ -51,13 +53,17 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var entries = RunActivation.ListHistory(
                 runsRoot,
                 metricKey,
+                profileKey,
                 maxItems: max,
                 includePreRollback: !excludePreRollback);
 
             var historyDir = Path.Combine(runsRoot, "_active", "history");
+            if (!string.IsNullOrWhiteSpace(profileKey))
+                historyDir = Path.Combine(runsRoot, "_active", "profiles", NormalizeProfileKey(profileKey), "history");
 
             Console.WriteLine($"[runs-history] root     = {runsRoot}");
             Console.WriteLine($"[runs-history] metric   = {metricKey}");
+            if (!string.IsNullOrWhiteSpace(profileKey)) Console.WriteLine($"[runs-history] profile  = {profileKey}");
             Console.WriteLine($"[runs-history] max      = {max}");
             Console.WriteLine($"[runs-history] preRB    = {(!excludePreRollback ? "included" : "excluded")}");
             Console.WriteLine($"[runs-history] history  = {entries.Count}");
@@ -106,6 +112,17 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             Environment.ExitCode = 0;
             return Task.CompletedTask;
+        }
+
+        private static string NormalizeProfileKey(string profileKey)
+        {
+            if (string.IsNullOrWhiteSpace(profileKey)) return "default";
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var chars = profileKey.Trim().Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray();
+            var s = new string(chars).Replace(' ', '_');
+
+            return s.Length <= 120 ? s : s.Substring(0, 120);
         }
 
         private static string? GetOpt(string[] args, string key)

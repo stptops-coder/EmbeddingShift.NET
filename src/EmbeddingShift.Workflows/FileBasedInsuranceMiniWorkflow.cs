@@ -196,6 +196,7 @@ namespace EmbeddingShift.Workflows
 
                     var topHit = ranked.Count > 0 ? ranked[0] : null;
                     var topHit2 = ranked.Count > 1 ? ranked[1] : null;
+                    var topHit3 = ranked.Count > 2 ? ranked[2] : null;
 
                     var rankIndex = ranked.FindIndex(r => r.DocId == q.RelevantDocId);
                     if (rankIndex < 0)
@@ -212,7 +213,9 @@ namespace EmbeddingShift.Workflows
                             TopDocId: topHit?.DocId,
                             TopScore: topHit?.Score ?? 0.0,
                             Top2DocId: topHit2?.DocId,
-                            Top2Score: topHit2?.Score ?? 0.0));
+                            Top2Score: topHit2?.Score ?? 0.0,
+                            Top3DocId: topHit3?.DocId,
+                            Top3Score: topHit3?.Score ?? 0.0));
 
                         continue;
                     }
@@ -233,7 +236,11 @@ namespace EmbeddingShift.Workflows
                         Ap1: ap,
                         Ndcg3: ndcg,
                         TopDocId: topHit?.DocId,
-                        TopScore: topHit?.Score ?? 0.0));
+                        TopScore: topHit?.Score ?? 0.0,
+                        Top2DocId: topHit2?.DocId,
+                        Top2Score: topHit2?.Score ?? 0.0,
+                        Top3DocId: topHit3?.DocId,
+                        Top3Score: topHit3?.Score ?? 0.0));
                 }
             }
 
