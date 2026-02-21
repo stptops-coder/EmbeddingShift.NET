@@ -24,6 +24,11 @@ Remove-Item Env:EMBEDDINGSHIFT_RESULTS_DOMAIN -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_ROOT -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_DATA_ROOT -ErrorAction SilentlyContinue
 
+Remove-Item Env:EMBEDDINGSHIFT_SIM_MODE -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDINGSHIFT_SIM_ALGO -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SIM_NOISE_AMPLITUDE -ErrorAction SilentlyContinue
+
 # Isolate test runs from the repo-wide embedding cache to avoid file-lock flakiness.
 # Convention: EMBEDDINGSHIFT_ROOT points to an *active run root* (a folder that contains a nested "results" folder).
 if ([string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_ROOT)) {

@@ -152,6 +152,9 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-d
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-active --metric ndcg@3
 ```
 
+Optional:
+- Add `--include-repo-posneg` to `runs-decide` / `runs-promote` to also consider repo candidates under `runs/_repo/MiniInsurance-PosNeg` (default: off).
+
 ---
 
 

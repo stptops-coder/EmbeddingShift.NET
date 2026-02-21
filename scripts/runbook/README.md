@@ -20,7 +20,7 @@ Notes:
 - The run is isolated under `results\_scratch\EmbeddingShift.MiniInsurance\yyyyMMdd_HHmmss` via `EMBEDDINGSHIFT_ROOT` (process scope).
 - `20-FullRun-MiniInsurance.ps1` generates a dataset, runs the pipeline, creates a compare report, and makes a promotion decision.
 - `40-Health.ps1` prints the most recent compare/decision report locations for the current run root.
-- `30-Tests.ps1` runs the full unit/acceptance test suite (expected: 77/77 green).
+- `30-Tests.ps1` runs the full unit/acceptance test suite (expected: all green).
 
 ## Deterministic acceptance sweep
 
@@ -29,6 +29,9 @@ Use:
 ```powershell
 .\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1
 ```
+
+Optional:
+- Add `-IncludeRepoPosNeg` to allow `runs-decide` / `runs-promote` to consider repo candidates under `runs\_repo\MiniInsurance-PosNeg` (default: off).
 
 Legacy wrapper (kept for older notes):
 

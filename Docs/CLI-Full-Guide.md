@@ -166,7 +166,7 @@ Purpose: Apply a simple acceptance gate (eps threshold) to decide whether a cand
 
 ```
 Usage:
-runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--eps=<double>] [--write] [--apply] [--open]
+runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--eps=<double>] [--write] [--apply] [--open] [--include-repo-posneg]
 
 Defaults:
 domainKey = insurance
@@ -180,6 +180,7 @@ apply     = false (dry decision only)
 Notes:
 - 'apply' uses RunActivation.Promote(...) and will create/overwrite the active pointer for this metric.
 - This command does not delete any run directories.
+- Optional: `--include-repo-posneg` also considers runs under `runs/_repo/MiniInsurance-PosNeg` as candidates (default: off).
 ```
 
 ### runs-promote
@@ -188,7 +189,7 @@ Purpose: Promote the currently selected/best run to become the active run for a 
 
 ```
 Usage:
-runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open]
+runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open] [--include-repo-posneg]
 
 Defaults:
 domainKey = insurance
@@ -196,6 +197,9 @@ tenant    = ENV:EMBEDDINGSHIFT_TENANT (or "insurer-a")
 runs-root = .\results\<domainKey>\tenants\<tenant>\runs
 metric    = ndcg@3
 ```
+
+Notes:
+- Optional: `--include-repo-posneg` allows selecting repo PosNeg runs under `runs/_repo/MiniInsurance-PosNeg` (default: off).
 
 ### runs-rollback
 
