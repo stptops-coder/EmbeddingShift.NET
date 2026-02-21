@@ -27,6 +27,7 @@ Remove-Item Env:EMBEDDINGSHIFT_DATA_ROOT -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_SIM_MODE -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_SIM_ALGO -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDINGSHIFT_SIM_NOISE_AMPLITUDE -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDING_SIM_NOISE_AMPLITUDE -ErrorAction SilentlyContinue
 
 # Isolate test runs from the repo-wide embedding cache to avoid file-lock flakiness.
@@ -42,4 +43,20 @@ if ([string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_ROOT)) {
 
 Write-Host ("[Tests] EMBEDDINGSHIFT_ROOT=" + $env:EMBEDDINGSHIFT_ROOT)
 
-dotnet test ".\src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj"
+
+# Route OS temp usage into the isolated test run root to avoid sporadic permission / file-lock issues.
+$origTemp = $env:TEMP
+$origTmp = $env:TMP
+$testsTempRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT "_tmp"
+New-Item -ItemType Directory -Force -Path $testsTempRoot | Out-Null
+$env:TEMP = $testsTempRoot
+$env:TMP  = $testsTempRoot
+Write-Host ("[Tests] TEMP=" + $env:TEMP)
+
+try {
+  dotnet test ".\src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj"
+}
+finally {
+  if ([string]::IsNullOrWhiteSpace($origTemp)) { Remove-Item Env:TEMP -ErrorAction SilentlyContinue } else { $env:TEMP = $origTemp }
+  if ([string]::IsNullOrWhiteSpace($origTmp))  { Remove-Item Env:TMP  -ErrorAction SilentlyContinue } else { $env:TMP  = $origTmp }
+}
