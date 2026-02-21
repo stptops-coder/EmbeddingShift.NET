@@ -51,7 +51,7 @@ function Get-ProfileKey {
 }
 
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$SweepScript = Join-Path $PSScriptRoot '21-AcceptanceSweep-Deterministic.ps1'
+$SweepScript = Join-Path (Join-Path $PSScriptRoot '..\runbook') '21-AcceptanceSweep-Deterministic.ps1'
 
 if (-not (Test-Path $SweepScript)) {
     throw "Sweep script not found: $SweepScript"

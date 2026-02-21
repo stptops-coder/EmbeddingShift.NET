@@ -2,6 +2,12 @@
 
 This folder contains small, reproducible PowerShell scripts for common workflows.
 
+## Folder layout
+
+- `scripts/runbook`: standard gate scripts (keep this folder small).
+- `scripts/runbook-internal`: helper scripts called by the gate scripts.
+- `scripts/runbook-experimental`: legacy / experimental scripts (not part of the standard gate).
+
 ## Mini-Insurance (single end-to-end run)
 
 From the repo root:
@@ -11,9 +17,9 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
 .\scripts\runbook\00-Prep.ps1
 .\scripts\runbook\10-Build.ps1
-.\scripts\runbook\20-FullRun-MiniInsurance.ps1
+.\scripts\runbook-experimental\20-FullRun-MiniInsurance.ps1
 .\scripts\runbook\30-Tests.ps1
-.\scripts\runbook\40-Health.ps1
+.\scripts\runbook-experimental\40-Health.ps1
 ```
 
 Notes:
@@ -36,7 +42,7 @@ Optional:
 Legacy wrapper (kept for older notes):
 
 ```powershell
-.\scripts\runbook\21-BlankStart-RunActivation-Sweep.ps1
+.\scripts\runbook-experimental\21-BlankStart-RunActivation-Sweep.ps1
 ```
 
 
@@ -55,18 +61,18 @@ For a stable "greenfield" verification:
 ```
 
 Notes:
-- `30-Tests.ps1` is a convenience alias for `90-Tests-Samples.ps1`.
+- `30-Tests.ps1` is a convenience alias for `scripts\runbook-internal\90-Tests-Samples.ps1`.
 - `-CompareRepoPosNeg` writes a separate compare report for `runs\_repo\MiniInsurance-PosNeg` (reporting only).
 - `-IncludeRepoPosNeg` allows `runs-decide` / `runs-promote` to consider repo PosNeg runs as candidates (selection).
 
 ## Other scripts (optional)
 
 These scripts are useful, but not part of the standard gate:
-- `01-CleanScratch-PreserveActive.ps1`: remove scratch while preserving shared active.
+- `scripts\runbook-experimental\01-CleanScratch-PreserveActive.ps1`: remove scratch while preserving shared active.
 - `05-PathAudit.ps1`: diagnose path/layout issues across results roots.
 - `60-Inspect-ScratchLayout.ps1`: quick inspection of the current scratch layout.
-- `22-AcceptanceSweep-Deterministic-Regression.ps1` / `98-RunbookRegression.ps1`: regression wrappers for older notes.
-- `25-PosNeg-Deterministic-Full.ps1` / `30-PosNegRun-Scale10.ps1`: larger PosNeg training/runs.
-- `40-Segment-Oracle.ps1` / `41-Segment-GapTau0.ps1`: Segmenter experiments.
-- `99-RunAll.ps1`: wrapper that runs the standard gate, plus optional extras via flags.
+- `scripts\runbook-experimental\22-AcceptanceSweep-Deterministic-Regression.ps1` / `scripts\runbook-experimental\98-RunbookRegression.ps1`: regression wrappers for older notes.
+- `scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1` / `scripts\runbook-experimental\30-PosNegRun-Scale10.ps1`: larger PosNeg training/runs.
+- `scripts\runbook-experimental\40-Segment-Oracle.ps1` / `scripts\runbook-experimental\41-Segment-GapTau0.ps1`: Segmenter experiments.
+- `scripts\runbook\99-RunAll.ps1`: wrapper that runs the standard gate, plus optional extras via flags.
 

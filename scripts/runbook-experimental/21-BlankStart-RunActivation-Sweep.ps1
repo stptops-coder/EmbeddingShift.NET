@@ -26,10 +26,10 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 Set-Location $repoRoot
 
 Write-Host "[BlankStart] Clearing run-related environment variables (process scope)..."
-. "$PSScriptRoot\00-Prep.ps1" | Out-Host
+. (Join-Path $PSScriptRoot "..\runbook\00-Prep.ps1") | Out-Host
 
 Write-Host "[RunActivation] Running deterministic acceptance sweep..."
-& "$PSScriptRoot\21-AcceptanceSweep-Deterministic.ps1" `
+& (Join-Path $PSScriptRoot "..\runbook\21-AcceptanceSweep-Deterministic.ps1") `
   -RootMode $RootMode `
   -Tenant $Tenant `
   -DsName $DsName `

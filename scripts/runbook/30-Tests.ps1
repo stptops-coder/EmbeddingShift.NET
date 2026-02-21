@@ -1,5 +1,6 @@
+#requires -Version 5.1
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Convenience alias for the existing test runbook (samples/insurance).
-& "$PSScriptRoot\90-Tests-Samples.ps1"
+# Thin wrapper: keep the canonical entrypoint stable.
+& (Join-Path $PSScriptRoot "..\runbook-internal\90-Tests-Samples.ps1")
