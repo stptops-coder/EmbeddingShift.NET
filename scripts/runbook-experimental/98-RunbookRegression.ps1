@@ -72,15 +72,15 @@ Write-Host "[Regression] ValidateJson  = $ValidateJson"
 # - 40-Health: sanity report over recent results
 Invoke-Runbook -name '99-RunAll' -relPath 'scripts\runbook\99-RunAll.ps1' -args @('-Tenant', $Tenant, '-Seed', "$Seed") -logRoot $logRoot
 Invoke-Runbook -name '21-Sweep-Promote' -relPath 'scripts\runbook\21-AcceptanceSweep-Deterministic.ps1' -args @('-Tenant', $Tenant, '-Seed', "$Seed", '-Policies', '40', '-Queries', '80', '-Stages', '1', '-Metric', $Metric, '-Promote') -logRoot $logRoot
-Invoke-Runbook -name '20-FullRun' -relPath 'scripts\runbook\20-FullRun-MiniInsurance.ps1' -args @('-Tenant', $Tenant, '-Seed', "$Seed") -logRoot $logRoot
-Invoke-Runbook -name '40-Health' -relPath 'scripts\runbook\40-Health.ps1' -args @() -logRoot $logRoot
+Invoke-Runbook -name '20-FullRun' -relPath 'scripts\runbook-experimental\20-FullRun-MiniInsurance.ps1' -args @('-Tenant', $Tenant, '-Seed', "$Seed") -logRoot $logRoot
+Invoke-Runbook -name '40-Health' -relPath 'scripts\runbook-experimental\40-Health.ps1' -args @() -logRoot $logRoot
 
 # Optional: legacy/experimental scripts (segmenter PoC, long runs, private dependencies).
 if ($IncludeLegacy) {
-  Invoke-Runbook -name '25-PosNeg-Full' -relPath 'scripts\runbook\25-PosNeg-Deterministic-Full.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
-  Invoke-Runbook -name '30-PosNeg-Scale10' -relPath 'scripts\runbook\30-PosNegRun-Scale10.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
-  Invoke-Runbook -name '40-Segment-Oracle' -relPath 'scripts\runbook\40-Segment-Oracle.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
-  Invoke-Runbook -name '41-Segment-GapTau0' -relPath 'scripts\runbook\41-Segment-GapTau0.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
+  Invoke-Runbook -name '25-PosNeg-Full' -relPath 'scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
+  Invoke-Runbook -name '30-PosNeg-Scale10' -relPath 'scripts\runbook-experimental\30-PosNegRun-Scale10.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
+  Invoke-Runbook -name '40-Segment-Oracle' -relPath 'scripts\runbook-experimental\40-Segment-Oracle.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
+  Invoke-Runbook -name '41-Segment-GapTau0' -relPath 'scripts\runbook-experimental\41-Segment-GapTau0.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
 }
 
 # Post-run: inspect latest scratch layouts.
