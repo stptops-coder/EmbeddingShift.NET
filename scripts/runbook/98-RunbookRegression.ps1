@@ -7,7 +7,8 @@ param(
   # Optional: run the legacy/experimental scripts as well.
   [switch]$IncludeLegacy,
 
-  # Optional: validate JSON output in the produced scratch trees (can be slow).
+  # Optional: reserved for future layout validators.
+  # Note: currently unused (kept for backward-compatible CLI usage).
   [switch]$ValidateJson
 )
 
@@ -65,12 +66,12 @@ Write-Host "[Regression] IncludeLegacy = $IncludeLegacy"
 Write-Host "[Regression] ValidateJson  = $ValidateJson"
 
 # Core coverage chain:
-# - 99-RunAll: build + deterministic acceptance sweep + tests
-# - 21-BlankStart: sweep + (optional) promote pointer (here: promote is ON)
+# - 99-RunAll: build + deterministic acceptance sweep (no promote) + tests
+# - 21-Sweep-Promote: minimal promote path (shared active update)
 # - 20-FullRun: dataset generate + pipeline + compare/decide
 # - 40-Health: sanity report over recent results
-Invoke-Runbook -name '99-RunAll' -relPath 'scripts\runbook\99-RunAll.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
-Invoke-Runbook -name '21-BlankStart' -relPath 'scripts\runbook\21-BlankStart-RunActivation-Sweep.ps1' -args @('-Tenant', $Tenant, '-Promote', '-Metric', $Metric, '-Policies', '40', '-Queries', '80') -logRoot $logRoot
+Invoke-Runbook -name '99-RunAll' -relPath 'scripts\runbook\99-RunAll.ps1' -args @('-Tenant', $Tenant, '-Seed', "$Seed") -logRoot $logRoot
+Invoke-Runbook -name '21-Sweep-Promote' -relPath 'scripts\runbook\21-AcceptanceSweep-Deterministic.ps1' -args @('-Tenant', $Tenant, '-Seed', "$Seed", '-Policies', '40', '-Queries', '80', '-Stages', '1', '-Metric', $Metric, '-Promote') -logRoot $logRoot
 Invoke-Runbook -name '20-FullRun' -relPath 'scripts\runbook\20-FullRun-MiniInsurance.ps1' -args @('-Tenant', $Tenant, '-Seed', "$Seed") -logRoot $logRoot
 Invoke-Runbook -name '40-Health' -relPath 'scripts\runbook\40-Health.ps1' -args @() -logRoot $logRoot
 
@@ -82,12 +83,13 @@ if ($IncludeLegacy) {
   Invoke-Runbook -name '41-Segment-GapTau0' -relPath 'scripts\runbook\41-Segment-GapTau0.ps1' -args @('-Tenant', $Tenant) -logRoot $logRoot
 }
 
-# Post-run: inspect latest scratch layouts (warning-only by default).
-$inspectArgs = @('-Tenant', $Tenant)
-if ($ValidateJson) { $inspectArgs += '-ValidateJson' }
+# Post-run: inspect latest scratch layouts.
+if ($ValidateJson) {
+  Write-Host "[Regression] Note: -ValidateJson is currently unused by 60-Inspect-ScratchLayout.ps1."
+}
 
-Invoke-Runbook -name 'Inspect-Sweep' -relPath 'scripts\runbook\60-Inspect-ScratchLayout.ps1' -args ($inspectArgs + @('-Scenario','EmbeddingShift.Sweep')) -logRoot $logRoot
-Invoke-Runbook -name 'Inspect-MiniInsurance' -relPath 'scripts\runbook\60-Inspect-ScratchLayout.ps1' -args ($inspectArgs + @('-Scenario','EmbeddingShift.MiniInsurance')) -logRoot $logRoot
+Invoke-Runbook -name 'Inspect-Sweep' -relPath 'scripts\runbook\60-Inspect-ScratchLayout.ps1' -args @('-Scenario','EmbeddingShift.Sweep') -logRoot $logRoot
+Invoke-Runbook -name 'Inspect-MiniInsurance' -relPath 'scripts\runbook\60-Inspect-ScratchLayout.ps1' -args @('-Scenario','EmbeddingShift.MiniInsurance') -logRoot $logRoot
 
 Write-Host ""
 Write-Host "[Regression] OK. Logs: $logRoot"

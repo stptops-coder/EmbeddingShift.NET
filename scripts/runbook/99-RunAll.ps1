@@ -7,21 +7,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-
-# Normalize paths for this run (prevents stale EMBEDDINGSHIFT_ROOT drift).
-$envSummary = . (Join-Path $PSScriptRoot '01-EnvPaths.ps1') -Tenant $Tenant -Layout 'tenant' -Scenario 'EmbeddingShift.Sweep' -Force -ClearOptional -CreateFolders
-Write-Host "[Paths] RepoRoot=$($envSummary.RepoRoot)"
-Write-Host "[Paths] ResultsRoot=$($envSummary.ResultsRoot)"
-Write-Host "[Paths] ActiveRunRoot=$($envSummary.ActiveRunRoot)"
-Write-Host "[Paths] DatasetRoot=$($envSummary.DatasetRoot)"
-if (-not [string]::IsNullOrWhiteSpace($envSummary.Tenant)) { Write-Host "[Paths] Tenant=$($envSummary.Tenant)" }
-
 # Canonical "closing proof" suite:
 #   - deterministic build
 #   - deterministic acceptance sweep (compare/decide + optional promote)
 #   - unit tests against samples
 #
 # Use -All to additionally run the older, repo-root based demos (FullRun/PosNeg/Segmenter).
+
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+Set-Location $repoRoot
+Write-Host "[RunAll] RepoRoot = $repoRoot"
+Write-Host "[RunAll] Tenant  = $Tenant"
+Write-Host "[RunAll] Seed    = $Seed"
 
 & "$PSScriptRoot\00-Prep.ps1"
 & "$PSScriptRoot\10-Build.ps1"

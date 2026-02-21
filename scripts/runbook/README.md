@@ -42,3 +42,31 @@ Legacy wrapper (kept for older notes):
 
 
 This generates multiple datasets/runs into a separate scratch root under `results\_scratch\EmbeddingShift.Sweep\...`.
+
+## Standard gate (recommended)
+
+For a stable "greenfield" verification:
+
+```powershell
+.\scripts\runbook\00-Prep.ps1
+.\scripts\runbook\10-Build.ps1
+.\scripts\runbook\30-Tests.ps1
+.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1 -Policies 40 -Queries 80 -Stages 1 -Seed 1337 -Promote -SimAlgo semantic-hash -SimSemanticCharNGrams 1
+```
+
+Notes:
+- `30-Tests.ps1` is a convenience alias for `90-Tests-Samples.ps1`.
+- `-CompareRepoPosNeg` writes a separate compare report for `runs\_repo\MiniInsurance-PosNeg` (reporting only).
+- `-IncludeRepoPosNeg` allows `runs-decide` / `runs-promote` to consider repo PosNeg runs as candidates (selection).
+
+## Other scripts (optional)
+
+These scripts are useful, but not part of the standard gate:
+- `01-CleanScratch-PreserveActive.ps1`: remove scratch while preserving shared active.
+- `05-PathAudit.ps1`: diagnose path/layout issues across results roots.
+- `60-Inspect-ScratchLayout.ps1`: quick inspection of the current scratch layout.
+- `22-AcceptanceSweep-Deterministic-Regression.ps1` / `98-RunbookRegression.ps1`: regression wrappers for older notes.
+- `25-PosNeg-Deterministic-Full.ps1` / `30-PosNegRun-Scale10.ps1`: larger PosNeg training/runs.
+- `40-Segment-Oracle.ps1` / `41-Segment-GapTau0.ps1`: Segmenter experiments.
+- `99-RunAll.ps1`: wrapper that runs the standard gate, plus optional extras via flags.
+
