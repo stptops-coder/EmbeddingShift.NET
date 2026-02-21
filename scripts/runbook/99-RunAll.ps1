@@ -23,7 +23,7 @@ Write-Host "[RunAll] Seed    = $Seed"
 & "$PSScriptRoot\00-Prep.ps1"
 & "$PSScriptRoot\10-Build.ps1"
 
-& "$PSScriptRoot\21-AcceptanceSweep-Deterministic.ps1" -Tenant $Tenant -Seed $Seed
+& "$PSScriptRoot\21-AcceptanceSweep-Deterministic.ps1" -Tenant $Tenant -Seed $Seed -Policies 40 -Queries 80 -Stages 1 -SimAlgo semantic-hash -SimSemanticCharNGrams 1
 
 & "$PSScriptRoot\90-Tests-Samples.ps1"
 
