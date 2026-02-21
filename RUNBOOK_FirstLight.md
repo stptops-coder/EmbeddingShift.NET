@@ -223,9 +223,9 @@ From the repo root:
 ```powershell
 .\scripts\runbook\00-Prep.ps1
 .\scripts\runbook\10-Build.ps1
-.\scripts\runbook\20-FullRun-MiniInsurance.ps1
-.\scripts\runbook\90-Tests-Samples.ps1
-.\scripts\runbook\40-Health.ps1
+.\scripts\runbook-experimental\20-FullRun-MiniInsurance.ps1
+.\scripts\runbook\30-Tests.ps1
+.\scripts\runbook-experimental\40-Health.ps1
 ```
 
 Notes:
