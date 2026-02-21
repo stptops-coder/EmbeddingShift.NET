@@ -39,7 +39,7 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
 If you want a *stable*, copy/pasteable sequence (and you prefer not to rely on private temp folders), use the runbook scripts:
 
 - **PosNeg (deterministic, full sequence)**  
-  `.\scripts\runbook\25-PosNeg-Deterministic-Full.ps1`  
+  `.\scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1`  
   (generates dataset → trains PosNeg → runs baseline vs PosNeg → prints history/best/inspect)
 
 - **Acceptance sweep (deterministic)**  

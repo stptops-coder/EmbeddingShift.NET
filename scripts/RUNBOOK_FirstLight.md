@@ -8,7 +8,7 @@ This runbook describes how to run the **FirstLight** workflow end-to-end using t
 ## Runbooks in this repo
 
 - **FirstLight (baseline / first-delta)** is documented below.
-- **PosNeg (deterministic)**: `scripts/runbook/25-PosNeg-Deterministic-Full.ps1`
+- **PosNeg (deterministic)**: `scripts/runbook-experimental/25-PosNeg-Deterministic-Full.ps1`
 - **Acceptance sweep (deterministic)**: `scripts/runbook/21-AcceptanceSweep-Deterministic.ps1`
 
 Tip: The scripts default to `results\_scratch\...` inside the repo (so you don’t depend on `%TEMP%`).

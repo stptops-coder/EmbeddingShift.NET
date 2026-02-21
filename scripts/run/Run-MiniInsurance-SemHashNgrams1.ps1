@@ -141,5 +141,5 @@ Write-Host ("  Decide : {0}" -f ($(if ($DecidePath)  { $DecidePath  } else { "<n
 # Next
 Write-Host ""
 Write-Host "Next:"
-Write-Host "  ./scripts/runbook/40-Health.ps1"
+Write-Host "  ./scripts/runbook-experimental/40-Health.ps1"
 
