@@ -66,7 +66,7 @@ private static SemaphoreSlim GetPathLock(string path)
             return;
 
         // Write to a temp file and move atomically to avoid partial reads on crashes.
-        var tmp = path + ".tmp." + Guid.NewGuid().ToString("N");
+        var tmp = path + ".tmp";
 
         try
         {
