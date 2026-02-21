@@ -43,6 +43,9 @@ param(
   # Optional: additionally run a dedicated compare for the internal repo workflow (MiniInsurance-PosNeg)
   [switch]$CompareRepoPosNeg,
 
+  # Optional: allow runs-decide / runs-promote to consider runsRoot\_repo\MiniInsurance-PosNeg as a candidate source
+  [switch]$IncludeRepoPosNeg,
+
   [string]$SimAlgo = "sha256",
 
   [int]$SimSemanticCharNGrams = 3
@@ -74,6 +77,8 @@ $proj    = 'src\EmbeddingShift.ConsoleEval'
 $domain  = 'insurance'
 $backend = 'sim'
 $simMode = 'deterministic'
+
+$repoPosNegFlag = if ($IncludeRepoPosNeg) { '--include-repo-posneg' } else { $null }
 
 # --- Clean start root ---
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
@@ -179,7 +184,7 @@ foreach ($p in $Policies) {
 
     dotnet run --project $proj -- `
       --tenant $Tenant `
-      runs-decide --runs-root $runsRoot --metric $Metric --profile $profileKey --write
+      runs-decide --runs-root $runsRoot --metric $Metric --profile $profileKey --write $repoPosNegFlag
 
     $doPromote = $false
     if ($Promote) {
@@ -206,7 +211,7 @@ foreach ($p in $Policies) {
     if ($doPromote) {
       dotnet run --project $proj -- `
         --tenant $Tenant `
-        runs-promote --runs-root $runsRoot --metric $Metric --profile $profileKey
+        runs-promote --runs-root $runsRoot --metric $Metric --profile $profileKey $repoPosNegFlag
 
       if ($useSharedActive) {
         New-Item -ItemType Directory -Force -Path $sharedActiveDir | Out-Null

@@ -1,4 +1,4 @@
-﻿using EmbeddingShift.Core.Runs;
+﻿﻿using EmbeddingShift.Core.Runs;
 using EmbeddingShift.Core.Infrastructure;
 using System;
 using System.Globalization;
@@ -16,7 +16,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--eps=<double>] [--write] [--apply] [--open]
+            //   runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--eps=<double>] [--write] [--apply] [--include-repo-posneg] [--open]
             //
             // Defaults:
             //   domainKey = insurance
@@ -40,6 +40,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             var write = HasSwitch(args, "--write") || !HasSwitch(args, "--no-write");
             var apply = HasSwitch(args, "--apply");
             var open = HasSwitch(args, "--open");
+            var includeRepoPosNeg = HasSwitch(args, "--include-repo-posneg");
 
             var eps = 1e-6;
             if (!string.IsNullOrWhiteSpace(epsText) &&
@@ -69,7 +70,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             RunPromotionDecision decision;
             try
             {
-                decision = RunPromotionDecider.Decide(runsRoot, metricKey, profileKey, eps);
+                decision = RunPromotionDecider.Decide(runsRoot, metricKey, profileKey, eps, includeRepoPosNeg);
             }
             catch (Exception ex)
             {
@@ -117,7 +118,16 @@ namespace EmbeddingShift.ConsoleEval.Commands
             {
                 try
                 {
-                    var result = RunActivation.Promote(runsRoot, metricKey, profileKey);
+                    var result = RunActivation.PromoteExplicit(
+                        runsRoot,
+                        metricKey,
+                        profileKey,
+                        decision.Candidate.WorkflowName,
+                        decision.Candidate.RunId,
+                        decision.Candidate.Score,
+                        decision.Candidate.RunDirectory,
+                        decision.Candidate.RunJsonPath,
+                        decision.TotalRunsFound);
 
                     Console.WriteLine();
                     Console.WriteLine($"[runs-decide] PROMOTED → Active directory: {result.Pointer.RunDirectory}");

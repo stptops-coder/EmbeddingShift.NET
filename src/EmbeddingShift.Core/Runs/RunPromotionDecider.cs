@@ -12,13 +12,20 @@ namespace EmbeddingShift.Core.Runs
         /// - Else: PROMOTE iff (candidate.Score - active.Score) > epsilon.
         /// </summary>
         public static RunPromotionDecision Decide(string runsRoot, string metricKey, double epsilon = 1e-6)
-            => Decide(runsRoot, metricKey, profileKey: null, epsilon: epsilon);
+            => Decide(runsRoot, metricKey, profileKey: null, epsilon: epsilon, includeRepoPosNeg: false);
 
         /// <summary>
         /// Same as <see cref="Decide(string,string,double)"/>, but scopes the active pointer to a profile key.
         /// If profileKey is null/empty, the legacy (non-profile) active pointer is used.
         /// </summary>
         public static RunPromotionDecision Decide(string runsRoot, string metricKey, string? profileKey, double epsilon = 1e-6)
+            => Decide(runsRoot, metricKey, profileKey, epsilon, includeRepoPosNeg: false);
+
+        /// <summary>
+        /// Same as <see cref="Decide(string,string,string?,double)"/>, but can optionally consider
+        /// MiniInsurance-PosNeg repo runs under runsRoot\_repo\MiniInsurance-PosNeg as an additional candidate source.
+        /// </summary>
+        public static RunPromotionDecision Decide(string runsRoot, string metricKey, string? profileKey, double epsilon, bool includeRepoPosNeg)
         {
             if (string.IsNullOrWhiteSpace(runsRoot))
                 throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
@@ -29,20 +36,15 @@ namespace EmbeddingShift.Core.Runs
             if (epsilon < 0)
                 throw new ArgumentOutOfRangeException(nameof(epsilon), "Epsilon must be >= 0.");
 
-            var discovered = RunArtifactDiscovery.Discover(runsRoot);
-            if (discovered.Count == 0)
-                throw new InvalidOperationException($"No run.json found under: {runsRoot}");
+            var selection = RunCandidateSelector.SelectBestCandidate(runsRoot, metricKey, includeRepoPosNeg);
 
-            var best = RunBestSelection.SelectBest(metricKey, discovered);
-            if (best is null)
-                throw new InvalidOperationException($"No runs contained metric '{metricKey}' under: {runsRoot}");
-
+            var best = selection.Run;
             var candidateEntry = new RunPromotionDecisionEntry(
-                WorkflowName: best.Run.Artifact.WorkflowName,
-                RunId: best.Run.Artifact.RunId,
-                Score: best.Score,
-                RunDirectory: best.Run.RunDirectory,
-                RunJsonPath: best.Run.RunJsonPath);
+                WorkflowName: best.Artifact.WorkflowName,
+                RunId: best.Artifact.RunId,
+                Score: selection.Score,
+                RunDirectory: best.RunDirectory,
+                RunJsonPath: best.RunJsonPath);
 
             if (!RunActivation.TryLoadActive(runsRoot, metricKey, profileKey, out var activePointer) || activePointer is null)
             {
@@ -51,7 +53,7 @@ namespace EmbeddingShift.Core.Runs
                     Epsilon: epsilon,
                     CreatedUtc: DateTimeOffset.UtcNow,
                     RunsRoot: runsRoot,
-                    TotalRunsFound: discovered.Count,
+                    TotalRunsFound: selection.TotalRunsFound,
                     Candidate: candidateEntry,
                     Active: null,
                     Action: RunPromotionDecisionAction.Promote,
@@ -76,7 +78,7 @@ namespace EmbeddingShift.Core.Runs
                     Epsilon: epsilon,
                     CreatedUtc: DateTimeOffset.UtcNow,
                     RunsRoot: runsRoot,
-                    TotalRunsFound: discovered.Count,
+                    TotalRunsFound: selection.TotalRunsFound,
                     Candidate: candidateEntry,
                     Active: activeEntry,
                     Action: RunPromotionDecisionAction.KeepActive,
@@ -99,7 +101,7 @@ namespace EmbeddingShift.Core.Runs
                 Epsilon: epsilon,
                 CreatedUtc: DateTimeOffset.UtcNow,
                 RunsRoot: runsRoot,
-                TotalRunsFound: discovered.Count,
+                TotalRunsFound: selection.TotalRunsFound,
                 Candidate: candidateEntry,
                 Active: activeEntry,
                 Action: action,

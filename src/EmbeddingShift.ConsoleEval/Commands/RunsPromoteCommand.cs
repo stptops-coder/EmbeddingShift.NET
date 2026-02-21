@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -13,7 +13,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
         public static Task RunAsync(string[] args)
         {
             // Usage:
-            //   runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--rank=<n>] [--runid=<id>] [--open]
+            //   runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--rank=<n>] [--runid=<id>] [--include-repo-posneg] [--open]
             //
             // Defaults:
             //   domainKey = insurance
@@ -45,6 +45,8 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             var open = HasSwitch(args, "--open");
 
+            var includeRepoPosNeg = HasSwitch(args, "--include-repo-posneg");
+
             if (string.IsNullOrWhiteSpace(runsRoot))
             {
                 var tenant = Environment.GetEnvironmentVariable("EMBEDDINGSHIFT_TENANT");
@@ -64,7 +66,24 @@ namespace EmbeddingShift.ConsoleEval.Commands
             RunActivation.PromoteResult result;
             try
             {
-                result = RunActivation.Promote(runsRoot, metricKey, profileKey, pickRank, pickRunId);
+                if (includeRepoPosNeg && pickRank is null && pickRunId is null)
+                {
+                    var sel = RunCandidateSelector.SelectBestCandidate(runsRoot, metricKey, includeRepoPosNeg: true);
+                    result = RunActivation.PromoteExplicit(
+                        runsRoot,
+                        metricKey,
+                        profileKey,
+                        sel.Run.Artifact.WorkflowName,
+                        sel.Run.Artifact.RunId,
+                        sel.Score,
+                        sel.Run.RunDirectory,
+                        sel.Run.RunJsonPath,
+                        sel.TotalRunsFound);
+                }
+                else
+                {
+                    result = RunActivation.Promote(runsRoot, metricKey, profileKey, pickRank, pickRunId);
+                }
             }
             catch (Exception ex)
             {

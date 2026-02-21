@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -113,6 +113,95 @@ namespace EmbeddingShift.Tests
                 Assert.Equal(RunPromotionDecisionAction.Promote, promote.Action);
                 Assert.NotNull(promote.Active);
                 Assert.Equal("w2", promote.Candidate.WorkflowName);
+            }
+            finally
+            {
+                try { Directory.Delete(root, true); } catch { /* ignore */ }
+            }
+        }
+
+
+        [Fact]
+        public void Decide_IncludeRepoPosNeg_CanSelectRepoCandidate()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "EmbeddingShift_RunsDecide_" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                Directory.CreateDirectory(root);
+
+                // Normal run under root
+                var r1 = Path.Combine(root, "r1");
+                Directory.CreateDirectory(r1);
+
+                // Repo run under root\_repo\MiniInsurance-PosNeg
+                var repoRun = Path.Combine(root, "_repo", "MiniInsurance-PosNeg", "repo1");
+                Directory.CreateDirectory(repoRun);
+
+                var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+                var normal = new WorkflowRunArtifact(
+                    RunId: "r1",
+                    WorkflowName: "w1",
+                    StartedUtc: DateTimeOffset.UtcNow,
+                    FinishedUtc: DateTimeOffset.UtcNow,
+                    Success: true,
+                    Metrics: new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) { ["ndcg@3"] = 0.10 },
+                    Notes: "");
+
+                var repo = new WorkflowRunArtifact(
+                    RunId: "repo1",
+                    WorkflowName: "MiniInsurance-PosNeg",
+                    StartedUtc: DateTimeOffset.UtcNow,
+                    FinishedUtc: DateTimeOffset.UtcNow.AddSeconds(1),
+                    Success: true,
+                    Metrics: new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) { ["ndcg@3"] = 0.90 },
+                    Notes: "");
+
+                File.WriteAllText(Path.Combine(r1, "run.json"), JsonSerializer.Serialize(normal, opts), new UTF8Encoding(false));
+                File.WriteAllText(Path.Combine(repoRun, "run.json"), JsonSerializer.Serialize(repo, opts), new UTF8Encoding(false));
+
+                // Default: repo runs are not considered.
+                var normalDecision = RunPromotionDecider.Decide(root, "ndcg@3", epsilon: 1e-6);
+                Assert.Equal("w1", normalDecision.Candidate.WorkflowName);
+
+                // With inclusion: repo candidate can win.
+                var repoDecision = RunPromotionDecider.Decide(root, "ndcg@3", profileKey: null, epsilon: 1e-6, includeRepoPosNeg: true);
+                Assert.Equal("MiniInsurance-PosNeg", repoDecision.Candidate.WorkflowName);
+            }
+            finally
+            {
+                try { Directory.Delete(root, true); } catch { /* ignore */ }
+            }
+        }
+
+        [Fact]
+        public void Decide_RepoOnly_WorksWhenIncludeRepoPosNeg()
+        {
+            var root = Path.Combine(Path.GetTempPath(), "EmbeddingShift_RunsDecide_" + Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                Directory.CreateDirectory(root);
+
+                var repoRun = Path.Combine(root, "_repo", "MiniInsurance-PosNeg", "repo1");
+                Directory.CreateDirectory(repoRun);
+
+                var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true };
+
+                var repo = new WorkflowRunArtifact(
+                    RunId: "repo1",
+                    WorkflowName: "MiniInsurance-PosNeg",
+                    StartedUtc: DateTimeOffset.UtcNow,
+                    FinishedUtc: DateTimeOffset.UtcNow,
+                    Success: true,
+                    Metrics: new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase) { ["ndcg@3"] = 0.90 },
+                    Notes: "");
+
+                File.WriteAllText(Path.Combine(repoRun, "run.json"), JsonSerializer.Serialize(repo, opts), new UTF8Encoding(false));
+
+                var decision = RunPromotionDecider.Decide(root, "ndcg@3", profileKey: null, epsilon: 1e-6, includeRepoPosNeg: true);
+                Assert.Equal("MiniInsurance-PosNeg", decision.Candidate.WorkflowName);
             }
             finally
             {

@@ -104,8 +104,75 @@ namespace EmbeddingShift.Core.Runs
             if (candidates.Count == 0)
                 throw new InvalidOperationException($"No runs contained metric '{metricKey}' under: {runsRoot}");
 
-            var chosen = SelectCandidate(candidates, pickRank, pickRunId);
+                        var chosen = SelectCandidate(candidates, pickRank, pickRunId);
 
+            var pointer = new ActiveRunPointer(
+                MetricKey: metricKey,
+                CreatedUtc: DateTimeOffset.UtcNow,
+                RunsRoot: runsRoot,
+                TotalRunsFound: discovered.Count,
+                WorkflowName: chosen.Run.Artifact.WorkflowName,
+                RunId: chosen.Run.Artifact.RunId,
+                Score: chosen.Score,
+                RunDirectory: chosen.Run.RunDirectory,
+                RunJsonPath: chosen.Run.RunJsonPath);
+
+            return WriteActivePointer(runsRoot, metricKey, profileKey, pointer);
+}
+
+
+        /// <summary>
+        /// Promotes an explicit run artifact (can be outside the normal runsRoot tree, e.g. runsRoot\_repo\...).
+        /// This is used when candidate selection is performed externally and the active pointer must match that selection.
+        /// </summary>
+        public static PromoteResult PromoteExplicit(
+            string runsRoot,
+            string metricKey,
+            string? profileKey,
+            string workflowName,
+            string runId,
+            double score,
+            string runDirectory,
+            string runJsonPath,
+            int totalRunsFound)
+        {
+            if (string.IsNullOrWhiteSpace(runsRoot))
+                throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
+
+            if (!Directory.Exists(runsRoot))
+                throw new DirectoryNotFoundException($"Runs root not found: {runsRoot}");
+
+            if (string.IsNullOrWhiteSpace(metricKey))
+                throw new ArgumentException("Metric key must not be null/empty.", nameof(metricKey));
+
+            if (string.IsNullOrWhiteSpace(workflowName))
+                workflowName = "workflow";
+
+            if (string.IsNullOrWhiteSpace(runId))
+                runId = "unknown";
+
+            if (string.IsNullOrWhiteSpace(runDirectory))
+                throw new ArgumentException("Run directory must not be null/empty.", nameof(runDirectory));
+
+            if (string.IsNullOrWhiteSpace(runJsonPath))
+                throw new ArgumentException("Run json path must not be null/empty.", nameof(runJsonPath));
+
+            var pointer = new ActiveRunPointer(
+                MetricKey: metricKey,
+                CreatedUtc: DateTimeOffset.UtcNow,
+                RunsRoot: runsRoot,
+                TotalRunsFound: totalRunsFound,
+                WorkflowName: workflowName,
+                RunId: runId,
+                Score: score,
+                RunDirectory: runDirectory,
+                RunJsonPath: runJsonPath);
+
+            return WriteActivePointer(runsRoot, metricKey, profileKey, pointer);
+        }
+
+        private static PromoteResult WriteActivePointer(string runsRoot, string metricKey, string? profileKey, ActiveRunPointer pointer)
+        {
             var activePath = GetActivePath(runsRoot, metricKey, profileKey);
             var activeDir = Path.GetDirectoryName(activePath) ?? Path.Combine(runsRoot, "_active");
             Directory.CreateDirectory(activeDir);
@@ -123,17 +190,6 @@ namespace EmbeddingShift.Core.Runs
                 archivedTo = Path.Combine(historyDir, $"active_{safeMetric}_{stamp}.json");
                 File.Copy(activePath, archivedTo, overwrite: false);
             }
-
-            var pointer = new ActiveRunPointer(
-                MetricKey: metricKey,
-                CreatedUtc: DateTimeOffset.UtcNow,
-                RunsRoot: runsRoot,
-                TotalRunsFound: discovered.Count,
-                WorkflowName: chosen.Run.Artifact.WorkflowName,
-                RunId: chosen.Run.Artifact.RunId,
-                Score: chosen.Score,
-                RunDirectory: chosen.Run.RunDirectory,
-                RunJsonPath: chosen.Run.RunJsonPath);
 
             var jsonOut = JsonSerializer.Serialize(
                 pointer,
