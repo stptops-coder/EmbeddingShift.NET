@@ -50,16 +50,36 @@ if (-not (Test-Path -LiteralPath $ScratchBase -PathType Container)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Scenario)) {
-  $Scenario = (Get-ChildItem -LiteralPath $ScratchBase -Directory -ErrorAction SilentlyContinue |
-    Sort-Object LastWriteTime -Descending |
-    Select-Object -First 1 -ExpandProperty Name)
-  if ([string]::IsNullOrWhiteSpace($Scenario)) {
-    Write-Warning "No scratch scenario folders found under: $ScratchBase"
-    Write-Host "Hint: run a scenario first (e.g. .\\scripts\\runbook\\20-FullRun-MiniInsurance.ps1) or pass -Scenario / -Root."
-    return
+  # If an explicit run root is provided, derive the scenario from the path to avoid misleading output.
+  if (-not [string]::IsNullOrWhiteSpace($Root)) {
+    try {
+      $resolvedRoot = (Resolve-Path -LiteralPath $Root -ErrorAction Stop).Path
+      if ($resolvedRoot.StartsWith($ScratchBase, [System.StringComparison]::OrdinalIgnoreCase)) {
+        $rel = $resolvedRoot.Substring($ScratchBase.Length).TrimStart('\\')
+        $parts = $rel.Split('\\')
+        if ($parts.Length -ge 1 -and -not [string]::IsNullOrWhiteSpace($parts[0])) {
+          $Scenario = $parts[0]
+          Write-Host ("[Inspect] Derived Scenario from -Root = {0}" -f $Scenario)
+        }
+      }
+    } catch {
+      # ignore - we'll fall back to auto-selection below
+    }
   }
-  Write-Host ("[Inspect] Auto-selected Scenario = {0}" -f $Scenario)
+
+  if ([string]::IsNullOrWhiteSpace($Scenario)) {
+    $Scenario = (Get-ChildItem -LiteralPath $ScratchBase -Directory -ErrorAction SilentlyContinue |
+      Sort-Object LastWriteTime -Descending |
+      Select-Object -First 1 -ExpandProperty Name)
+    if ([string]::IsNullOrWhiteSpace($Scenario)) {
+      Write-Warning "No scratch scenario folders found under: $ScratchBase"
+      Write-Host "Hint: run a scenario first (e.g. .\\scripts\\runbook\\99-RunAll.ps1) or pass -Scenario / -Root."
+      return
+    }
+    Write-Host ("[Inspect] Auto-selected Scenario = {0}" -f $Scenario)
+  }
 }
+
 
 $ScratchRoot = Join-Path $ScratchBase $Scenario
 if (-not (Test-Path -LiteralPath $ScratchRoot -PathType Container)) {
