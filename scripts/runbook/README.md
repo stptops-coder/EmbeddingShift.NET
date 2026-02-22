@@ -64,6 +64,9 @@ Notes:
 - `30-Tests.ps1` is a convenience alias for `scripts\runbook-internal\90-Tests-Samples.ps1`.
 - `-CompareRepoPosNeg` writes a separate compare report for `runs\_repo\MiniInsurance-PosNeg` (reporting only).
 - `-IncludeRepoPosNeg` allows `runs-decide` / `runs-promote` to consider repo PosNeg runs as candidates (selection).
+- The Mini-Insurance pipeline may still write PosNeg run metadata under `runs\_repo\MiniInsurance-PosNeg`.
+  This does not affect the default `runs-compare` / `runs-decide` behavior (repo candidates are ignored unless `-IncludeRepoPosNeg` is used).
+  If you *promote* a repo PosNeg run, it becomes active for that profile like any other run (use a dedicated profile key to avoid confusion).
 
 ## Other scripts (optional)
 
