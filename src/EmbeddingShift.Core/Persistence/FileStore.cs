@@ -17,7 +17,7 @@ namespace EmbeddingShift.Core.Persistence
         private readonly string _root;
         private static readonly JsonSerializerOptions J = new(JsonSerializerDefaults.Web)
         {
-            WriteIndented = false
+            WriteIndented = true
         };
 
 // Prevent concurrent writers (e.g., parallel tests) from colliding on the same embedding file.
