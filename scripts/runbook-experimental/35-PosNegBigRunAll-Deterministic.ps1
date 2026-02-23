@@ -31,13 +31,19 @@ param(
   [int]$Stages = 3,
   [int]$Policies = 500,
   [int]$Queries = 1000,
-  [int[]]$StageIndices = @(0,1,2),
+  # Default = drift-only stages (faster). Use -StageIndices 0,1,2 to include baseline stage-00.
+  [int[]]$StageIndices = @(1,2),
 
   # PosNeg settings
   [ValidateSet('micro','production','prod')]
   [string]$TrainMode = 'production',
   [int]$HardNegTopK = 5,
-  [double[]]$PosNegScales = @(1.0, 2.0, 5.0),
+  # Default = single scale (faster). Override e.g. -PosNegScales 1,2,5 for sweeps.
+  [double[]]$PosNegScales = @(1.0),
+
+  # Pipeline toggle: by default we skip LearnedDelta inside the pipeline to avoid duplicate work
+  # (we run explicit posneg-train + posneg-run anyway).
+  [switch]$IncludeLearnedDelta,
 
   # Runs compare / decide / promote
   [string]$Metric = 'ndcg@3',
@@ -147,6 +153,39 @@ if (-not $SkipBuild) { & (Join-Path $repoRoot 'scripts\runbook\10-Build.ps1') }
 
 $roots = New-Object System.Collections.Generic.List[string]
 
+# Compute dataset name once (shared across all stage runs)
+$datasetName = ("{0}_p{1}_q{2}_seed{3}_st{4}" -f $DsName, $Policies, $Queries, $Seed, $Stages)
+$datasetName = ($datasetName -replace '[^a-zA-Z0-9_\-\.]+' , '_')
+
+# 1) Generate dataset ONCE in its own host root (avoids re-generating stage-00/01/02 for every stage run)
+$datasetSuffix = ("tenant={0}__p{1}__q{2}__stages{3}__dataset" -f $Tenant, $Policies, $Queries, $Stages)
+$datasetSuffix = ($datasetSuffix -replace '[^a-zA-Z0-9_\-\.=]+' , '_')
+$datasetHostRoot = New-RunRoot -RepoRoot $repoRoot -Mode $RootMode -Scenario $scenario -Suffix $datasetSuffix
+
+if (Test-Path $datasetHostRoot) { Remove-Item $datasetHostRoot -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $datasetHostRoot | Out-Null
+
+$env:EMBEDDINGSHIFT_ROOT           = $datasetHostRoot
+$env:EMBEDDINGSHIFT_RESULTS_DOMAIN = $domain
+$env:EMBEDDINGSHIFT_LAYOUT         = 'tenant'
+$env:EMBEDDINGSHIFT_TENANT         = $Tenant
+
+$env:EMBEDDINGSHIFT_BACKEND        = $backend
+$env:EMBEDDINGSHIFT_SIM_MODE       = $simMode
+$env:EMBEDDINGSHIFT_SIM_ALGO       = $SimAlgo
+$env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
+$env:EMBEDDING_SIM_ALGO            = $SimAlgo
+$env:EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
+
+Write-Host ""
+Write-Host ("[PosNegBig] DATASET HOST ROOT = {0}" -f $datasetHostRoot)
+Invoke-ConsoleEval -Project $proj -Args @(
+  '--tenant', $Tenant,
+  "--backend=$backend", "--sim-mode=$simMode", "--sim-algo=$SimAlgo", "--sim-char-ngrams=$SimSemanticCharNGrams",
+  'domain','mini-insurance','dataset-generate', $datasetName,
+  '--stages', "$Stages", '--policies', "$Policies", '--queries', "$Queries", '--seed', "$Seed", '--overwrite'
+)
+
 foreach ($stage in $StageIndices) {
   if ($stage -lt 0 -or $stage -ge $Stages) {
     throw "StageIndices contains $stage, but Stages=$Stages. Valid stages are 0..$($Stages-1)."
@@ -184,27 +223,22 @@ foreach ($stage in $StageIndices) {
   $datasetName = ("{0}_p{1}_q{2}_seed{3}_st{4}" -f $DsName, $Policies, $Queries, $Seed, $Stages)
   $datasetName = ($datasetName -replace '[^a-zA-Z0-9_\-\.]+', '_')
 
-  # 1) Generate dataset (multi-stage)
-  Invoke-ConsoleEval -Project $proj -Args @(
-    '--tenant', $Tenant,
-    "--backend=$backend", "--sim-mode=$simMode", "--sim-algo=$SimAlgo", "--sim-char-ngrams=$SimSemanticCharNGrams",
-    'domain','mini-insurance','dataset-generate', $datasetName,
-    '--stages', "$Stages", '--policies', "$Policies", '--queries', "$Queries", '--seed', "$Seed", '--overwrite'
-  )
-
-  # 2) Point dataset root to the chosen stage
+  # 2) Point dataset root to the chosen stage (from shared dataset host root)
   $stageFolder = ("stage-{0:00}" -f $stage)
-  $datasetRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\{0}\tenants\{1}\datasets\{2}\{3}" -f $domain, $Tenant, $datasetName, $stageFolder)
+  $datasetRoot = Join-Path $datasetHostRoot ("results\{0}\tenants\{1}\datasets\{2}\{3}" -f $domain, $Tenant, $datasetName, $stageFolder)
   $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $datasetRoot
   $env:EMBEDDINGSHIFT_DATASET_ROOT = $datasetRoot
   Write-Host ("[PosNegBig] DATASET_ROOT = {0}" -f $datasetRoot)
 
-  # 3) Pipeline (Baseline -> FirstShift -> First+Delta -> LearnedDelta)
-  Invoke-ConsoleEval -Project $proj -Args @(
+  # 3) Pipeline (Baseline -> FirstShift -> First+Delta)
+  # By default we skip LearnedDelta inside the pipeline (duplicate work; we run explicit posneg-train + posneg-run).
+  $pipelineArgs = @(
     '--tenant', $Tenant,
     "--backend=$backend", "--sim-mode=$simMode", "--sim-algo=$SimAlgo", "--sim-char-ngrams=$SimSemanticCharNGrams",
     'domain','mini-insurance','pipeline'
   )
+  if (-not $IncludeLearnedDelta) { $pipelineArgs += '--no-learned' }
+  Invoke-ConsoleEval -Project $proj -Args $pipelineArgs
 
   # 4) PosNeg TRAIN (stage-specific because DATASET_ROOT points to the stage folder)
   $modeArg = if ($TrainMode -eq 'prod') { 'production' } else { $TrainMode }
