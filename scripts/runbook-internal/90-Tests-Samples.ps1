@@ -30,6 +30,26 @@ Remove-Item Env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS -ErrorAction SilentlyCon
 Remove-Item Env:EMBEDDINGSHIFT_SIM_NOISE_AMPLITUDE -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDING_SIM_NOISE_AMPLITUDE -ErrorAction SilentlyContinue
 
+function Remove-DirBestEffort([string]$path) {
+  if ([string]::IsNullOrWhiteSpace($path)) { return }
+  if (-not (Test-Path $path)) { return }
+
+  for ($i = 0; $i -lt 6; $i++) {
+    try {
+      Remove-Item -Recurse -Force -LiteralPath $path -ErrorAction Stop
+      return
+    }
+    catch {
+      Start-Sleep -Milliseconds 250
+    }
+  }
+
+  # Best-effort only. If it still fails, keep it for inspection.
+}
+
+$createdRunRootHere = $false
+$testsRunRoot = $env:EMBEDDINGSHIFT_ROOT
+
 # Isolate test runs from the repo-wide embedding cache to avoid file-lock flakiness.
 # Convention: EMBEDDINGSHIFT_ROOT points to an *active run root* (a folder that contains a nested "results" folder).
 if ([string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_ROOT)) {
@@ -39,6 +59,7 @@ if ([string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_ROOT)) {
   $testsResultsRoot = Join-Path $testsRunRoot "results"
   New-Item -ItemType Directory -Force -Path $testsResultsRoot | Out-Null
   $env:EMBEDDINGSHIFT_ROOT = $testsRunRoot
+  $createdRunRootHere = $true
 }
 
 Write-Host ("[Tests] EMBEDDINGSHIFT_ROOT=" + $env:EMBEDDINGSHIFT_ROOT)
@@ -53,10 +74,25 @@ $env:TEMP = $testsTempRoot
 $env:TMP  = $testsTempRoot
 Write-Host ("[Tests] TEMP=" + $env:TEMP)
 
+$testsOk = $false
+
 try {
   dotnet test ".\src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj"
+  if ($LASTEXITCODE -ne 0) {
+    throw "dotnet test failed with exit code $LASTEXITCODE"
+  }
+  $testsOk = $true
 }
 finally {
   if ([string]::IsNullOrWhiteSpace($origTemp)) { Remove-Item Env:TEMP -ErrorAction SilentlyContinue } else { $env:TEMP = $origTemp }
   if ([string]::IsNullOrWhiteSpace($origTmp))  { Remove-Item Env:TMP  -ErrorAction SilentlyContinue } else { $env:TMP  = $origTmp }
+}
+
+# Default: leave no artifacts behind when the runbook created the run root.
+# Opt-out: set EMBEDDINGSHIFT_TEST_KEEP_ARTIFACTS=1
+$keep = [string]::Equals($env:EMBEDDINGSHIFT_TEST_KEEP_ARTIFACTS, "1", [StringComparison]::OrdinalIgnoreCase)
+
+if ($createdRunRootHere -and $testsOk -and -not $keep) {
+  Write-Host ("[Tests] Cleanup: removing " + $testsRunRoot)
+  Remove-DirBestEffort $testsRunRoot
 }
