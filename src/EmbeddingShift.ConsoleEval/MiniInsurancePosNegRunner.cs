@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
+using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.ConsoleEval.Repositories;
 using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.Core.Infrastructure;
@@ -63,10 +64,23 @@ namespace EmbeddingShift.ConsoleEval
             {
                 var len = trainingResult.DeltaVector?.Length ?? 0;
                 var sel = useLatest ? "latest" : "best";
+                var scoreText = trainingResult.SelectionScore.HasValue
+                    ? $"selection={trainingResult.SelectionScore.Value:+0.000;-0.000;0.000}"
+                    : $"legacy={ShiftTrainingResultScoring.GetPreferredScore(trainingResult):+0.000;-0.000;0.000}";
+
                 Console.WriteLine(
                     $"[MiniInsurancePosNegRunner] Loaded {sel} training result: CreatedUtc={trainingResult.CreatedUtc:O}, " +
-                    $"Cancelled={trainingResult.IsCancelled}, |Δ|={trainingResult.DeltaNorm:E3}, Δlen={len}, " +
-                    $"dFirst+Δ={trainingResult.ImprovementFirstPlusDelta:0.000}");
+                    $"Cancelled={trainingResult.IsCancelled}, |Δ|={trainingResult.DeltaNorm:E3}, Δlen={len}, {scoreText}");
+
+                if (trainingResult.SelectionMapAt1Baseline.HasValue && trainingResult.SelectionMapAt1Shifted.HasValue &&
+                    trainingResult.SelectionNdcg3Baseline.HasValue && trainingResult.SelectionNdcg3Shifted.HasValue)
+                {
+                    var deltaMap = trainingResult.SelectionMapAt1Shifted.Value - trainingResult.SelectionMapAt1Baseline.Value;
+                    var deltaNdcg = trainingResult.SelectionNdcg3Shifted.Value - trainingResult.SelectionNdcg3Baseline.Value;
+                    Console.WriteLine(
+                        $"[MiniInsurancePosNegRunner] Stored selection metrics: MAP@1 {trainingResult.SelectionMapAt1Baseline.Value:0.000} -> {trainingResult.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000}), " +
+                        $"NDCG@3 {trainingResult.SelectionNdcg3Baseline.Value:0.000} -> {trainingResult.SelectionNdcg3Shifted.Value:0.000} ({deltaNdcg:+0.000;-0.000;0.000})");
+                }
             }
 
             var rawShift =

@@ -79,6 +79,36 @@ public sealed record ShiftTrainingResult
     /// </summary>
     public float DeltaNorm { get; init; }
 
+    /// <summary>
+    /// Optional MAP@1 baseline value captured for selection of newer training modes
+    /// (for example PosNeg). This is intentionally generic and does not imply a holdout split.
+    /// </summary>
+    public double? SelectionMapAt1Baseline { get; init; }
+
+    /// <summary>
+    /// Optional MAP@1 shifted value captured for selection of newer training modes
+    /// (for example PosNeg). This is intentionally generic and does not imply a holdout split.
+    /// </summary>
+    public double? SelectionMapAt1Shifted { get; init; }
+
+    /// <summary>
+    /// Optional NDCG@3 baseline value captured for selection of newer training modes
+    /// (for example PosNeg). This is intentionally generic and does not imply a holdout split.
+    /// </summary>
+    public double? SelectionNdcg3Baseline { get; init; }
+
+    /// <summary>
+    /// Optional NDCG@3 shifted value captured for selection of newer training modes
+    /// (for example PosNeg). This is intentionally generic and does not imply a holdout split.
+    /// </summary>
+    public double? SelectionNdcg3Shifted { get; init; }
+
+    /// <summary>
+    /// Optional score used by repositories/inspectors to choose the best result when the
+    /// legacy First/First+Delta improvement fields are not meaningful.
+    /// </summary>
+    public double? SelectionScore { get; init; }
+
     public string ScopeId { get; init; } = "default";
 
 }

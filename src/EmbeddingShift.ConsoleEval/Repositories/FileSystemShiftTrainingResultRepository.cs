@@ -154,6 +154,28 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
         sb.AppendLine($"| Improvement First         | `{result.ImprovementFirst:+0.000;-0.000;0.000}` |");
         sb.AppendLine($"| Improvement First+Delta   | `{result.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}` |");
         sb.AppendLine($"| Delta improvement vs First| `{result.DeltaImprovement:+0.000;-0.000;0.000}` |");
+
+        if (result.SelectionScore.HasValue)
+        {
+            sb.AppendLine($"| Selection score           | `{result.SelectionScore.Value:+0.000;-0.000;0.000}` |");
+
+            if (result.SelectionMapAt1Baseline.HasValue && result.SelectionMapAt1Shifted.HasValue)
+            {
+                var deltaMap = result.SelectionMapAt1Shifted.Value - result.SelectionMapAt1Baseline.Value;
+                sb.AppendLine($"| Selection MAP@1 baseline  | `{result.SelectionMapAt1Baseline.Value:0.000}` |");
+                sb.AppendLine($"| Selection MAP@1 shifted   | `{result.SelectionMapAt1Shifted.Value:0.000}` |");
+                sb.AppendLine($"| Selection MAP@1 delta     | `{deltaMap:+0.000;-0.000;0.000}` |");
+            }
+
+            if (result.SelectionNdcg3Baseline.HasValue && result.SelectionNdcg3Shifted.HasValue)
+            {
+                var deltaNdcg = result.SelectionNdcg3Shifted.Value - result.SelectionNdcg3Baseline.Value;
+                sb.AppendLine($"| Selection NDCG@3 baseline | `{result.SelectionNdcg3Baseline.Value:0.000}` |");
+                sb.AppendLine($"| Selection NDCG@3 shifted  | `{result.SelectionNdcg3Shifted.Value:0.000}` |");
+                sb.AppendLine($"| Selection NDCG@3 delta    | `{deltaNdcg:+0.000;-0.000;0.000}` |");
+            }
+        }
+
         sb.AppendLine();
 
         var vector = result.DeltaVector ?? Array.Empty<float>();
@@ -297,10 +319,7 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
                         if (!includeCancelled && result.IsCancelled)
                             continue;
 
-                        // Primary score: First+Delta improvement; fallback: First improvement.
-                        var score = (double)result.ImprovementFirstPlusDelta;
-                        if (Math.Abs(score) < 1e-12)
-                            score = (double)result.ImprovementFirst;
+                        var score = ShiftTrainingResultScoring.GetPreferredScore(result);
 
                         var createdUtc = result.CreatedUtc;
 

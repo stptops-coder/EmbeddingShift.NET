@@ -32,6 +32,12 @@ namespace EmbeddingShift.Tests
 
             // Mini-Insurance uses 1536-dimensional embeddings in the simulation.
             Assert.Equal(1536, vector.Length);
+
+            Assert.True(result.SelectionScore.HasValue);
+            Assert.True(result.SelectionMapAt1Baseline.HasValue);
+            Assert.True(result.SelectionMapAt1Shifted.HasValue);
+            Assert.True(result.SelectionNdcg3Baseline.HasValue);
+            Assert.True(result.SelectionNdcg3Shifted.HasValue);
         }
     }
 }

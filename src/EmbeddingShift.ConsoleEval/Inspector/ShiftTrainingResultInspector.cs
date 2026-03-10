@@ -115,6 +115,20 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine($"Improvement First         : {result.ImprovementFirst:+0.000;-0.000;0.000}");
         Console.WriteLine($"Improvement First+Delta   : {result.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
         Console.WriteLine($"Delta improvement vs First: {result.DeltaImprovement:+0.000;-0.000;0.000}");
+        if (result.SelectionScore.HasValue)
+        {
+            Console.WriteLine($"Selection score           : {result.SelectionScore.Value:+0.000;-0.000;0.000}");
+            if (result.SelectionMapAt1Baseline.HasValue && result.SelectionMapAt1Shifted.HasValue)
+            {
+                var deltaMap = result.SelectionMapAt1Shifted.Value - result.SelectionMapAt1Baseline.Value;
+                Console.WriteLine($"Selection MAP@1           : {result.SelectionMapAt1Baseline.Value:0.000} -> {result.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000})");
+            }
+            if (result.SelectionNdcg3Baseline.HasValue && result.SelectionNdcg3Shifted.HasValue)
+            {
+                var deltaNdcg = result.SelectionNdcg3Shifted.Value - result.SelectionNdcg3Baseline.Value;
+                Console.WriteLine($"Selection NDCG@3          : {result.SelectionNdcg3Baseline.Value:0.000} -> {result.SelectionNdcg3Shifted.Value:0.000} ({deltaNdcg:+0.000;-0.000;0.000})");
+            }
+        }
         Console.WriteLine();
 
         var vector = result.DeltaVector ?? Array.Empty<float>();
@@ -192,8 +206,8 @@ internal static class ShiftTrainingResultInspector
             PropertyNameCaseInsensitive = true
         };
 
-        Console.WriteLine("Idx | Created (UTC)         | Runs | dFirst  | dFirst+Δ | dΔvsFirst | Scope");
-        Console.WriteLine("----+-----------------------+------+---------+----------+-----------+---------");
+        Console.WriteLine("Idx | Created (UTC)         | Runs | Score   | dFirst  | dFirst+Δ | Scope");
+        Console.WriteLine("----+-----------------------+------+---------+---------+----------+---------");
 
         var printed = 0;
 
@@ -226,9 +240,9 @@ internal static class ShiftTrainingResultInspector
 
             var created = result.CreatedUtc;
             var runs = result.ComparisonRuns;
+            var score = ShiftTrainingResultScoring.GetPreferredScore(result);
             var dFirst = result.ImprovementFirst;
             var dFirstPlusDelta = result.ImprovementFirstPlusDelta;
-            var dDelta = result.DeltaImprovement;
 
             var scopeId = string.IsNullOrWhiteSpace(result.ScopeId) ? "-" : result.ScopeId;
 
@@ -238,7 +252,7 @@ internal static class ShiftTrainingResultInspector
                 scopeId += " [C]";
 
             Console.WriteLine(
-                $"{printed,3} | {createdText} | {runs,4} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,8:0.000;-0.000;0.000} | {dDelta,9:0.000;-0.000;0.000} | {scopeId}");
+                $"{printed,3} | {createdText} | {runs,4} | {score,7:0.000;-0.000;0.000} | {dFirst,7:0.000;-0.000;0.000} | {dFirstPlusDelta,8:0.000;-0.000;0.000} | {scopeId}");
 
             printed++;
         }
@@ -254,8 +268,9 @@ internal static class ShiftTrainingResultInspector
     }
     /// <summary>
     /// Finds and prints the best training result for the specified workflow
-    /// based on the combined improvement (First+Delta vs Baseline).
-    /// Falls back to ImprovementFirst if ImprovementFirstPlusDelta is zero.
+    /// based on the preferred persisted score. Legacy First/First+Delta
+    /// runs use their historical improvements; newer modes (for example PosNeg)
+    /// can persist an explicit selection score.
     /// </summary>
     /// <param name="workflowName">Logical workflow name, e.g. "mini-insurance-first-delta".</param>
     /// <param name="rootDirectory">Root directory where training results are stored.</param>
@@ -310,12 +325,7 @@ internal static class ShiftTrainingResultInspector
             if (!includeCancelled && result.IsCancelled)
                 continue;
 
-            // Score: primarily ImprovementFirstPlusDelta, fallback to ImprovementFirst.
-            var score = result.ImprovementFirstPlusDelta;
-            if (Math.Abs(score) < 1e-9)
-            {
-                score = result.ImprovementFirst;
-            }
+            var score = ShiftTrainingResultScoring.GetPreferredScore(result);
 
             if (score > bestScore)
             {
@@ -333,6 +343,7 @@ internal static class ShiftTrainingResultInspector
 
         Console.WriteLine($"Best directory : {bestDirectory}");
         Console.WriteLine($"Score          : {bestScore:+0.000;-0.000;0.000}");
+        Console.WriteLine($"Score source   : {ShiftTrainingResultScoring.GetPreferredScoreSource(bestResult)}");
         Console.WriteLine();
         Console.WriteLine($"Workflow       : {bestResult.WorkflowName}");
         Console.WriteLine($"Created (UTC)  : {bestResult.CreatedUtc:O}");
@@ -354,6 +365,20 @@ internal static class ShiftTrainingResultInspector
         Console.WriteLine($"Improvement First         : {bestResult.ImprovementFirst:+0.000;-0.000;0.000}");
         Console.WriteLine($"Improvement First+Delta   : {bestResult.ImprovementFirstPlusDelta:+0.000;-0.000;0.000}");
         Console.WriteLine($"Delta improvement vs First: {bestResult.DeltaImprovement:+0.000;-0.000;0.000}");
+        if (bestResult.SelectionScore.HasValue)
+        {
+            Console.WriteLine($"Selection score           : {bestResult.SelectionScore.Value:+0.000;-0.000;0.000}");
+            if (bestResult.SelectionMapAt1Baseline.HasValue && bestResult.SelectionMapAt1Shifted.HasValue)
+            {
+                var deltaMap = bestResult.SelectionMapAt1Shifted.Value - bestResult.SelectionMapAt1Baseline.Value;
+                Console.WriteLine($"Selection MAP@1           : {bestResult.SelectionMapAt1Baseline.Value:0.000} -> {bestResult.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000})");
+            }
+            if (bestResult.SelectionNdcg3Baseline.HasValue && bestResult.SelectionNdcg3Shifted.HasValue)
+            {
+                var deltaNdcg = bestResult.SelectionNdcg3Shifted.Value - bestResult.SelectionNdcg3Baseline.Value;
+                Console.WriteLine($"Selection NDCG@3          : {bestResult.SelectionNdcg3Baseline.Value:0.000} -> {bestResult.SelectionNdcg3Shifted.Value:0.000} ({deltaNdcg:+0.000;-0.000;0.000})");
+            }
+        }
         Console.WriteLine();
 
         var vector = bestResult.DeltaVector ?? Array.Empty<float>();

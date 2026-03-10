@@ -101,8 +101,6 @@ namespace EmbeddingShift.ConsoleEval
 
             var dim = firstEmbedding.Length;
 
-            var sumDirection = new float[dim];
-
             // Diagnostics via env flags (off by default).
             var debug = IsEnvEnabled("EMBEDDINGSHIFT_POSNEG_DEBUG");
             var disableNormClip =
@@ -155,6 +153,19 @@ namespace EmbeddingShift.ConsoleEval
                 Console.WriteLine("[PosNeg] Hint: set EMBEDDINGSHIFT_POSNEG_DEBUG=1 to print per-case details.");
             }
 
+            var selection = await EvaluateSelectionMetricsAsync(
+                    provider,
+                    queries,
+                    docEmbeddings,
+                    deltaVector,
+                    dim)
+                .ConfigureAwait(false);
+
+            Console.WriteLine(
+                $"[PosNeg] Selection metrics: MAP@1 {selection.MapBaseline:0.000} -> {selection.MapShifted:0.000} ({selection.DeltaMap:+0.000;-0.000;0.000}), " +
+                $"NDCG@3 {selection.Ndcg3Baseline:0.000} -> {selection.Ndcg3Shifted:0.000} ({selection.DeltaNdcg3:+0.000;-0.000;0.000}), " +
+                $"score={selection.SelectionScore:+0.000;-0.000;0.000}");
+
             var resultsRoot = MiniInsurancePaths.GetDomainRoot();
 
             var trainingResult = new ShiftTrainingResult
@@ -172,6 +183,11 @@ namespace EmbeddingShift.ConsoleEval
                 IsCancelled = cancel.IsCancelled,
                 CancelReason = cancel.Reason,
                 DeltaNorm = cancel.DeltaNorm,
+                SelectionMapAt1Baseline = selection.MapBaseline,
+                SelectionMapAt1Shifted = selection.MapShifted,
+                SelectionNdcg3Baseline = selection.Ndcg3Baseline,
+                SelectionNdcg3Shifted = selection.Ndcg3Shifted,
+                SelectionScore = selection.SelectionScore,
                 ScopeId = MiniInsuranceScopes.DefaultScopeId
             };
 
@@ -179,6 +195,131 @@ namespace EmbeddingShift.ConsoleEval
             repository.Save(trainingResult);
 
             return trainingResult;
+        }
+
+        private static async Task<SelectionMetrics> EvaluateSelectionMetricsAsync(
+            IEmbeddingProvider provider,
+            IReadOnlyList<QueryDefinition> queries,
+            IReadOnlyDictionary<string, float[]> docEmbeddings,
+            float[] shift,
+            int dim)
+        {
+            var apBaseline = new List<double>();
+            var ndcgBaseline = new List<double>();
+            var apShifted = new List<double>();
+            var ndcgShifted = new List<double>();
+
+            foreach (var q in queries)
+            {
+                if (string.IsNullOrWhiteSpace(q.RelevantDocId) ||
+                    !docEmbeddings.ContainsKey(q.RelevantDocId))
+                {
+                    continue;
+                }
+
+                var qEmb = await provider.GetEmbeddingAsync(q.Text ?? string.Empty).ConfigureAwait(false);
+                if (qEmb is null || qEmb.Length != dim)
+                    continue;
+
+                var rankedBaseline = docEmbeddings
+                    .Select(d => new
+                    {
+                        DocId = d.Key,
+                        Score = CosineSimilarity(qEmb, d.Value)
+                    })
+                    .OrderByDescending(x => x.Score)
+                    .ToList();
+
+                var rankBaseline = FindRank(rankedBaseline, q.RelevantDocId);
+                if (rankBaseline <= 0)
+                    continue;
+
+                var qShifted = new float[dim];
+                for (var i = 0; i < dim; i++)
+                    qShifted[i] = qEmb[i] + shift[i];
+
+                var rankedShifted = docEmbeddings
+                    .Select(d => new
+                    {
+                        DocId = d.Key,
+                        Score = CosineSimilarity(qShifted, d.Value)
+                    })
+                    .OrderByDescending(x => x.Score)
+                    .ToList();
+
+                var rankShifted = FindRank(rankedShifted, q.RelevantDocId);
+                if (rankShifted <= 0)
+                    continue;
+
+                apBaseline.Add(1.0 / rankBaseline);
+                apShifted.Add(1.0 / rankShifted);
+
+                const int k = 3;
+                var dcgBaseline = DcgatK(rankBaseline, k);
+                var dcgShifted = DcgatK(rankShifted, k);
+                var idcg = DcgatK(1, k);
+
+                var ndcgB = idcg == 0.0 ? 0.0 : dcgBaseline / idcg;
+                var ndcgS = idcg == 0.0 ? 0.0 : dcgShifted / idcg;
+
+                ndcgBaseline.Add(ndcgB);
+                ndcgShifted.Add(ndcgS);
+            }
+
+            var usedCases = apBaseline.Count;
+            var mapBaseline = usedCases == 0 ? 0.0 : apBaseline.Average();
+            var mapShifted = usedCases == 0 ? 0.0 : apShifted.Average();
+            var ndcg3Baseline = usedCases == 0 ? 0.0 : ndcgBaseline.Average();
+            var ndcg3Shifted = usedCases == 0 ? 0.0 : ndcgShifted.Average();
+
+            const double mapWeight = 0.7;
+            const double ndcgWeight = 0.3;
+            var selectionScore =
+                mapWeight * (mapShifted - mapBaseline) +
+                ndcgWeight * (ndcg3Shifted - ndcg3Baseline);
+
+            return new SelectionMetrics(
+                MapBaseline: mapBaseline,
+                MapShifted: mapShifted,
+                Ndcg3Baseline: ndcg3Baseline,
+                Ndcg3Shifted: ndcg3Shifted,
+                SelectionScore: selectionScore);
+        }
+
+        private static int FindRank<T>(IReadOnlyList<T> ranked, string relevantDocId)
+        {
+            for (var i = 0; i < ranked.Count; i++)
+            {
+                var candidate = ranked[i];
+                var docIdProp = candidate?.GetType().GetProperty("DocId");
+                var docId = docIdProp?.GetValue(candidate) as string;
+
+                if (string.Equals(docId, relevantDocId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i + 1;
+                }
+            }
+
+            return -1;
+        }
+
+        private static double DcgatK(int rank, int k)
+        {
+            if (rank <= 0 || rank > k)
+                return 0.0;
+
+            return 1.0 / Math.Log(rank + 1, 2);
+        }
+
+        private sealed record SelectionMetrics(
+            double MapBaseline,
+            double MapShifted,
+            double Ndcg3Baseline,
+            double Ndcg3Shifted,
+            double SelectionScore)
+        {
+            public double DeltaMap => MapShifted - MapBaseline;
+            public double DeltaNdcg3 => Ndcg3Shifted - Ndcg3Baseline;
         }
 
         private static double CosineSimilarity(float[] a, float[] b)
