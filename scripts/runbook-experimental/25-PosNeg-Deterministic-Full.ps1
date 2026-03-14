@@ -75,7 +75,8 @@ dotnet run --project $proj -- `
 # Point dataset root to stage-00 (what the mini-insurance flows expect)
 $datasetRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\insurance\tenants\{0}\datasets\{1}\stage-00" -f $Tenant, $DsName)
 $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $datasetRoot
-Write-Host "[PosNeg] DATASET_ROOT = $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT"
+$env:EMBEDDINGSHIFT_DATASET_ROOT = $datasetRoot
+Write-Host "[PosNeg] DATASET_ROOT = $datasetRoot"
 
 # --- 2) PosNeg TRAIN ---
 dotnet run --project $proj -- `

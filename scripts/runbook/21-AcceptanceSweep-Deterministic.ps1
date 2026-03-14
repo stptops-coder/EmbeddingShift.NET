@@ -83,22 +83,20 @@ $repoPosNegFlag = if ($IncludeRepoPosNeg) { '--include-repo-posneg' } else { $nu
 # --- Clean start root ---
 $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
 if ($RootMode -eq 'temp') {
-  $root = Join-Path $env:TEMP ("EmbeddingShift.Sweep\" + $stamp)
+  $sessionRoot = Join-Path $env:TEMP ("EmbeddingShift.Sweep\" + $stamp)
 }
 else {
   # 'scratch' is canonical; 'repo' is kept as a backward-compatible alias.
-  $root = Join-Path $repoRoot ("results\_scratch\EmbeddingShift.Sweep\" + $stamp)
+  $sessionRoot = Join-Path $repoRoot ("results\_scratch\EmbeddingShift.Sweep\" + $stamp)
 }
 
-if (Test-Path $root) { Remove-Item $root -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $root | Out-Null
+if (Test-Path $sessionRoot) { Remove-Item $sessionRoot -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $sessionRoot | Out-Null
 
 # Keep process environment coherent for follow-up scripts / PathAudit.
-$env:EMBEDDINGSHIFT_ROOT           = $root
 $env:EMBEDDINGSHIFT_RESULTS_DOMAIN = $domain
 $env:EMBEDDINGSHIFT_LAYOUT         = 'tenant'
 $env:EMBEDDINGSHIFT_TENANT         = $Tenant
-
 $env:EMBEDDINGSHIFT_BACKEND        = $backend
 $env:EMBEDDINGSHIFT_SIM_MODE       = $simMode
 $env:EMBEDDINGSHIFT_SIM_ALGO       = $SimAlgo
@@ -106,19 +104,39 @@ $env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
 $env:EMBEDDING_SIM_ALGO            = $SimAlgo
 $env:EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
 
-Write-Host "[Sweep] ROOT    = $env:EMBEDDINGSHIFT_ROOT"
-Write-Host "[Sweep] DOMAIN  = $env:EMBEDDINGSHIFT_RESULTS_DOMAIN"
-Write-Host "[Sweep] TENANT  = $env:EMBEDDINGSHIFT_TENANT"
-Write-Host "[Sweep] MODE    = $backend/$simMode"
-Write-Host ("[Sweep] PROMOTE = {0}" -f ([bool]$Promote))
+Write-Host "[Sweep] SESSION_ROOT = $sessionRoot"
+Write-Host "[Sweep] DOMAIN       = $env:EMBEDDINGSHIFT_RESULTS_DOMAIN"
+Write-Host "[Sweep] TENANT       = $env:EMBEDDINGSHIFT_TENANT"
+Write-Host "[Sweep] MODE         = $backend/$simMode"
+Write-Host ("[Sweep] PROMOTE      = {0}" -f ([bool]$Promote))
 
 foreach ($p in $Policies) {
   foreach ($q in $Queries) {
+
+    $profileKey = "{0}_{1}__{2}__ng{3}__ds{4}__seed{5}__st{6}__p{7}__q{8}" -f $backend, $simMode, $SimAlgo, $SimSemanticCharNGrams, $DsName, $Seed, $Stages, $p, $q
+    $profileKey = ($profileKey -replace '[^a-zA-Z0-9_\-\.]+', '_')
+    $cellRoot = Join-Path $sessionRoot ("cells\{0}" -f $profileKey)
+
+    if (Test-Path $cellRoot) { Remove-Item $cellRoot -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $cellRoot | Out-Null
+
+    $env:EMBEDDINGSHIFT_ROOT = $cellRoot
+    $env:EMBEDDINGSHIFT_RESULTS_DOMAIN = $domain
+    $env:EMBEDDINGSHIFT_LAYOUT = 'tenant'
+    $env:EMBEDDINGSHIFT_TENANT = $Tenant
+    $env:EMBEDDINGSHIFT_BACKEND = $backend
+    $env:EMBEDDINGSHIFT_SIM_MODE = $simMode
+    $env:EMBEDDINGSHIFT_SIM_ALGO = $SimAlgo
+    $env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
+    $env:EMBEDDING_SIM_ALGO = $SimAlgo
+    $env:EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS = "$SimSemanticCharNGrams"
 
     Write-Host ""
     Write-Host "========================================="
     Write-Host ("[Sweep] policies={0}, queries={1}" -f $p, $q)
     Write-Host "========================================="
+    Write-Host "[Sweep] CELL_ROOT = $cellRoot"
+    Write-Host "[Sweep] ActiveProfileKey = $profileKey"
 
     # 1) Generate dataset (stage-00)
     dotnet run --project $proj -- `
@@ -130,7 +148,8 @@ foreach ($p in $Policies) {
     # 2) Point dataset root to stage-00 (what the mini-insurance flows expect)
     $datasetRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\{0}\tenants\{1}\datasets\{2}\stage-00" -f $domain, $Tenant, $DsName)
     $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $datasetRoot
-    Write-Host "[Sweep] DATASET_ROOT = $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT"
+    $env:EMBEDDINGSHIFT_DATASET_ROOT = $datasetRoot
+    Write-Host "[Sweep] DATASET_ROOT = $datasetRoot"
 
     # 3) End-to-end Mini-Insurance pipeline (Baseline -> FirstShift -> First+Delta -> LearnedDelta)
     dotnet run --project $proj -- `
@@ -141,9 +160,6 @@ foreach ($p in $Policies) {
     $runsRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\{0}\tenants\{1}\runs" -f $domain, $Tenant)
 
     $useSharedActive = ($RootMode -eq 'scratch' -or $RootMode -eq 'repo')
-    $profileKey = "{0}_{1}__{2}__ng{3}__ds{4}__seed{5}__st{6}__p{7}__q{8}" -f $backend, $simMode, $SimAlgo, $SimSemanticCharNGrams, $DsName, $Seed, $Stages, $p, $q
-    $profileKey = ($profileKey -replace '[^a-zA-Z0-9_\-\.]+', '_')
-    Write-Host "[Sweep] ActiveProfileKey = $profileKey"
 
     $activeDir = Join-Path $runsRoot ("_active\profiles\{0}" -f $profileKey)
     $activeFileName = "active_{0}.json" -f $Metric
@@ -153,8 +169,8 @@ foreach ($p in $Policies) {
     $sharedActiveFile = Join-Path $sharedActiveDir $activeFileName
 
     if ($useSharedActive) {
-      # Restore shared active pointer into this run's runsRoot BEFORE runs-decide,
-      # so decisions become stable across separate scratch roots.
+      # Restore shared active pointer into this cell's runsRoot BEFORE runs-decide,
+      # so decisions become stable across separate cell roots.
       New-Item -ItemType Directory -Force -Path $activeDir | Out-Null
       if (Test-Path -LiteralPath $sharedActiveFile -PathType Leaf) {
         Copy-Item -LiteralPath $sharedActiveFile -Destination $activeFile -Force
@@ -226,5 +242,6 @@ foreach ($p in $Policies) {
   }
 }
 
+$env:EMBEDDINGSHIFT_ROOT = $sessionRoot
 Write-Host ""
-Write-Host "[Sweep] DONE. Root: $env:EMBEDDINGSHIFT_ROOT"
+Write-Host "[Sweep] DONE. SessionRoot: $sessionRoot"
