@@ -20,7 +20,7 @@ namespace EmbeddingShift.ConsoleEval
     /// Runs a simple retrieval experiment using the learned pos-neg Delta vector:
     /// - Baseline: no shift
     /// - Shifted:  query + learned pos-neg vector
-    /// Metrics: MAP@1 and NDCG@3 over the mini-insurance sample.
+    /// Metrics: MAP@1 and NDCG@3 over the configured mini-insurance dataset.
     /// </summary>
     public static class MiniInsurancePosNegRunner
     {
@@ -367,8 +367,9 @@ namespace EmbeddingShift.ConsoleEval
 
             var finishedAtUtc = DateTimeOffset.UtcNow;
 
-            // Additionally persist run.json artifacts under results/.../runs so generic tooling
-            // like runs-compare can pick these up without parsing custom metric files.
+            // Additionally persist comparable run.json artifacts under results/.../runs/_repo so generic tooling
+            // can include them via the repo candidate path without parsing custom metric files.
+            // The human-readable markdown/json artifacts above stay under the standard run directory.
             // This intentionally produces two comparable runs:
             //  - MiniInsurance-PosNeg-Baseline
             //  - MiniInsurance-PosNeg
@@ -739,7 +740,7 @@ private static int FindRank(
 
         private static string ResolveDomainRoot()
         {
-            // Centralized layout: repo-root/samples/insurance
+            // Resolve the currently configured mini-insurance dataset root
             // (shared with FileBasedInsuranceMiniWorkflow and MiniInsurancePosNegTrainer).
             return EmbeddingShift.Workflows.Domains.MiniInsuranceDataset.ResolveDatasetRoot();
         }

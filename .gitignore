@@ -48,3 +48,7 @@ src/EmbeddingShift.ConsoleEval/local/
 # Local/private tools (not committed)
 /private/
 /scripts/local/
+
+# Editor / backup leftovers
+*.bak
+*.bak.*
