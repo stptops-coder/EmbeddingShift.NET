@@ -7,5 +7,11 @@ Set-Location $RepoRoot
 Write-Host "[Build] Solution build..."
 dotnet build
 
-Write-Host "[Build] SegmenterTool build..."
-dotnet build ".\private\SegmenterTool\SegmenterTool\SegmenterTool.csproj"
+$segmenterProject = Join-Path $RepoRoot "private\SegmenterTool\SegmenterTool\SegmenterTool.csproj"
+if (Test-Path -LiteralPath $segmenterProject) {
+    Write-Host "[Build] SegmenterTool build..."
+    dotnet build $segmenterProject
+}
+else {
+    Write-Host "[Build] SegmenterTool build skipped (optional external/private dependency not present)."
+}
