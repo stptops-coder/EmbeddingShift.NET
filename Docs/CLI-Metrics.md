@@ -2,10 +2,6 @@
 
 This document describes **which metrics/statistics** the CLI currently produces, **where** they are stored, and **how** to interpret them – focusing on the "production-like" workflow (run artifacts + comparisons), not older First-Delta experiments.
 
-Reading note:
-- the persisted run artifacts and `PerQueryEval`-based compare flow already form a partially general retrieval-analysis core
-- some commands are still packaged in Mini-Insurance / shift-specific names even when the underlying artifact shape is more general
-
 ---
 
 ## 0) Where do metrics originate?
@@ -191,59 +187,38 @@ Important:
 
 ---
 
-## 5) Segment-compare (two-variant analysis)
+## 5) Segment-compare (external decision mix over two variants)
 
 `segment-compare` is a pure **analysis command**.
 It requires a *segments file* (JSON) that is produced **externally**.
 
 ### 5.1 Segments file schema
 
-The segments file contains:
+Preferred neutral schema:
 
 - `Metric` (e.g. `ndcg@3` or `map@1`)
 - `Eps` (threshold; informational in compare)
-- `Decisions` (dictionary `QueryId -> <decision>`)
+- `VariantAPath` (path to the first per-query JSON artifact)
+- `VariantBPath` (path to the second per-query JSON artifact)
+- `Decisions` (dictionary `QueryId -> VariantA|VariantB`)
 
-Path fields:
+Compatibility notes:
 
-- preferred neutral names:
-  - `VariantAPath`
-  - `VariantBPath`
-- also accepted:
-  - `PrimaryPath`
-  - `SecondaryPath`
-- legacy Mini-Insurance names still work:
-  - `BaselinePath` (path to `eval.perQuery.baseline.json`)
-  - `PosNegPath` (path to `eval.perQuery.posneg.json`)
-
-Optional display labels:
-
-- preferred neutral names:
-  - `VariantALabel`
-  - `VariantBLabel`
-- also accepted:
-  - `PrimaryLabel`
-  - `SecondaryLabel`
-
-Decision values:
-
-- legacy labels continue to work: `ApplyShift` / `SkipShift`
-- neutral values are also accepted for choosing the second variant, e.g. `UseSecondary`, `Secondary`, `VariantB`, `UseVariantB`
-- if a query has no decision entry, compare falls back to the first / primary variant
-
-This means the compare logic is no longer tied only to **baseline vs posneg**. It can also be used for other two-variant retrieval comparisons as long as both variants expose the same `PerQueryEval` structure.
+- Legacy field names `BaselinePath` / `PosNegPath` are still accepted.
+- Legacy decision values `ApplyShift` / `SkipShift` are still accepted and mapped internally to `VariantB` / `VariantA`.
 
 ### 5.2 Output statistics
 
 For **effective queries**, `segment-compare` computes:
 
-- Primary KPI: avg MAP@1, avg NDCG@3
-- Secondary KPI: avg MAP@1, avg NDCG@3
-- DecisionMix KPI: avg MAP@1, avg NDCG@3 (per-query selection)
-- Counts: selected primary vs selected secondary
+- VariantA KPI: avg MAP@1, avg NDCG@3
+- VariantB KPI: avg MAP@1, avg NDCG@3
+- Decision KPI: avg MAP@1, avg NDCG@3 (choose A/B per query)
+- Counts: VariantA vs VariantB selections
 
 Interpretation:
-- If the decision-mixed KPI is better than both individual variants, the per-query decision logic is doing useful work.
+- If the decision KPI is better than both VariantA and VariantB, the external decision logic is doing useful work.
+- This is intentionally broader than embedding shift. The same compare shape can be reused for apply/skip shift, rerank on/off, rewrite on/off, dense vs hybrid, or similar per-query choices.
 
 ---
 
