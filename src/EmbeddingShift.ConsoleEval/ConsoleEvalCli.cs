@@ -167,8 +167,7 @@ internal static class ConsoleEvalCli
             "smoke-demo");
 
         Add("smoke-all", "run: smoke-demo + mini-insurance pipeline + posneg (micro) (fast end-to-end)",
-            a => SmokeCliCommands.SmokeAllAsync(a, host),
-            "smoke");
+            a => SmokeCliCommands.SmokeAllAsync(a, host));
 
         Add("runs-compare", "compare persisted run artifacts (run.json) under a root",
             WrapVoid(a => RunsCompareCommand.RunAsync(a.Skip(1).ToArray())));

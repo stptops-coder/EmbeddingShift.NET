@@ -1,5 +1,8 @@
 # RUNBOOK — Portable Scripts (FirstLight)
 
+> Canonical note: for the default verification gate, start with `scripts/runbook/README.md`.
+> This file remains a specialized FirstLight runbook.
+
 This runbook describes how to run the **FirstLight** workflow end-to-end using the repository scripts, and how to inspect the produced **RunRoot** artifacts.
 
 **Goal:** clone the repo → run scripts from the repo root → get a reproducible RunRoot with `reports/summary.txt` and inspection outputs.

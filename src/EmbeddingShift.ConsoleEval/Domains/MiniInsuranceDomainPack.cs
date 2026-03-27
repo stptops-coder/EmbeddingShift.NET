@@ -31,7 +31,7 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
         log("  domain mini-insurance pipeline [--no-learned] [--query-policy=<path>]");
         log("  domain mini-insurance training-list");
         log("  domain mini-insurance training-inspect");
-        log("  domain mini-insurance posneg-train [--mode=micro|production] [--cancel-epsilon=<float>]");
+        log("  domain mini-insurance posneg-train [--mode=micro|production] [--hardneg-topk=<int>]");
         log("  domain mini-insurance posneg-run");
         log("  domain mini-insurance posneg-inspect");
         log("  domain mini-insurance posneg-history [maxItems]");

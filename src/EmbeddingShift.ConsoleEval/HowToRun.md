@@ -13,6 +13,16 @@ dotnet build -c Release
 dotnet run --no-build -c Release --project src/EmbeddingShift.ConsoleEval -- <command> [args]
 ```
 
+## Scope of this note
+
+This file is a **project-local CLI reminder**.
+
+For the stable PowerShell verification gate, use:
+- `scripts/runbook/README.md`
+
+For the broader CLI reference, use:
+- `Docs/CLI-Full-Guide.md`
+
 ## Discover commands
 
 ```powershell

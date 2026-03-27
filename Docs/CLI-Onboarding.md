@@ -49,7 +49,7 @@ Mini-Insurance (single run):
 
 **Prefer copy/paste multi-step sequences?**
 
-- PowerShell runbook: `scripts/RUNBOOK_FirstLight.md`
+- PowerShell runbook gate (canonical): `scripts/runbook/README.md`
 - ConsoleEval how-to: `src/EmbeddingShift.ConsoleEval/HowToRun.md`
 
 
@@ -91,8 +91,10 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a run-sm
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance dataset-generate MyDS --stages 3 --policies 40 --queries 80 --seed 1337 --overwrite
 
-$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results\insurance\datasets\MyDS\stage-00"
+$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results\insurance\tenants\insurer-a\datasets\MyDS\stage-00"
 ```
+
+Note: keep the dataset root tenant aligned with `--tenant` (or `EMBEDDINGSHIFT_TENANT`) for the run you want to inspect.
 
 ---
 
