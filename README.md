@@ -54,7 +54,7 @@ Notes:
   If you explicitly want `%TEMP%`, pass `-RootMode temp`.
 - `dataset-status` / `dataset-validate` are **top-level CLI commands**, not `domain mini-insurance ...` subcommands.
 
-## Repo status
+## Current repo status
 
 Implemented in this repo today:
 - deterministic simulation backend (`--backend=sim`)
@@ -67,15 +67,13 @@ Visible as demo or partial packaging:
 - `run-smoke-demo` and the Mini-Insurance pipeline
 - segment-based analysis commands that consume externally produced JSON decisions
 
-Scaffold / not fully wired in this repo state:
+Scaffold / not fully wired in the current repo state:
 - `--backend=openai` exists as a scaffold but is not wired end-to-end
 - adaptive/generator demos are not part of the standard ingest → eval → promote path
 - routing is not yet packaged in the same externalized JSON form as the segment experiments
 
 Interpretation:
 - the retrieval-evaluation core is already broader than a single shift workflow
-- the main retrieval evidence in this repo comes from persisted run artifacts and per-query evaluation artifacts
-- the older evaluator-based metrics remain useful as a diagnostic layer, not as the main generic retrieval proof
 - some packaging still remains Mini-Insurance / shift-specific (for example parts of segment compare and artifact naming)
 
 ## Smoke-all (full end-to-end demo)

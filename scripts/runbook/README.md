@@ -69,8 +69,6 @@ You can also run the whole standard gate in one command:
 .\scripts\runbook\99-RunAll.ps1
 ```
 
-`99-RunAll.ps1` follows the same standard order: `00-Prep` → `10-Build` → `30-Tests` → `21-AcceptanceSweep-Deterministic`.
-
 Add optional experimental extras only when you explicitly want them:
 
 ```powershell
@@ -88,6 +86,8 @@ Legacy wrapper (kept for older notes):
 ```powershell
 .\scripts\runbook-experimental\21-BlankStart-RunActivation-Sweep.ps1
 ```
+
+
 
 This generates multiple datasets/runs into a separate scratch root under `results\_scratch\EmbeddingShift.Sweep\...`.
 
