@@ -49,6 +49,7 @@ Optional tenant isolation:
 A useful way to read the current repo state:
 
 - **Implemented / primary path**: deterministic sim backend, file-based artifacts, run comparison/activation flow, Mini-Insurance reference workflows.
+- **Also already general in parts**: persisted runs, per-query evaluation artifacts, compare/decide/promote mechanics; these are not limited to one specific shift algorithm.
 - **Demo / analysis path**: `run-smoke-demo`, First/Delta loops, segment-based comparison from externally produced JSON decisions.
 - **Scaffold / not fully wired**: `--backend=openai`, adaptive/generator demos as part of the main verification path.
 - **Future-facing**: routing exists conceptually, but is not yet packaged in the same externalized JSON form as the segment experiments.

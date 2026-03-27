@@ -60,6 +60,7 @@ Implemented in this repo today:
 - deterministic simulation backend (`--backend=sim`)
 - file-based ingest/eval/run artifacts
 - reproducible run comparison / decide / promote flow
+- a partially general retrieval-evaluation core (persisted runs, per-query eval artifacts, compare/decide/promote)
 - Mini-Insurance as the main reference/demo domain
 
 Visible as demo or partial packaging:
@@ -70,6 +71,10 @@ Scaffold / not fully wired in this public repo state:
 - `--backend=openai` exists as a scaffold but is not wired end-to-end
 - adaptive/generator demos are not part of the standard ingest → eval → promote path
 - routing is not yet packaged in the same externalized JSON form as the segment experiments
+
+Interpretation:
+- the retrieval-evaluation core is already broader than a single shift workflow
+- some packaging still remains Mini-Insurance / shift-specific (for example parts of segment compare and artifact naming)
 
 ## Smoke-all (full end-to-end demo)
 

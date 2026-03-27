@@ -2,6 +2,10 @@
 
 This document describes **which metrics/statistics** the CLI currently produces, **where** they are stored, and **how** to interpret them – focusing on the "production-like" workflow (run artifacts + comparisons), not older First-Delta experiments.
 
+Reading note:
+- the persisted run artifacts and `PerQueryEval`-based compare flow already form a partially general retrieval-analysis core
+- some commands are still packaged in Mini-Insurance / shift-specific names even when the underlying artifact shape is more general
+
 ---
 
 ## 0) Where do metrics originate?
