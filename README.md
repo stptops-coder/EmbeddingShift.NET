@@ -36,7 +36,7 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
 
 ## Runbooks (recommended)
 
-If you want one stable, public-facing verification flow, start with the canonical runbook entrypoint:
+If you want one stable verification flow, start with the canonical runbook entrypoint:
 
 - **Standard gate (recommended)**  
   `scripts/runbook/README.md`  
@@ -46,17 +46,15 @@ Useful follow-up entry points:
 - **Acceptance sweep (deterministic)**  
   `.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1`  
   (runs a grid of dataset sizes → compares/decides best run; promotion is optional via `-Promote`)
-- **Broader public CLI demo**  
-  `dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --backend=sim --sim-mode=deterministic smoke-all`
-
-Experimental scripts still exist under `scripts/runbook-experimental/`, but they are not the default public verification path.
+- **Larger PosNeg experiment (optional / experimental)**  
+  `.\scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1`
 
 Notes:
 - These scripts default to writing run roots under `results\_scratch\...` **inside the repo** (so you can keep everything in one place and avoid `%TEMP%`).  
   If you explicitly want `%TEMP%`, pass `-RootMode temp`.
 - `dataset-status` / `dataset-validate` are **top-level CLI commands**, not `domain mini-insurance ...` subcommands.
 
-## Public repo status
+## Repo status
 
 Implemented in this repo today:
 - deterministic simulation backend (`--backend=sim`)
@@ -69,7 +67,7 @@ Visible as demo or partial packaging:
 - `run-smoke-demo` and the Mini-Insurance pipeline
 - segment-based analysis commands that consume externally produced JSON decisions
 
-Scaffold / not fully wired in this public repo state:
+Scaffold / not fully wired in this repo state:
 - `--backend=openai` exists as a scaffold but is not wired end-to-end
 - adaptive/generator demos are not part of the standard ingest → eval → promote path
 - routing is not yet packaged in the same externalized JSON form as the segment experiments
@@ -89,7 +87,7 @@ This runs a broader demo chain:
 - Mini-Insurance First/Delta pipeline (under `results/insurance/tenants/<tenant>/...`)
 - PosNeg training (micro) and PosNeg run
 
-This is useful for demos, but the default public verification path remains the standard runbook gate above.
+This is useful for demos, but the default verification path remains the standard runbook gate above.
 
 ## Artifact roots
 

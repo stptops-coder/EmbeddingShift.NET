@@ -4,11 +4,11 @@ As of: 2026-02-10
 
 Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Validate → Eval → Compare/activate runs.
 
-For a known-good verification path, prefer the standard runbook gate first; use the manual CLI steps below when you want to inspect the workflow piece by piece.
+For a “known good” verification path, prefer the standard runbook gate first; use the manual CLI steps below when you want to inspect the workflow piece by piece.
 
 ## 0) Standard runbook gate (recommended)
 
-If you want a single known-good verification path, start with the canonical runbook gate:
+If you want a single “known good” verification path, start with the canonical runbook gate:
 
 ```powershell
 cd <repo-root>

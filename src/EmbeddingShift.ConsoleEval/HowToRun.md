@@ -23,9 +23,8 @@ For the stable PowerShell verification gate, use:
 For the broader CLI reference, use:
 - `Docs/CLI-Full-Guide.md`
 
-Public-facing rule of thumb:
+Rule of thumb:
 - `run-smoke-demo` = fastest demo
-- `smoke-all` = broader public demo chain
 - `scripts/runbook/README.md` = standard verification path
 - OpenAI/adaptive notes in this repo are scaffold/demo unless stated otherwise
 
@@ -56,17 +55,10 @@ Fastest working run (no paths required):
 dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
 ```
 
-Broader public demo chain:
-
-```powershell
-dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --backend=sim --sim-mode=deterministic smoke-all
-```
-
 Notes:
-- `run-smoke-demo` uses built-in demo assets under `samples/insurance/`.
-- `smoke-all` adds the Mini-Insurance pipeline and PosNeg micro flow on top of the smoke demo.
-- The standard verification path still remains `scripts/runbook/README.md`.
-- Both write under `data/` / `results/` (tenant-aware when `--tenant` is set).
+- Uses built-in demo assets under `samples/insurance/`.
+- Persists embeddings/manifests under `data/`.
+- Writes an evaluation run under `results/` (or `results/insurance/tenants/<tenant>/...` if `--tenant` is set).
 
 ## Artifact roots
 
