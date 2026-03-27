@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
@@ -109,7 +109,7 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
                  cancellationToken)
              .ConfigureAwait(false);
 
-            MiniInsurancePerQueryArtifacts.TryPersist(_baselineRunDir, workflow);
+            PerQueryArtifactWriter.TryPersist(_baselineRunDir, workflow);
 
             Log($"Baseline run persisted to:      {_baselineRunDir}");
         }
@@ -145,7 +145,7 @@ namespace EmbeddingShift.ConsoleEval.MiniInsurance
                    cancellationToken)
                .ConfigureAwait(false);
 
-            MiniInsurancePerQueryArtifacts.TryPersist(_firstRunDir, firstWorkflow);
+            PerQueryArtifactWriter.TryPersist(_firstRunDir, firstWorkflow);
 
             Log($"FirstShift run persisted to:   {_firstRunDir}");
         }
@@ -202,7 +202,7 @@ workflowName = "FileBased-Insurance-Mini-FirstPlusPolicyDelta-Pipeline";
                 cancellationToken)
             .ConfigureAwait(false);
 
-            MiniInsurancePerQueryArtifacts.TryPersist(_firstPlusDeltaRunDir, workflow);
+            PerQueryArtifactWriter.TryPersist(_firstPlusDeltaRunDir, workflow);
 
             Log(useQueryPolicy ? $"First+PolicyDelta run persisted to: {_firstPlusDeltaRunDir}" : $"First+Delta run persisted to: {_firstPlusDeltaRunDir}");
 // Persist a comparison object for this run under runsRoot.

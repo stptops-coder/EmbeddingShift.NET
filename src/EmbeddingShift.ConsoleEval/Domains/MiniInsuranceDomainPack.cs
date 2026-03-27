@@ -1,4 +1,4 @@
-﻿namespace EmbeddingShift.ConsoleEval.Domains;
+namespace EmbeddingShift.ConsoleEval.Domains;
 
 using System;
 using System.Collections.Generic;
@@ -36,6 +36,8 @@ internal sealed class MiniInsuranceDomainPack : DomainPackBase
         log("  domain mini-insurance posneg-inspect");
         log("  domain mini-insurance posneg-history [maxItems]");
         log("  domain mini-insurance posneg-best");
+        log("  domain mini-insurance segment-compare --segments <path> [--metric ndcg@3]");
+        log("    Analysis-only; consumes externally produced per-query decisions and combines two variants.");
         log("");
         log("  domain mini-insurance dataset-generate <name> [--tenant=<id>] [--stages=N] [--policies=N] [--queries=N] [--seed=N] [--overwrite]");
         log("    Writes staged datasets under: results/insurance/tenants/<tenant>/datasets/<name>/stage-00 ...");
