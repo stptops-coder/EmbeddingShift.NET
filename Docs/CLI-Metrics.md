@@ -187,7 +187,7 @@ Important:
 
 ---
 
-## 5) Segment-compare (segmentation: apply vs skip)
+## 5) Segment-compare (two-variant analysis)
 
 `segment-compare` is a pure **analysis command**.
 It requires a *segments file* (JSON) that is produced **externally**.
@@ -202,23 +202,30 @@ The segments file contains:
 
 Path fields:
 
-- legacy Mini-Insurance names:
-  - `BaselinePath` (path to `eval.perQuery.baseline.json`)
-  - `PosNegPath` (path to `eval.perQuery.posneg.json`)
-- neutral aliases accepted by the current compare logic:
+- preferred neutral names:
+  - `VariantAPath`
+  - `VariantBPath`
+- also accepted:
   - `PrimaryPath`
   - `SecondaryPath`
+- legacy Mini-Insurance names still work:
+  - `BaselinePath` (path to `eval.perQuery.baseline.json`)
+  - `PosNegPath` (path to `eval.perQuery.posneg.json`)
 
 Optional display labels:
 
-- `PrimaryLabel`
-- `SecondaryLabel`
+- preferred neutral names:
+  - `VariantALabel`
+  - `VariantBLabel`
+- also accepted:
+  - `PrimaryLabel`
+  - `SecondaryLabel`
 
 Decision values:
 
 - legacy labels continue to work: `ApplyShift` / `SkipShift`
-- neutral values are also accepted for choosing the second variant, e.g. `UseSecondary`, `Secondary`, `VariantB`
-- if a query has no decision entry, compare falls back to the primary variant
+- neutral values are also accepted for choosing the second variant, e.g. `UseSecondary`, `Secondary`, `VariantB`, `UseVariantB`
+- if a query has no decision entry, compare falls back to the first / primary variant
 
 This means the compare logic is no longer tied only to **baseline vs posneg**. It can also be used for other two-variant retrieval comparisons as long as both variants expose the same `PerQueryEval` structure.
 

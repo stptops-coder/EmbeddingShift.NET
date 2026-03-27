@@ -13,8 +13,12 @@ internal static class MiniInsuranceSegmentCompare
         string? PosNegPath,
         string? PrimaryPath,
         string? SecondaryPath,
+        string? VariantAPath,
+        string? VariantBPath,
         string? PrimaryLabel,
         string? SecondaryLabel,
+        string? VariantALabel,
+        string? VariantBLabel,
         Dictionary<string, string>? Decisions);
 
     public static int Run(string segmentsPath, string metric)
@@ -28,13 +32,21 @@ internal static class MiniInsuranceSegmentCompare
         var seg = JsonSerializer.Deserialize<SegmentsFile>(File.ReadAllText(segmentsPath), opts)
                   ?? throw new InvalidOperationException("Failed to parse segments file.");
 
-        var primaryPath = FirstNonEmpty(seg.PrimaryPath, seg.BaselinePath)
-            ?? throw new InvalidOperationException("Segments file must contain PrimaryPath or BaselinePath.");
-        var secondaryPath = FirstNonEmpty(seg.SecondaryPath, seg.PosNegPath)
-            ?? throw new InvalidOperationException("Segments file must contain SecondaryPath or PosNegPath.");
+        var primaryPath = FirstNonEmpty(seg.VariantAPath, seg.PrimaryPath, seg.BaselinePath)
+            ?? throw new InvalidOperationException("Segments file must contain VariantAPath, PrimaryPath or BaselinePath.");
+        var secondaryPath = FirstNonEmpty(seg.VariantBPath, seg.SecondaryPath, seg.PosNegPath)
+            ?? throw new InvalidOperationException("Segments file must contain VariantBPath, SecondaryPath or PosNegPath.");
 
-        var primaryLabel = FirstNonEmpty(seg.PrimaryLabel, string.IsNullOrWhiteSpace(seg.BaselinePath) ? null : "Baseline", "Primary")!;
-        var secondaryLabel = FirstNonEmpty(seg.SecondaryLabel, string.IsNullOrWhiteSpace(seg.PosNegPath) ? null : "PosNeg", "Secondary")!;
+        var primaryLabel = FirstNonEmpty(
+            seg.VariantALabel,
+            seg.PrimaryLabel,
+            string.IsNullOrWhiteSpace(seg.BaselinePath) ? null : "Baseline",
+            "VariantA")!;
+        var secondaryLabel = FirstNonEmpty(
+            seg.VariantBLabel,
+            seg.SecondaryLabel,
+            string.IsNullOrWhiteSpace(seg.PosNegPath) ? null : "PosNeg",
+            "VariantB")!;
         var decisions = seg.Decisions ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         if (!File.Exists(primaryPath))
@@ -113,7 +125,7 @@ internal static class MiniInsuranceSegmentCompare
         if (normalized.Length == 0)
             return false;
 
-        return normalized is "applyshift" or "usesecondary" or "secondary" or "variantb" or "useb"
+        return normalized is "applyshift" or "usesecondary" or "secondary" or "variantb" or "useb" or "usevariantb" or "chooseb"
             || normalized == Normalize(secondaryLabel);
     }
 
