@@ -46,8 +46,10 @@ Useful follow-up entry points:
 - **Acceptance sweep (deterministic)**  
   `.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1`  
   (runs a grid of dataset sizes → compares/decides best run; promotion is optional via `-Promote`)
-- **Larger PosNeg experiment (optional / experimental)**  
-  `.\scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1`
+- **Broader public CLI demo**  
+  `dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --backend=sim --sim-mode=deterministic smoke-all`
+
+Experimental scripts still exist under `scripts/runbook-experimental/`, but they are not the default public verification path.
 
 Notes:
 - These scripts default to writing run roots under `results\_scratch\...` **inside the repo** (so you can keep everything in one place and avoid `%TEMP%`).  

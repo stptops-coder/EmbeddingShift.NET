@@ -32,14 +32,12 @@ Notes:
 - `30-Tests.ps1` is the stable test gate before the acceptance sweep.
 - `21-BlankStart-RunActivation-Sweep.ps1` is kept only as a deprecated wrapper for backward compatibility.
 
-Alternative broader demo chain (not the default public verification path):
+If you want a broader public CLI demo after the standard gate, prefer:
 ```powershell
-.\scripts\runbook\00-Prep.ps1
-.\scripts\runbook\10-Build.ps1
-.\scripts\runbook-experimental\20-FullRun-MiniInsurance.ps1
-.\scripts\runbook\30-Tests.ps1
-.\scripts\runbook-experimental\40-Health.ps1
+dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --backend=sim --sim-mode=deterministic smoke-all
 ```
+
+This is still a demo chain, not the canonical verification gate.
 
 ## 1) Standard invocation
 
@@ -76,7 +74,7 @@ Note: `--tenant` is parsed globally, set as ENV, and removed before dispatch. Th
 
 ## 3) Quick sanity: demo smoke
 
-This is the fastest public demo entrypoint. It is useful for a quick end-to-end check, but it is not the same as the standard runbook gate.
+This is the fastest public demo entrypoint. It is useful for a quick end-to-end check, but it is not the same as the standard runbook gate and not the broader `smoke-all` demo chain.
 
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a run-smoke-demo --baseline
