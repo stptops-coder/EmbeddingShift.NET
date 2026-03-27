@@ -21,7 +21,10 @@ Write-Host "[RunAll] Extras  = $IncludeExperimental"
 & "$PSScriptRoot\00-Prep.ps1"
 & "$PSScriptRoot\10-Build.ps1"
 
-# Standard deterministic gate sweep (small & reproducible)
+# Standard gate order: tests first, then deterministic acceptance sweep
+# (matches scripts/runbook/README.md and the documented verification path)
+& (Join-Path $PSScriptRoot "..\runbook-internal\90-Tests-Samples.ps1")
+
 & "$PSScriptRoot\21-AcceptanceSweep-Deterministic.ps1" `
   -Tenant $Tenant `
   -Seed $Seed `
@@ -30,9 +33,6 @@ Write-Host "[RunAll] Extras  = $IncludeExperimental"
   -Stages 1 `
   -SimAlgo semantic-hash `
   -SimSemanticCharNGrams 1
-
-# Full unit + acceptance suite (stable TEMP/TMP isolation happens inside this runner)
-& (Join-Path $PSScriptRoot "..\runbook-internal\90-Tests-Samples.ps1")
 
 if ($IncludeExperimental) {
   Write-Host "[RunAll] Running optional experimental extras..."
