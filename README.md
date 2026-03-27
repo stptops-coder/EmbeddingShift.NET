@@ -74,6 +74,8 @@ Scaffold / not fully wired in this repo state:
 
 Interpretation:
 - the retrieval-evaluation core is already broader than a single shift workflow
+- the main retrieval evidence in this repo comes from persisted run artifacts and per-query evaluation artifacts
+- the older evaluator-based metrics remain useful as a diagnostic layer, not as the main generic retrieval proof
 - some packaging still remains Mini-Insurance / shift-specific (for example parts of segment compare and artifact naming)
 
 ## Smoke-all (full end-to-end demo)
