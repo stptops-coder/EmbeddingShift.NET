@@ -4,6 +4,8 @@ This folder contains small, reproducible PowerShell scripts for common workflows
 
 This file is the **canonical PowerShell verification entrypoint** for the current repo state.
 
+If you want one public-facing, repeatable “happy path”, use the standard gate below.
+
 ## Folder layout
 
 - `scripts/runbook`: standard gate scripts (keep this folder small).

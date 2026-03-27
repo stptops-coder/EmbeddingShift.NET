@@ -301,7 +301,7 @@ Important clarifications (to avoid “implicitly wrong” documentation):
 - `domain mini-insurance runroot-summarize [--runroot=<path>] [--out=<path>]`
   - Purpose: Create a compact summary report for a runroot folder (shareable/diff-friendly).
 
-**Important (sync note):** The domain help mentions `--cancel-epsilon=<float>`, but in the current state it is **not** parsed (the flag has no effect).
+**Sync note:** The current Pos/Neg help is aligned around `--hardneg-topk=<N>`. Older notes that mention `--cancel-epsilon` are stale and should not be treated as current CLI behavior.
 
 ---
 ## E) Adaptive/Generator (status and positioning)

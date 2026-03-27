@@ -4,6 +4,8 @@ As of: 2026-02-10
 
 Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Validate → Eval → Compare/activate runs.
 
+For a public-facing “known good” verification path, prefer the standard runbook gate first; use the manual CLI steps below when you want to inspect the workflow piece by piece.
+
 ## 0) Deterministic acceptance sweep (recommended)
 
 If you want a single “known good” end-to-end sequence (generate → pipeline → compare → decide → optional promote), use:
@@ -33,7 +35,7 @@ Notes:
 - Edit the sweep grid inside the script once (Policies/Queries) and keep it stable for reproducible comparisons.
 
 
-Mini-Insurance (single run):
+Alternative broader demo chain (not the default public verification path):
 ```powershell
 .\scripts\runbook\00-Prep.ps1
 .\scripts\runbook\10-Build.ps1
@@ -41,9 +43,6 @@ Mini-Insurance (single run):
 .\scripts\runbook\30-Tests.ps1
 .\scripts\runbook-experimental\40-Health.ps1
 ```
----
-
----
 
 ## 1) Standard invocation
 
@@ -79,6 +78,8 @@ Note: `--tenant` is parsed globally, set as ENV, and removed before dispatch. Th
 ---
 
 ## 3) Quick sanity: demo smoke
+
+This is the fastest public demo entrypoint. It is useful for a quick end-to-end check, but it is not the same as the standard runbook gate.
 
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a run-smoke-demo --baseline

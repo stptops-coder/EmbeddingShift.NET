@@ -23,6 +23,11 @@ For the stable PowerShell verification gate, use:
 For the broader CLI reference, use:
 - `Docs/CLI-Full-Guide.md`
 
+Public-facing rule of thumb:
+- `run-smoke-demo` = fastest demo
+- `scripts/runbook/README.md` = standard verification path
+- OpenAI/adaptive notes in this repo are scaffold/demo unless stated otherwise
+
 ## Discover commands
 
 ```powershell
