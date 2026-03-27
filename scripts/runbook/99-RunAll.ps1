@@ -23,7 +23,7 @@ Write-Host "[RunAll] Extras  = $IncludeExperimental"
 
 # Standard gate order: tests first, then deterministic acceptance sweep
 # (matches scripts/runbook/README.md and the documented verification path)
-& (Join-Path $PSScriptRoot "..\runbook-internal\90-Tests-Samples.ps1")
+& "$PSScriptRoot\30-Tests.ps1"
 
 & "$PSScriptRoot\21-AcceptanceSweep-Deterministic.ps1" `
   -Tenant $Tenant `

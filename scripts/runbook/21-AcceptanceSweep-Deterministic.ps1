@@ -54,23 +54,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Resolve-RepoRoot {
-  param([string]$ScriptRoot)
+. (Join-Path $PSScriptRoot '..\lib\RepoRoot.ps1')
 
-  $candidates = @()
-  $candidates += (Get-Location).Path
-  $candidates += (Resolve-Path (Join-Path $ScriptRoot '..\..\..')).Path
-  $candidates += (Resolve-Path (Join-Path $ScriptRoot '..\..')).Path
-  $candidates = $candidates | Select-Object -Unique
-
-  foreach ($c in $candidates) {
-    if (Test-Path (Join-Path $c '.git') -PathType Container) { return $c }
-  }
-
-  throw "Cannot resolve RepoRoot. Checked: $($candidates -join '; ')"
-}
-
-$repoRoot = Resolve-RepoRoot -ScriptRoot $PSScriptRoot
+$repoRoot = Resolve-RepoRoot -StartPath $PSScriptRoot
 Set-Location $repoRoot
 
 $proj    = 'src\EmbeddingShift.ConsoleEval'

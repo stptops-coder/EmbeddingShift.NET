@@ -1,10 +1,12 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot '..\lib\RepoRoot.ps1')
+
 # Clears run-related environment variables (process scope) so runs are reproducible.
 # This does NOT touch user/machine scope.
 
-$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$RepoRoot = Resolve-RepoRoot -StartPath $PSScriptRoot
 $Scratch  = Join-Path $RepoRoot 'results\_scratch'
 
 Write-Host "[Prep] Clearing run-related environment variables (process scope)..."
