@@ -198,21 +198,41 @@ The segments file contains:
 
 - `Metric` (e.g. `ndcg@3` or `map@1`)
 - `Eps` (threshold; informational in compare)
-- `BaselinePath` (path to `eval.perQuery.baseline.json`)
-- `PosNegPath` (path to `eval.perQuery.posneg.json`)
-- `Decisions` (dictionary `QueryId -> ApplyShift|SkipShift`)
+- `Decisions` (dictionary `QueryId -> <decision>`)
+
+Path fields:
+
+- legacy Mini-Insurance names:
+  - `BaselinePath` (path to `eval.perQuery.baseline.json`)
+  - `PosNegPath` (path to `eval.perQuery.posneg.json`)
+- neutral aliases accepted by the current compare logic:
+  - `PrimaryPath`
+  - `SecondaryPath`
+
+Optional display labels:
+
+- `PrimaryLabel`
+- `SecondaryLabel`
+
+Decision values:
+
+- legacy labels continue to work: `ApplyShift` / `SkipShift`
+- neutral values are also accepted for choosing the second variant, e.g. `UseSecondary`, `Secondary`, `VariantB`
+- if a query has no decision entry, compare falls back to the primary variant
+
+This means the compare logic is no longer tied only to **baseline vs posneg**. It can also be used for other two-variant retrieval comparisons as long as both variants expose the same `PerQueryEval` structure.
 
 ### 5.2 Output statistics
 
 For **effective queries**, `segment-compare` computes:
 
-- Baseline KPI: avg MAP@1, avg NDCG@3
-- PosNeg KPI: avg MAP@1, avg NDCG@3
-- Segmented KPI: avg MAP@1, avg NDCG@3 (apply/skip per query)
-- Counts: apply vs skip
+- Primary KPI: avg MAP@1, avg NDCG@3
+- Secondary KPI: avg MAP@1, avg NDCG@3
+- DecisionMix KPI: avg MAP@1, avg NDCG@3 (per-query selection)
+- Counts: selected primary vs selected secondary
 
 Interpretation:
-- If the segmented KPI is better than both baseline and posneg, the segmentation decision is doing useful work.
+- If the decision-mixed KPI is better than both individual variants, the per-query decision logic is doing useful work.
 
 ---
 

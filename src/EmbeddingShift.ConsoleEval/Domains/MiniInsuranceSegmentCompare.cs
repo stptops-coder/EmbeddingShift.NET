@@ -1,25 +1,21 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text.Json;
+using EmbeddingShift.Workflows;
 
 namespace EmbeddingShift.ConsoleEval.Domains;
 
 internal static class MiniInsuranceSegmentCompare
 {
-    private sealed record PerQueryEval(
-        string QueryId,
-        string RelevantDocId,
-        int Rank,
-        double Ap1,
-        double Ndcg3,
-        string? TopDocId,
-        double TopScore);
-
     private sealed record SegmentsFile(
-        string Metric,
-        double Eps,
-        string BaselinePath,
-        string PosNegPath,
-        Dictionary<string, string> Decisions);
+        string? Metric,
+        double? Eps,
+        string? BaselinePath,
+        string? PosNegPath,
+        string? PrimaryPath,
+        string? SecondaryPath,
+        string? PrimaryLabel,
+        string? SecondaryLabel,
+        Dictionary<string, string>? Decisions);
 
     public static int Run(string segmentsPath, string metric)
     {
@@ -32,71 +28,98 @@ internal static class MiniInsuranceSegmentCompare
         var seg = JsonSerializer.Deserialize<SegmentsFile>(File.ReadAllText(segmentsPath), opts)
                   ?? throw new InvalidOperationException("Failed to parse segments file.");
 
-        if (!File.Exists(seg.BaselinePath))
-            throw new FileNotFoundException("Baseline per-query file not found", seg.BaselinePath);
-        if (!File.Exists(seg.PosNegPath))
-            throw new FileNotFoundException("PosNeg per-query file not found", seg.PosNegPath);
+        var primaryPath = FirstNonEmpty(seg.PrimaryPath, seg.BaselinePath)
+            ?? throw new InvalidOperationException("Segments file must contain PrimaryPath or BaselinePath.");
+        var secondaryPath = FirstNonEmpty(seg.SecondaryPath, seg.PosNegPath)
+            ?? throw new InvalidOperationException("Segments file must contain SecondaryPath or PosNegPath.");
 
-        var baseline = JsonSerializer.Deserialize<List<PerQueryEval>>(File.ReadAllText(seg.BaselinePath), opts) ?? new();
-        var posneg = JsonSerializer.Deserialize<List<PerQueryEval>>(File.ReadAllText(seg.PosNegPath), opts) ?? new();
+        var primaryLabel = FirstNonEmpty(seg.PrimaryLabel, string.IsNullOrWhiteSpace(seg.BaselinePath) ? null : "Baseline", "Primary")!;
+        var secondaryLabel = FirstNonEmpty(seg.SecondaryLabel, string.IsNullOrWhiteSpace(seg.PosNegPath) ? null : "PosNeg", "Secondary")!;
+        var decisions = seg.Decisions ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        var baseById = baseline.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
-        var posById = posneg.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
-        int apply = 0, skip = 0, missing = 0, used = 0;
+        if (!File.Exists(primaryPath))
+            throw new FileNotFoundException($"{primaryLabel} per-query file not found", primaryPath);
+        if (!File.Exists(secondaryPath))
+            throw new FileNotFoundException($"{secondaryLabel} per-query file not found", secondaryPath);
 
-        double mapBaseSum = 0, ndcgBaseSum = 0;
-        double mapPosSum = 0, ndcgPosSum = 0;
-        double mapSegSum = 0, ndcgSegSum = 0;
+        var primary = JsonSerializer.Deserialize<List<PerQueryEval>>(File.ReadAllText(primaryPath), opts) ?? new();
+        var secondary = JsonSerializer.Deserialize<List<PerQueryEval>>(File.ReadAllText(secondaryPath), opts) ?? new();
 
-        foreach (var (qid, b) in baseById)
+        var primaryById = primary.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
+        var secondaryById = secondary.ToDictionary(x => x.QueryId, StringComparer.OrdinalIgnoreCase);
+        int selectPrimary = 0, selectSecondary = 0, missing = 0, used = 0;
+
+        double mapPrimarySum = 0, ndcgPrimarySum = 0;
+        double mapSecondarySum = 0, ndcgSecondarySum = 0;
+        double mapMixedSum = 0, ndcgMixedSum = 0;
+
+        foreach (var (qid, p1) in primaryById)
         {
-            if (!posById.TryGetValue(qid, out var p))
+            if (!secondaryById.TryGetValue(qid, out var p2))
             {
                 missing++;
                 continue;
             }
 
-            if (!seg.Decisions.TryGetValue(qid, out var decision))
+            if (!decisions.TryGetValue(qid, out var decision))
             {
-                // If no decision exists, default to SkipShift (conservative)
-                decision = "SkipShift";
+                decision = primaryLabel;
             }
 
-            var usePos = string.Equals(decision, "ApplyShift", StringComparison.OrdinalIgnoreCase);
-            if (usePos) apply++; else skip++;
+            var useSecondary = IsSecondaryDecision(decision, secondaryLabel);
+            if (useSecondary) selectSecondary++; else selectPrimary++;
 
-            mapBaseSum += b.Ap1; ndcgBaseSum += b.Ndcg3;
-            mapPosSum += p.Ap1; ndcgPosSum += p.Ndcg3;
+            mapPrimarySum += p1.Ap1; ndcgPrimarySum += p1.Ndcg3;
+            mapSecondarySum += p2.Ap1; ndcgSecondarySum += p2.Ndcg3;
 
-            var chosen = usePos ? p : b;
-            mapSegSum += chosen.Ap1;
-            ndcgSegSum += chosen.Ndcg3;
+            var chosen = useSecondary ? p2 : p1;
+            mapMixedSum += chosen.Ap1;
+            ndcgMixedSum += chosen.Ndcg3;
 
             used++;
         }
 
-        double mapBase = used == 0 ? 0 : mapBaseSum / used;
-        double ndcgBase = used == 0 ? 0 : ndcgBaseSum / used;
+        double mapPrimary = used == 0 ? 0 : mapPrimarySum / used;
+        double ndcgPrimary = used == 0 ? 0 : ndcgPrimarySum / used;
 
-        double mapPos = used == 0 ? 0 : mapPosSum / used;
-        double ndcgPos = used == 0 ? 0 : ndcgPosSum / used;
+        double mapSecondary = used == 0 ? 0 : mapSecondarySum / used;
+        double ndcgSecondary = used == 0 ? 0 : ndcgSecondarySum / used;
 
-        double mapSeg = used == 0 ? 0 : mapSegSum / used;
-        double ndcgSeg = used == 0 ? 0 : ndcgSegSum / used;
+        double mapMixed = used == 0 ? 0 : mapMixedSum / used;
+        double ndcgMixed = used == 0 ? 0 : ndcgMixedSum / used;
 
         Console.WriteLine($"[segment-compare] segments = {segmentsPath}");
         Console.WriteLine($"[segment-compare] metric   = {metric}");
-        Console.WriteLine($"[segment-compare] used={used}, missing={missing}, ApplyShift={apply}, SkipShift={skip}");
+        Console.WriteLine($"[segment-compare] used={used}, missing={missing}, {primaryLabel}={selectPrimary}, {secondaryLabel}={selectSecondary}");
         Console.WriteLine();
         Console.WriteLine("KPI (avg over used cases)");
-        Console.WriteLine($"  Baseline : MAP@1={mapBase:0.000}, NDCG@3={ndcgBase:0.000}");
-        Console.WriteLine($"  PosNeg   : MAP@1={mapPos:0.000}, NDCG@3={ndcgPos:0.000}");
-        Console.WriteLine($"  Segmented: MAP@1={mapSeg:0.000}, NDCG@3={ndcgSeg:0.000}");
+        Console.WriteLine($"  {primaryLabel,-10}: MAP@1={mapPrimary:0.000}, NDCG@3={ndcgPrimary:0.000}");
+        Console.WriteLine($"  {secondaryLabel,-10}: MAP@1={mapSecondary:0.000}, NDCG@3={ndcgSecondary:0.000}");
+        Console.WriteLine($"  DecisionMix: MAP@1={mapMixed:0.000}, NDCG@3={ndcgMixed:0.000}");
         Console.WriteLine();
-        Console.WriteLine("Delta vs Baseline");
-        Console.WriteLine($"  PosNeg   : MAP@1={(mapPos - mapBase):+0.000;-0.000;0.000}, NDCG@3={(ndcgPos - ndcgBase):+0.000;-0.000;0.000}");
-        Console.WriteLine($"  Segmented: MAP@1={(mapSeg - mapBase):+0.000;-0.000;0.000}, NDCG@3={(ndcgSeg - ndcgBase):+0.000;-0.000;0.000}");
+        Console.WriteLine($"Delta vs {primaryLabel}");
+        Console.WriteLine($"  {secondaryLabel,-10}: MAP@1={(mapSecondary - mapPrimary):+0.000;-0.000;0.000}, NDCG@3={(ndcgSecondary - ndcgPrimary):+0.000;-0.000;0.000}");
+        Console.WriteLine($"  DecisionMix: MAP@1={(mapMixed - mapPrimary):+0.000;-0.000;0.000}, NDCG@3={(ndcgMixed - ndcgPrimary):+0.000;-0.000;0.000}");
 
         return 0;
     }
+
+    private static bool IsSecondaryDecision(string? decision, string secondaryLabel)
+    {
+        if (string.IsNullOrWhiteSpace(decision))
+            return false;
+
+        var normalized = Normalize(decision);
+        if (normalized.Length == 0)
+            return false;
+
+        return normalized is "applyshift" or "usesecondary" or "secondary" or "variantb" or "useb"
+            || normalized == Normalize(secondaryLabel);
+    }
+
+    private static string Normalize(string? value)
+        => new(value?.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray() ?? Array.Empty<char>());
+
+    private static string? FirstNonEmpty(params string?[] values)
+        => values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
 }
