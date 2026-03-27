@@ -20,11 +20,11 @@ internal static class MiniInsuranceSegmentCompare
         if (!File.Exists(segmentsPath))
             throw new FileNotFoundException("segments file not found", segmentsPath);
 
-        metric = (metric ?? "ndcg@3").ToLowerInvariant();
-
         var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
         var seg = JsonSerializer.Deserialize<SegmentsFile>(File.ReadAllText(segmentsPath), opts)
                   ?? throw new InvalidOperationException("Failed to parse segments file.");
+
+        metric = ResolveMetric(metric, seg.Metric);
 
         var variantAPath = seg.VariantAPath ?? seg.BaselinePath
             ?? throw new InvalidOperationException("Segments file must contain VariantAPath (or legacy BaselinePath).");
@@ -85,9 +85,25 @@ internal static class MiniInsuranceSegmentCompare
         double mapDecision = used == 0 ? 0 : mapDecisionSum / used;
         double ndcgDecision = used == 0 ? 0 : ndcgDecisionSum / used;
 
+        var primaryA = GetMetricValue(metric, mapA, ndcgA);
+        var primaryB = GetMetricValue(metric, mapB, ndcgB);
+        var primaryDecision = GetMetricValue(metric, mapDecision, ndcgDecision);
+        var metricLabel = GetMetricLabel(metric);
+
         Console.WriteLine($"[segment-compare] segments = {segmentsPath}");
         Console.WriteLine($"[segment-compare] metric   = {metric}");
         Console.WriteLine($"[segment-compare] used={used}, missing={missing}, VariantA={chooseA}, VariantB={chooseB}");
+        if (!string.IsNullOrWhiteSpace(seg.Metric))
+            Console.WriteLine($"[segment-compare] file metric = {seg.Metric}");
+        Console.WriteLine();
+        Console.WriteLine($"Primary metric ({metricLabel})");
+        Console.WriteLine($"  VariantA : {primaryA:0.000}");
+        Console.WriteLine($"  VariantB : {primaryB:0.000}");
+        Console.WriteLine($"  Decision : {primaryDecision:0.000}");
+        Console.WriteLine();
+        Console.WriteLine($"Primary delta vs VariantA ({metricLabel})");
+        Console.WriteLine($"  VariantB : {(primaryB - primaryA):+0.000;-0.000;0.000}");
+        Console.WriteLine($"  Decision : {(primaryDecision - primaryA):+0.000;-0.000;0.000}");
         Console.WriteLine();
         Console.WriteLine("KPI (avg over used cases)");
         Console.WriteLine($"  VariantA : MAP@1={mapA:0.000}, NDCG@3={ndcgA:0.000}");
@@ -100,4 +116,37 @@ internal static class MiniInsuranceSegmentCompare
 
         return 0;
     }
+
+    private static string ResolveMetric(string? cliMetric, string? fileMetric)
+    {
+        var normalizedCli = string.IsNullOrWhiteSpace(cliMetric) ? null : cliMetric.Trim().ToLowerInvariant();
+        var normalizedFile = string.IsNullOrWhiteSpace(fileMetric) ? null : fileMetric.Trim().ToLowerInvariant();
+
+        var resolved = normalizedCli;
+        if (string.IsNullOrWhiteSpace(resolved) || string.Equals(resolved, "ndcg@3", StringComparison.OrdinalIgnoreCase))
+            resolved = normalizedFile ?? resolved;
+
+        resolved ??= "ndcg@3";
+
+        return resolved switch
+        {
+            "ndcg@3" => resolved,
+            "map@1" => resolved,
+            _ => throw new ArgumentException($"Unsupported metric '{resolved}'. Supported: ndcg@3, map@1")
+        };
+    }
+
+    private static string GetMetricLabel(string metric)
+        => metric switch
+        {
+            "map@1" => "MAP@1",
+            _ => "NDCG@3"
+        };
+
+    private static double GetMetricValue(string metric, double map, double ndcg)
+        => metric switch
+        {
+            "map@1" => map,
+            _ => ndcg
+        };
 }

@@ -196,7 +196,7 @@ It requires a *segments file* (JSON) that is produced **externally**.
 
 Preferred neutral schema:
 
-- `Metric` (e.g. `ndcg@3` or `map@1`)
+- `Metric` (e.g. `ndcg@3` or `map@1`; used as the primary compare metric unless the CLI explicitly overrides it)
 - `Eps` (threshold; informational in compare)
 - `VariantAPath` (path to the first per-query JSON artifact)
 - `VariantBPath` (path to the second per-query JSON artifact)
@@ -211,12 +211,14 @@ Compatibility notes:
 
 For **effective queries**, `segment-compare` computes:
 
+- Primary metric summary for the selected compare metric (`ndcg@3` or `map@1`)
 - VariantA KPI: avg MAP@1, avg NDCG@3
 - VariantB KPI: avg MAP@1, avg NDCG@3
 - Decision KPI: avg MAP@1, avg NDCG@3 (choose A/B per query)
 - Counts: VariantA vs VariantB selections
 
 Interpretation:
+- The selected primary metric determines the headline comparison row.
 - If the decision KPI is better than both VariantA and VariantB, the external decision logic is doing useful work.
 - This is intentionally broader than embedding shift. The same compare shape can be reused for apply/skip shift, rerank on/off, rewrite on/off, dense vs hybrid, or similar per-query choices.
 
