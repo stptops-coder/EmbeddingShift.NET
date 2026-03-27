@@ -61,6 +61,25 @@ Use:
 
 Optional:
 - Add `-IncludeRepoPosNeg` to allow `runs-decide` / `runs-promote` to consider repo candidates under `runs\_repo\MiniInsurance-PosNeg` (default: off).
+- Use `-Promote` if you want the acceptance sweep to write activation decisions.
+
+You can also run the whole standard gate in one command:
+
+```powershell
+.\scripts\runbook\99-RunAll.ps1
+```
+
+Add optional experimental extras only when you explicitly want them:
+
+```powershell
+.\scripts\runbook\99-RunAll.ps1 -IncludeExperimental
+```
+
+Legacy alias still accepted:
+
+```powershell
+.\scripts\runbook\99-RunAll.ps1 -All
+```
 
 Legacy wrapper (kept for older notes):
 
@@ -81,5 +100,5 @@ These scripts are useful, but not part of the standard gate:
 - `scripts\runbook-experimental\22-AcceptanceSweep-Deterministic-Regression.ps1` / `scripts\runbook-experimental\98-RunbookRegression.ps1`: regression wrappers for older notes.
 - `scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1` / `scripts\runbook-experimental\30-PosNegRun-Scale10.ps1`: larger PosNeg training/runs.
 - `scripts\runbook-experimental\40-Segment-Oracle.ps1` / `scripts\runbook-experimental\41-Segment-GapTau0.ps1`: Segmenter experiments.
-- `scripts\runbook\99-RunAll.ps1`: wrapper that runs the standard gate, plus optional extras via flags.
+- `scripts\runbook\99-RunAll.ps1`: wrapper that runs the standard gate, with optional experimental extras via `-IncludeExperimental` (legacy alias: `-All`).
 

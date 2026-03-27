@@ -3,7 +3,8 @@
 param(
   [string]$Tenant = "insurer-a",
   [int]$Seed = 1006,
-  [switch]$All
+  [Alias('All')]
+  [switch]$IncludeExperimental
 )
 
 Set-StrictMode -Version Latest
@@ -15,6 +16,7 @@ Set-Location $repoRoot
 Write-Host "[RunAll] RepoRoot = $repoRoot"
 Write-Host "[RunAll] Tenant  = $Tenant"
 Write-Host "[RunAll] Seed    = $Seed"
+Write-Host "[RunAll] Extras  = $IncludeExperimental"
 
 & "$PSScriptRoot\00-Prep.ps1"
 & "$PSScriptRoot\10-Build.ps1"
@@ -32,7 +34,8 @@ Write-Host "[RunAll] Seed    = $Seed"
 # Full unit + acceptance suite (stable TEMP/TMP isolation happens inside this runner)
 & (Join-Path $PSScriptRoot "..\runbook-internal\90-Tests-Samples.ps1")
 
-if ($All) {
+if ($IncludeExperimental) {
+  Write-Host "[RunAll] Running optional experimental extras..."
   & (Join-Path $PSScriptRoot "..\runbook-experimental\20-FullRun-MiniInsurance.ps1") -Tenant $Tenant -Seed $Seed
   & (Join-Path $PSScriptRoot "..\runbook-experimental\30-PosNegRun-Scale10.ps1") -Tenant $Tenant
   & (Join-Path $PSScriptRoot "..\runbook-experimental\40-Segment-Oracle.ps1") -Tenant $Tenant
