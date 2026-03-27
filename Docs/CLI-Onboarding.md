@@ -6,15 +6,9 @@ Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Va
 
 For a public-facing “known good” verification path, prefer the standard runbook gate first; use the manual CLI steps below when you want to inspect the workflow piece by piece.
 
-## 0) Deterministic acceptance sweep (recommended)
+## 0) Standard runbook gate (recommended)
 
-If you want a single “known good” end-to-end sequence (generate → pipeline → compare → decide → optional promote), use:
-
-- `scripts/runbook/21-AcceptanceSweep-Deterministic.ps1`
-
-> Note: `21-BlankStart-RunActivation-Sweep.ps1` is kept as a deprecated wrapper for backward compatibility.
-
-Example:
+If you want a single public-facing “known good” verification path, start with the canonical runbook gate:
 
 ```powershell
 cd <repo-root>
@@ -22,6 +16,9 @@ cd <repo-root>
 # If PowerShell blocks script execution, run from a bypass shell:
 #   PowerShell -ExecutionPolicy Bypass -NoProfile
 
+.\scripts\runbook\00-Prep.ps1
+.\scripts\runbook\10-Build.ps1
+.\scripts\runbook\30-Tests.ps1
 .\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1 `
   -Tenant "insurer-b" `
   -DsName "SweepDS" `
@@ -31,9 +28,9 @@ cd <repo-root>
 ```
 
 Notes:
-- The runbook uses an isolated scratch root (`<repo>\results\_scratch\EmbeddingShift.Sweep\...`) so it does not mutate your normal results tree.
-- Edit the sweep grid inside the script once (Policies/Queries) and keep it stable for reproducible comparisons.
-
+- The sweep runbook uses an isolated scratch root (`<repo>\results\_scratch\EmbeddingShift.Sweep\...`) so it does not mutate your normal results tree.
+- `30-Tests.ps1` is the stable test gate before the acceptance sweep.
+- `21-BlankStart-RunActivation-Sweep.ps1` is kept only as a deprecated wrapper for backward compatibility.
 
 Alternative broader demo chain (not the default public verification path):
 ```powershell

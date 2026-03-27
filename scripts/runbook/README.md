@@ -12,9 +12,28 @@ If you want one public-facing, repeatable “happy path”, use the standard gat
 - `scripts/runbook-internal`: helper scripts called by the gate scripts.
 - `scripts/runbook-experimental`: legacy / experimental scripts (not part of the standard gate).
 
-## Mini-Insurance (single end-to-end run)
+## Standard gate (recommended)
 
-From the repo root:
+For a stable "greenfield" verification, start here:
+
+```powershell
+.\scripts\runbook\00-Prep.ps1
+.\scripts\runbook\10-Build.ps1
+.\scripts\runbook\30-Tests.ps1
+.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1 -Policies 40 -Queries 80 -Stages 1 -Seed 1337 -Promote -SimAlgo semantic-hash -SimSemanticCharNGrams 1
+```
+
+Notes:
+- `30-Tests.ps1` is a convenience alias for `scripts\runbook-internal\90-Tests-Samples.ps1`.
+- `-CompareRepoPosNeg` writes a separate compare report for `runs\_repo\MiniInsurance-PosNeg` (reporting only).
+- `-IncludeRepoPosNeg` allows `runs-decide` / `runs-promote` to consider repo PosNeg runs as candidates (selection).
+- The Mini-Insurance pipeline may still write PosNeg run metadata under `runs\_repo\MiniInsurance-PosNeg`.
+  This does not affect the default `runs-compare` / `runs-decide` behavior (repo candidates are ignored unless `-IncludeRepoPosNeg` is used).
+  If you *promote* a repo PosNeg run, it becomes active for that profile like any other run (use a dedicated profile key to avoid confusion).
+
+## Mini-Insurance (broader optional demo flow)
+
+If you want a fuller demo chain beyond the standard gate, use:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
@@ -52,25 +71,6 @@ Legacy wrapper (kept for older notes):
 
 
 This generates multiple datasets/runs into a separate scratch root under `results\_scratch\EmbeddingShift.Sweep\...`.
-
-## Standard gate (recommended)
-
-For a stable "greenfield" verification:
-
-```powershell
-.\scripts\runbook\00-Prep.ps1
-.\scripts\runbook\10-Build.ps1
-.\scripts\runbook\30-Tests.ps1
-.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1 -Policies 40 -Queries 80 -Stages 1 -Seed 1337 -Promote -SimAlgo semantic-hash -SimSemanticCharNGrams 1
-```
-
-Notes:
-- `30-Tests.ps1` is a convenience alias for `scripts\runbook-internal\90-Tests-Samples.ps1`.
-- `-CompareRepoPosNeg` writes a separate compare report for `runs\_repo\MiniInsurance-PosNeg` (reporting only).
-- `-IncludeRepoPosNeg` allows `runs-decide` / `runs-promote` to consider repo PosNeg runs as candidates (selection).
-- The Mini-Insurance pipeline may still write PosNeg run metadata under `runs\_repo\MiniInsurance-PosNeg`.
-  This does not affect the default `runs-compare` / `runs-decide` behavior (repo candidates are ignored unless `-IncludeRepoPosNeg` is used).
-  If you *promote* a repo PosNeg run, it becomes active for that profile like any other run (use a dedicated profile key to avoid confusion).
 
 ## Other scripts (optional)
 
