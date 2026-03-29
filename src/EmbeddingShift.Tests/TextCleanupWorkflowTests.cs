@@ -16,10 +16,7 @@ namespace EmbeddingShift.Tests
         [Fact]
         public async Task Cleanup_over_insurance_copy_produces_cleaned_files()
         {
-            var repoRoot     = TestPathHelper.GetRepositoryRoot();
-            var preferred = Path.Combine(repoRoot, "samples", "domains", "insurance");
-            var fallback  = Path.Combine(repoRoot, "data", "domains", "insurance");
-            var sourceDomain = Directory.Exists(preferred) ? preferred : fallback;
+            var sourceDomain = TestPathHelper.GetInsuranceDomainDirectory();
 
             Assert.True(Directory.Exists(sourceDomain), $"Domain directory not found: {sourceDomain}");
 

@@ -1,4 +1,4 @@
-﻿﻿using System.IO;
+﻿using System.IO;
 using System.Threading.Tasks;
 using EmbeddingShift.Core.Runs;
 using EmbeddingShift.Core.Workflows;
@@ -16,9 +16,7 @@ namespace EmbeddingShift.Tests
         [Fact]
         public async Task Ingest_insurance_domain_is_persisted_as_run()
         {
-            // Use the same repo root pattern as other tests.
-            var repoRoot = TestPathHelper.GetRepositoryRoot();
-            var domainDir = Path.Combine(repoRoot, "samples", "domains", "insurance");
+            var domainDir = TestPathHelper.GetInsuranceDomainDirectory();
 
             Assert.True(Directory.Exists(domainDir), $"Domain directory not found: {domainDir}");
 

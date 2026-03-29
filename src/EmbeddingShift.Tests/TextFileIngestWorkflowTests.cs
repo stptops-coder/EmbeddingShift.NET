@@ -16,10 +16,7 @@ namespace EmbeddingShift.Tests
         [Fact]
         public async Task Ingest_over_insurance_domain_produces_basic_metrics()
         {
-            var repoRoot = TestPathHelper.GetRepositoryRoot();
-            var preferred = Path.Combine(repoRoot, "samples", "domains", "insurance");
-            var fallback  = Path.Combine(repoRoot, "data", "domains", "insurance");
-            var domainDir = Directory.Exists(preferred) ? preferred : fallback;
+            var domainDir = TestPathHelper.GetInsuranceDomainDirectory();
 
             Assert.True(Directory.Exists(domainDir), $"Domain directory not found: {domainDir}");
 
@@ -39,34 +36,6 @@ namespace EmbeddingShift.Tests
 
             Assert.True(fileCount >= 2);
             Assert.True(totalLines >= 2);
-        }
-    }
-
-    internal static class TestPathHelper
-    {
-        /// <summary>
-        /// Returns the repository root by walking up the directory tree
-        /// until a .git folder is found. This is robust against changes
-        /// in the build output path.
-        /// </summary>
-        public static string GetRepositoryRoot()
-        {
-            var dir = AppContext.BaseDirectory;
-
-            while (true)
-            {
-                if (Directory.Exists(Path.Combine(dir, ".git")))
-                    return dir;
-
-                var parent = Directory.GetParent(dir);
-                if (parent == null)
-                    break;
-
-                dir = parent.FullName;
-            }
-
-            // Fallback: return original base directory
-            return AppContext.BaseDirectory;
         }
     }
 }
