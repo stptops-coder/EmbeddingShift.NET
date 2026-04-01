@@ -42,7 +42,7 @@ function Resolve-RepoRoot {
 
 function Get-Prop {
   param(
-    [Parameter(Mandatory=$true)]$Obj,
+    [AllowNull()][object]$Obj,
     [Parameter(Mandatory=$true)][string]$Name
   )
   if ($null -eq $Obj) { return $null }
@@ -166,10 +166,10 @@ $sorted | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
 $lines = New-Object System.Collections.Generic.List[string]
 $lines.Add("# PosNeg Matrix Summary") | Out-Null
 $lines.Add("") | Out-Null
-$lines.Add(("Scenario: `{0}`" -f $Scenario)) | Out-Null
-$lines.Add(("Tenant: `{0}`" -f $Tenant)) | Out-Null
-$lines.Add(("Metric: `{0}`" -f $Metric)) | Out-Null
-$lines.Add(("Generated: {0}" -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))) | Out-Null
+$lines.Add(('Scenario: `{0}`' -f $Scenario)) | Out-Null
+$lines.Add(('Tenant: `{0}`' -f $Tenant)) | Out-Null
+$lines.Add(('Metric: `{0}`' -f $Metric)) | Out-Null
+$lines.Add(('Generated: {0}' -f (Get-Date).ToString('yyyy-MM-dd HH:mm:ss'))) | Out-Null
 $lines.Add("") | Out-Null
 $lines.Add("| Seed | Policies | Queries | Stage | Decision | CandidateScore | CandidateRunId | ActiveRunId |") | Out-Null
 $lines.Add("|---:|---:|---:|---:|---|---:|---|---|") | Out-Null
