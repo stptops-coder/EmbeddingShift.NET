@@ -69,14 +69,16 @@ Without tenant, the `tenants/<tenant>` part is missing.
 
 ### 1.2 Eval runner (global, timestamped)
 
-The eval runner produces timestamped folders under `results/` (tenant-aware if `EMBEDDINGSHIFT_TENANT` is set), e.g.
+The eval runner produces timestamped folders under the domain runs root (tenant-aware if `EMBEDDINGSHIFT_TENANT` is set), e.g.
 
 ```
 results/
-  tenants/<tenant>/
-    20260125_123456_evaluation+baseline_<runId>/
-      run_manifest.json
-      acceptance_gate.json   (only when baseline-mode + gate is active)
+  insurance/
+    tenants/<tenant>/
+      runs/
+        20260125_123456_evaluation+baseline_<runId>/
+          run_manifest.json
+          acceptance_gate.json   (only when baseline-mode + gate is active)
 ```
 
 Note: the actual numeric metrics are primarily printed **to the console**; the most structured persisted output is currently `acceptance_gate.json`.

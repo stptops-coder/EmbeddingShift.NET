@@ -46,7 +46,7 @@ This guide is a **reference**. All commands assume your current directory is the
 
 ### Environment variables (optional)
 
-The CLI supports a small set of `EMBEDDINGSHIFT_*` environment variables to keep runs reproducible and paths stable across machines/sweeps.
+The CLI supports a small set of `EMBEDDINGSHIFT_*` environment variables for layout/dataset scoping and `EMBEDDING_*` variables for embedding backend/simulation settings.
 
 **Common (file layout / scoping):**
 - `EMBEDDINGSHIFT_ROOT` — forces a stable root for `results/` and `data/` (otherwise repo-root fallbacks are used).
@@ -56,7 +56,12 @@ The CLI supports a small set of `EMBEDDINGSHIFT_*` environment variables to keep
 - `EMBEDDINGSHIFT_REPO_ROOT` — optional override for repo-root detection (useful in scripted runs).
 
 **Mini-Insurance domain pack:**
-- `EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT` — points at a staged dataset root (e.g. `...\datasets\MyDS\stage-00`).
+- `EMBEDDINGSHIFT_DATASET_ROOT` — primary staged dataset root (e.g. `...\datasets\MyDS\stage-00`).
+- `EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT` — legacy alias/fallback for the same staged dataset root.
+
+**Embedding backend / simulation (normally set by global flags):**
+- `EMBEDDING_BACKEND`, `EMBEDDING_SIM_MODE`, `EMBEDDING_SIM_ALGO`, `EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS`
+- `EMBEDDING_SEMANTIC_CACHE`, `EMBEDDING_SEMANTIC_CACHE_MAX`, `EMBEDDING_SEMANTIC_CACHE_HAMMING`, `EMBEDDING_SEMANTIC_CACHE_APPROX`
 
 **Debug / test toggles (use only when you know why):**
 - `EMBEDDINGSHIFT_POSNEG_DEBUG`, `EMBEDDINGSHIFT_POSNEG_NOCLIP`, `EMBEDDINGSHIFT_POSNEG_DISABLE_CLIP`
@@ -66,7 +71,8 @@ The CLI supports a small set of `EMBEDDINGSHIFT_*` environment variables to keep
 ```powershell
 $env:EMBEDDINGSHIFT_ROOT   = "C:\temp\EmbeddingShift.Sweep\20260131_012048"
 $env:EMBEDDINGSHIFT_TENANT = "insurer-a"
-$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = "results\insurance\tenants\insurer-a\datasets\SweepDS\stage-00"
+$env:EMBEDDINGSHIFT_DATASET_ROOT = "results\insurance\tenants\insurer-a\datasets\SweepDS\stage-00"
+$env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $env:EMBEDDINGSHIFT_DATASET_ROOT
 ```
 
 ---
@@ -153,20 +159,13 @@ runs-root = .\results\<domainKey>\tenants\<tenant>\runs
 metric    = ndcg@3
 ```
 
-Advanced options (debug):
-- `--rank=<n>`: promote the n-th run in the current metric-sorted list (1-based).
-- `--runid=<id>`: promote a specific run id directly.
-
-If neither is provided, `runs-promote` promotes the currently selected “best” run for the metric.
-
-
 ### runs-decide
 
 Purpose: Apply a simple acceptance gate (eps threshold) to decide whether a candidate run is acceptable; can write/apply the decision.
 
 ```
 Usage:
-runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--eps=<double>] [--write] [--apply] [--open] [--include-repo-posneg]
+runs-decide [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--eps=<double>] [--write] [--apply] [--open] [--include-repo-posneg]
 
 Defaults:
 domainKey = insurance
@@ -189,7 +188,7 @@ Purpose: Promote the currently selected/best run to become the active run for a 
 
 ```
 Usage:
-runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open] [--include-repo-posneg]
+runs-promote [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--rank=<n>] [--runid=<id>] [--include-repo-posneg] [--open]
 
 Defaults:
 domainKey = insurance
@@ -200,6 +199,9 @@ metric    = ndcg@3
 
 Notes:
 - Optional: `--include-repo-posneg` allows selecting repo PosNeg runs under `runs/_repo/MiniInsurance-PosNeg` (default: off).
+- Optional: `--rank=<n>` promotes the n-th run in the current metric-sorted list (1-based).
+- Optional: `--runid=<id>` promotes a specific run id directly.
+- If neither `--rank` nor `--runid` is provided, `runs-promote` promotes the currently selected best run for the metric/profile.
 
 ### runs-rollback
 
@@ -207,7 +209,7 @@ Purpose: Rollback the active run pointer to the previous state (undo the last pr
 
 ```
 Usage:
-runs-rollback [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--open]
+runs-rollback [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--open]
 
 Defaults:
 domainKey = insurance
@@ -222,7 +224,7 @@ Purpose: Show which run is currently marked active for a metric (and where it li
 
 ```
 Usage:
-runs-active [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>]
+runs-active [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>]
 
 Defaults:
 domainKey = insurance
@@ -256,7 +258,7 @@ Purpose: List promotion/decision history for a metric and link to stored artifac
 
 ```
 Usage:
-runs-history [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--max=N] [--exclude-preRollback] [--open]
+runs-history [--runs-root=<path>] [--domainKey=<key>] [--metric=<key>] [--profile=<key>] [--max=N] [--exclude-preRollback] [--open]
 
 Defaults:
 domainKey = insurance

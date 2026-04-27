@@ -28,7 +28,16 @@ Remove-Item Env:EMBEDDINGSHIFT_SIM_MODE -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_SIM_ALGO -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_SIM_SEMANTIC_CHAR_NGRAMS -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDINGSHIFT_SIM_NOISE_AMPLITUDE -ErrorAction SilentlyContinue
+
+Remove-Item Env:EMBEDDING_BACKEND -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SIM_MODE -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SIM_ALGO -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS -ErrorAction SilentlyContinue
 Remove-Item Env:EMBEDDING_SIM_NOISE_AMPLITUDE -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SEMANTIC_CACHE -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SEMANTIC_CACHE_MAX -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SEMANTIC_CACHE_HAMMING -ErrorAction SilentlyContinue
+Remove-Item Env:EMBEDDING_SEMANTIC_CACHE_APPROX -ErrorAction SilentlyContinue
 
 function Remove-DirBestEffort([string]$path) {
   if ([string]::IsNullOrWhiteSpace($path)) { return }

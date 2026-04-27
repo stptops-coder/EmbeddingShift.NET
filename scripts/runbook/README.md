@@ -20,7 +20,7 @@ For a stable "greenfield" verification, start here:
 .\scripts\runbook\00-Prep.ps1
 .\scripts\runbook\10-Build.ps1
 .\scripts\runbook\30-Tests.ps1
-.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1 -Policies 40 -Queries 80 -Stages 1 -Seed 1337 -Promote -SimAlgo semantic-hash -SimSemanticCharNGrams 1
+.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1 -Policies 40 -Queries 80 -Stages 1 -Seed 1337 -SimAlgo semantic-hash -SimSemanticCharNGrams 1
 ```
 
 Notes:
