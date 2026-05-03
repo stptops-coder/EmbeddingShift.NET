@@ -8,10 +8,10 @@
 # Usage (PowerShell):
 #   cd C:\pg\RakeX
 #   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-#   .\scripts\runbook\25-PosNeg-Deterministic-Full.ps1
+#   .\scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1
 #
 # Optional:
-#   .\scripts\runbook\25-PosNeg-Deterministic-Full.ps1 -RootMode temp
+#   .\scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1 -RootMode temp
 #
 #
 # Expected outcomes (what 'good' looks like):

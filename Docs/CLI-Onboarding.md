@@ -30,16 +30,7 @@ cd <repo-root>
 Notes:
 - The sweep runbook uses an isolated scratch root (`<repo>\results\_scratch\EmbeddingShift.Sweep\...`) so it does not mutate your normal results tree.
 - `30-Tests.ps1` is the stable test gate before the acceptance sweep.
-- `21-BlankStart-RunActivation-Sweep.ps1` is kept only as a deprecated wrapper for backward compatibility.
-
-Alternative broader demo chain (not the default verification path):
-```powershell
-.\scripts\runbook\00-Prep.ps1
-.\scripts\runbook\10-Build.ps1
-.\scripts\runbook-experimental\20-FullRun-MiniInsurance.ps1
-.\scripts\runbook\30-Tests.ps1
-.\scripts\runbook-experimental\40-Health.ps1
-```
+- Advanced deterministic Pos/Neg experiments are documented in `scripts/runbook-experimental/README.md`.
 
 ## 1) Standard invocation
 

@@ -7,7 +7,7 @@ Usage examples:
   .\scripts\runbook\60-Inspect-ScratchLayout.ps1
 
   # Inspect a specific scenario (folder under results\_scratch), auto-select latest run root
-  .\scripts\runbook\60-Inspect-ScratchLayout.ps1 -Scenario "EmbeddingShift.FirstLight"
+  .\scripts\runbook\60-Inspect-ScratchLayout.ps1 -Scenario "EmbeddingShift.Sweep"
 
   # Inspect an explicit run root
   .\scripts\runbook\60-Inspect-ScratchLayout.ps1 -Root "C:\pg\RakeX\results\_scratch\EmbeddingShift.MiniInsurance\20260217_144550"

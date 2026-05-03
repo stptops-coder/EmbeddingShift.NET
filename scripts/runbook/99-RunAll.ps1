@@ -35,9 +35,5 @@ Write-Host "[RunAll] Extras  = $IncludeExperimental"
   -SimSemanticCharNGrams 1
 
 if ($IncludeExperimental) {
-  Write-Host "[RunAll] Running optional experimental extras..."
-  & (Join-Path $PSScriptRoot "..\runbook-experimental\20-FullRun-MiniInsurance.ps1") -Tenant $Tenant -Seed $Seed
-  & (Join-Path $PSScriptRoot "..\runbook-experimental\30-PosNegRun-Scale10.ps1") -Tenant $Tenant
-  & (Join-Path $PSScriptRoot "..\runbook-experimental\40-Segment-Oracle.ps1") -Tenant $Tenant
-  & (Join-Path $PSScriptRoot "..\runbook-experimental\41-Segment-GapTau0.ps1") -Tenant $Tenant
+  Write-Warning "[RunAll] -IncludeExperimental/-All is deprecated and intentionally does not run optional scripts. See scripts/runbook-experimental/README.md and launch advanced experiments explicitly."
 }
