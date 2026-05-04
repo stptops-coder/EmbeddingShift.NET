@@ -72,6 +72,32 @@ $datasetRoot = if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_DATASET
 $tenant = $env:EMBEDDINGSHIFT_TENANT
 $layout = if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_LAYOUT)) { $env:EMBEDDINGSHIFT_LAYOUT } else { 'tenant' }
 
+# Acceptance sweep sessions store results below cells\<profile>\results,
+# not directly below the session root. Detect that layout so the audit
+# does not report a healthy sweep session as a broken ActiveResults path.
+$sweepCellResults = @()
+$isSweepSessionRoot = $false
+if ((-not [string]::IsNullOrWhiteSpace($activeRunRoot)) -and (Test-Path -LiteralPath $activeRunRoot -PathType Container)) {
+  $cellsRoot = Join-Path $activeRunRoot 'cells'
+  if (Test-Path -LiteralPath $cellsRoot -PathType Container) {
+    $sweepCellResults = @(
+      Get-ChildItem -LiteralPath $cellsRoot -Directory -ErrorAction SilentlyContinue |
+        ForEach-Object { Join-Path $_.FullName 'results' } |
+        Where-Object { Test-Path -LiteralPath $_ -PathType Container }
+    )
+    $isSweepSessionRoot = ($sweepCellResults.Count -gt 0)
+  }
+}
+
+$activeResultsExists = ((-not [string]::IsNullOrWhiteSpace($activeResults)) -and (Test-Path -LiteralPath $activeResults -PathType Container))
+$activeResultsStatus = if ($activeResultsExists) {
+  'True'
+} elseif ($isSweepSessionRoot) {
+  'n/a (sweep session root; results are below cells\<profile>\results)'
+} else {
+  'False'
+}
+
 $time = Get-Date
 Write-Host ""
 Write-Host "=== EmbeddingShift Path Audit ==="
@@ -112,16 +138,29 @@ Write-Host "=== Existence checks ==="
 Write-Host ("RepoRoot exists  : {0}" -f (Test-Path $repoRoot))
 Write-Host ("Results exists   : {0}" -f (Test-Path $repoResultsRoot))
 Write-Host ("RunRoot exists   : {0}" -f ((-not [string]::IsNullOrWhiteSpace($activeRunRoot)) -and (Test-Path $activeRunRoot)))
-Write-Host ("ActiveResults ok : {0}" -f ((-not [string]::IsNullOrWhiteSpace($activeResults)) -and (Test-Path $activeResults)))
-Write-Host ("Dataset exists   : {0}" -f ((-not [string]::IsNullOrWhiteSpace($datasetRoot)) -and (Test-Path $datasetRoot)))
+Write-Host ("ActiveResults ok : {0}" -f $activeResultsStatus)
+if ($isSweepSessionRoot) {
+  Write-Host ("Sweep cells found: {0}" -f $sweepCellResults.Count)
+}
+Write-Host ("Dataset exists   : {0}" -f ((-not [string]::IsNullOrWhiteSpace($datasetRoot)) -and (Test-Path -LiteralPath $datasetRoot)))
 
 Write-Host ""
 Write-Host "=== High-level folder map ==="
-if (Test-Path $activeResults) {
+if ($activeResultsExists) {
   Write-Host "ActiveResults top:"
-  Get-ChildItem $activeResults -Directory -ErrorAction SilentlyContinue |
+  Get-ChildItem -LiteralPath $activeResults -Directory -ErrorAction SilentlyContinue |
     Sort-Object Name |
     ForEach-Object { Write-Host ("[d] {0}" -f $_.Name) }
+} elseif ($isSweepSessionRoot) {
+  Write-Host "ActiveResults top: <n/a - sweep session root>"
+  Write-Host "Sweep cell results:"
+  foreach ($cellResults in ($sweepCellResults | Sort-Object)) {
+    $cellRoot = Split-Path -Parent $cellResults
+    Write-Host ("[cell] {0}" -f (Split-Path -Leaf $cellRoot))
+    Get-ChildItem -LiteralPath $cellResults -Directory -ErrorAction SilentlyContinue |
+      Sort-Object Name |
+      ForEach-Object { Write-Host ("  [d] {0}" -f $_.Name) }
+  }
 } else {
   Write-Host "ActiveResults top: <missing>"
 }

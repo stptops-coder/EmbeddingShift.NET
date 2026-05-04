@@ -71,7 +71,12 @@ if (-not (Test-Path -LiteralPath $domainRoot -PathType Container)) {
 
 if ([string]::IsNullOrWhiteSpace($Layout)) {
   $tenantsCandidate = Join-Path $domainRoot 'tenants'
-  $Layout = (Test-Path -LiteralPath $tenantsCandidate -PathType Container) ? 'tenant' : 'domain'
+  if (Test-Path -LiteralPath $tenantsCandidate -PathType Container) {
+    $Layout = 'tenant'
+  }
+  else {
+    $Layout = 'domain'
+  }
 }
 
 $tenantsRoot = $null
@@ -120,7 +125,12 @@ $reportsOk     = Test-Path $reportsRoot
 $experimentsOk = Test-Path (Join-Path $contractRoot 'experiments')
 $inspectOk     = Test-Path (Join-Path $contractRoot 'inspect')
 
-$layoutInfo = ($Layout -eq 'tenant') ? "tenant ($Tenant)" : 'domain'
+if ($Layout -eq 'tenant') {
+  $layoutInfo = "tenant ($Tenant)"
+}
+else {
+  $layoutInfo = 'domain'
+}
 Write-Host "[RunRootHealth] RunRoot   : $runRootFull"
 Write-Host "[RunRootHealth] Results   : $resultsRoot"
 Write-Host "[RunRootHealth] Domain    : $Domain"
