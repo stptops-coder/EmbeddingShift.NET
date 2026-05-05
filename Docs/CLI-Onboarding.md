@@ -134,6 +134,14 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pos
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance posneg-run --latest
 ```
 
+For a more representative deterministic PosNeg check, keep the same dataset root and use production mode:
+
+```powershell
+dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --backend=sim --sim-mode=deterministic --sim-algo=semantic-hash --sim-char-ngrams=1 domain mini-insurance posneg-train --mode=production --hardneg-topk=5
+dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --backend=sim --sim-mode=deterministic --sim-algo=semantic-hash --sim-char-ngrams=1 domain mini-insurance posneg-run --latest --scale=1.0
+dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a domain mini-insurance posneg-inspect
+```
+
 ---
 
 ## 8) Compare/activate runs (Compare → Decide → Active)
