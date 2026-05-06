@@ -86,7 +86,7 @@ dotnet run --project $proj -- `
 # --- 3) PosNeg RUN (baseline vs PosNeg shift) ---
 dotnet run --project $proj -- `
   --tenant $Tenant --backend=$backend --sim-mode=$simMode `
-  domain mini-insurance posneg-run --mode=$Mode
+  domain mini-insurance posneg-run --latest
 
 # --- 4) Inspect training results (latest + best) ---
 dotnet run --project $proj -- `
