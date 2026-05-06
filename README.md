@@ -46,7 +46,7 @@ Useful follow-up entry points:
 - **Acceptance sweep (deterministic)**  
   `.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1`  
   (runs a grid of dataset sizes → compares/decides best run; promotion is optional via `-Promote`)
-- **Larger PosNeg experiment (optional / experimental)**  
+- **Smaller PosNeg plumbing run (optional / experimental)**  
   `.\scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1`
 
 Notes:
