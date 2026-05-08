@@ -26,7 +26,7 @@ For the broader CLI reference, use:
 Rule of thumb:
 - `run-smoke-demo` = fastest demo
 - `scripts/runbook/README.md` = standard verification path
-- OpenAI/adaptive notes in this repo are scaffold/demo unless stated otherwise
+- OpenAI/adaptive notes in this repo are deferred integration/demo boundaries unless stated otherwise
 
 ## Discover commands
 

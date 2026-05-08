@@ -46,7 +46,7 @@ Useful follow-up entry points:
 - **Acceptance sweep (deterministic)**  
   `.\scripts\runbook\21-AcceptanceSweep-Deterministic.ps1`  
   (runs a grid of dataset sizes → compares/decides best run; promotion is optional via `-Promote`)
-- **Smaller PosNeg plumbing run (optional / experimental)**  
+- **Larger PosNeg experiment (optional / experimental)**  
   `.\scripts\runbook-experimental\25-PosNeg-Deterministic-Full.ps1`
 
 Notes:
@@ -56,25 +56,28 @@ Notes:
 
 ## Current repo status
 
-Implemented in this repo today:
-- deterministic simulation backend (`--backend=sim`)
-- file-based ingest/eval/run artifacts
-- reproducible run comparison / decide / promote flow
-- a partially general retrieval-evaluation core (persisted runs, per-query eval artifacts, compare/decide/promote)
-- Mini-Insurance as the main reference/demo domain
+This repository reflects an exploratory engineering project that has been consolidated into a stable local verification baseline.
 
-Visible as demo or partial packaging:
-- `run-smoke-demo` and the Mini-Insurance pipeline
+Primary verified path:
+- deterministic Mini-Insurance runbook gate: `00-Prep` → `10-Build` → `30-Tests` → `21-AcceptanceSweep-Deterministic`
+- simulated embeddings (`--backend=sim`)
+- file-based ingest/eval/run artifacts
+- persisted run history, per-query evaluation artifacts, run comparison, decide, and optional promote flow
+- Mini-Insurance as the main reference domain and repeatable demo workflow
+
+Additional demo/analysis paths:
+- `run-smoke-demo` and broader Mini-Insurance First/Delta loops
 - segment-based analysis commands that consume externally produced JSON decisions
 
-Scaffold / not fully wired in the current repo state:
-- `--backend=openai` exists as a scaffold but is not wired end-to-end
-- adaptive/generator demos are not part of the standard ingest → eval → promote path
-- routing is not yet packaged in the same externalized JSON form as the segment experiments
+Deferred integration boundaries in this repo state:
+- live OpenAI embedding calls are not wired end-to-end
+- adaptive/generator demos are not part of the standard ingest → eval → promote gate
+- routing is not packaged in the same externalized JSON form as the segment experiments
+- database/SQL persistence is outside the current file-based verification baseline
 
 Interpretation:
-- the retrieval-evaluation core is already broader than a single shift workflow
-- some packaging still remains Mini-Insurance / shift-specific (for example parts of segment compare and artifact naming)
+- the retrieval-evaluation core is broader than one specific shift algorithm
+- some public packaging intentionally remains Mini-Insurance / shift-specific to keep the verified path reproducible
 
 ## Smoke-all (full end-to-end demo)
 
@@ -105,7 +108,7 @@ Tenant scoping:
 ## Embedding backend
 
 - Default: `--backend=sim`
-- `--backend=openai` exists as a scaffold but is **not wired** in this repo state (throws `NotSupportedException`).
+- `--backend=openai` is present as a deferred integration boundary and is **not wired** in this repo state (throws `NotSupportedException`).
 
 ## Documentation
 

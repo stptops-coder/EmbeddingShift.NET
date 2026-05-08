@@ -36,8 +36,7 @@ namespace EmbeddingShift.Tests
 
             Assert.True(Directory.Exists(runDir));
 
-            // Es sollten mindestens ein Markdown-Report und mindestens
-            // eine JSON-Datei (Manifest/Run-Info) im Run-Verzeichnis liegen.
+            // At least one Markdown report should be present in the persisted run directory.
             var mdFiles = Directory.GetFiles(runDir, "*.md", SearchOption.AllDirectories);
             Assert.NotEmpty(mdFiles);
         }

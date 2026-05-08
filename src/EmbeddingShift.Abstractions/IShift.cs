@@ -17,16 +17,14 @@ public interface IShift
     ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input);
 
     
-    // TODO [ZeroAlloc]: Consider adding an overload for in-place application to avoid allocations.
-    // Example:
-    // void Apply(ReadOnlySpan<float> input, Span<float> destination);
-    //
-    // This enables high-performance scenarios (e.g., batch evaluation loops) by reusing buffers
-    // from ArrayPool<float>.Shared instead of allocating new arrays each call.
+    // Optional performance extension for high-throughput batch evaluation:
+    // an in-place Apply(ReadOnlySpan<float> input, Span<float> destination) overload could reuse buffers
+    // from ArrayPool<float>.Shared instead of allocating a new result array per call.
+    // The current public baseline keeps the simpler allocation-returning contract.
 
 
     /// <summary>
-    /// Human-readable identifier of the shift (e.g., "NoShift.IngestBased", "Additive(Policy)", ReadOnlyMemory<float> Apply(ReadOnlySpan<float> input);).
+    /// Human-readable identifier of the shift (e.g., "NoShift.IngestBased", "Additive(Policy)").
     /// </summary>
     string Name { get; }
 

@@ -30,7 +30,7 @@ Output shows baseline scores that serve as the reference for later shifted runs.
 
 | Layer | Role | Description |
 |-------|------|-------------|
-| Embedding Provider | Simulated (default); OpenAI scaffold (not wired) | Produces original vectors |
+| Embedding Provider | Simulated (default); OpenAI deferred integration boundary (not wired) | Produces original vectors |
 | Shift | NoShiftIngestBased | Applies no transformation |
 | Vector Store | FileStore | Persists embeddings and metrics |
 | Evaluation | Cosine, MRR, nDCG | Quantifies baseline performance |

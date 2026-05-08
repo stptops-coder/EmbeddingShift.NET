@@ -31,7 +31,7 @@ Thumbs.db
 *.snupkg
 packages/
 
-# Secrets (nur Platzhalter; echte Secrets nie ins Repo)
+# Secrets (local placeholders only; never commit real secrets)
 *.secret.json
 
 # runtime / generated
