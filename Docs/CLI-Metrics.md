@@ -1,6 +1,6 @@
 # CLI Metrics & Evaluation Artifacts (Code-synchronous, as of 2026-01-27)
 
-This document describes **which metrics/statistics** the CLI currently produces, **where** they are stored, and **how** to interpret them – focusing on the "production-like" workflow (run artifacts + comparisons), not older First-Delta experiments.
+This document describes **which metrics/statistics** the CLI currently produces, **where** they are stored, and **how** to interpret them – focusing on the standard run-artifact workflow (run artifacts + comparisons), not older First-Delta experiments.
 
 ---
 
@@ -107,7 +107,7 @@ These keys are **case-insensitive** and can be used in `runs-compare` via `--met
 
 ---
 
-## 3) Retrieval KPIs (production-like): `map@1` and `ndcg@3`
+## 3) Retrieval KPIs (standard run artifacts): `map@1` and `ndcg@3`
 
 These metrics come from the Mini-Insurance PosNeg runner (retrieval experiment):
 
@@ -339,7 +339,7 @@ If you need these values for production gating, the next step would be:
 
 ## 10) Quick mapping: which metric for which decision?
 
-**For production-like KPIs (retrieval quality):**
+**For standard retrieval-quality KPIs:**
 - `ndcg@3` (top-3 focus) and `map@1` (rank sensitivity)
 - Source: `run.json` (run artifacts)
 

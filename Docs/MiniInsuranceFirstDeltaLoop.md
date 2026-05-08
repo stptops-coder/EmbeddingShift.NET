@@ -213,7 +213,7 @@ accordingly. For now, the project intentionally stays file-based.
    - This Mini-Insurance loop uses **local, deterministic keyword-count embeddings** (it does not depend on `EMBEDDING_BACKEND`).
    - For the generic ingest/eval pipeline (chunk → embed → store → eval), see the ConsoleEval dataset/ingest commands, which use:
      - `EMBEDDING_BACKEND=sim` (default)
-     - `EMBEDDING_BACKEND=openai` (deferred integration boundary; not wired in this repo state)
+     - `EMBEDDING_BACKEND=openai` (deferred integration boundary; not an active end-to-end path in this repo state)
 
 2. **Alternative storage (optional)**
    - Keep `IMetricsRepository` and provide a different implementation if needed.

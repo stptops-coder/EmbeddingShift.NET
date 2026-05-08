@@ -70,7 +70,7 @@ Additional demo/analysis paths:
 - segment-based analysis commands that consume externally produced JSON decisions
 
 Deferred integration boundaries in this repo state:
-- live OpenAI embedding calls are not wired end-to-end
+- live OpenAI embedding calls are a deferred integration boundary, not an active end-to-end path
 - adaptive/generator demos are not part of the standard ingest → eval → promote gate
 - routing is not packaged in the same externalized JSON form as the segment experiments
 - database/SQL persistence is outside the current file-based verification baseline
@@ -108,7 +108,7 @@ Tenant scoping:
 ## Embedding backend
 
 - Default: `--backend=sim`
-- `--backend=openai` is present as a deferred integration boundary and is **not wired** in this repo state (throws `NotSupportedException`).
+- `--backend=openai` is present as a deferred integration boundary and currently throws `NotSupportedException`.
 
 ## Documentation
 

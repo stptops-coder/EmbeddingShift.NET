@@ -96,4 +96,4 @@ This is the bridge between the **statistics layer** and the
 
 ## Notes
 
-- This is currently a wiring/demo step. A full Mini‑Insurance adaptive loop over persisted embeddings (per‑query selection + gating/promote) is **not** implemented yet.
+- This remains a wiring/demo boundary. A full Mini‑Insurance adaptive loop over persisted embeddings (per-query selection + gating/promote) is outside the current verification baseline.

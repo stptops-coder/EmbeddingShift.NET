@@ -63,7 +63,7 @@ namespace EmbeddingShift.Tests
 
             var markdown = artifacts.ReportMarkdown("Evaluation");
 
-            // Header der Auswertung
+            // Evaluation report header.
             Assert.StartsWith("# Evaluation", markdown, StringComparison.OrdinalIgnoreCase);
         }
 

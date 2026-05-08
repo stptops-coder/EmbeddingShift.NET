@@ -308,5 +308,5 @@ Important clarifications (to avoid “implicitly wrong” documentation):
 ---
 ## E) Adaptive/Generator (status and positioning)
 
-- `adaptive` is currently a **demo** (synthetic vectors, local selection) and is not part of the production-like ingest→eval→runs→promote flow.
-- The “generator” (no-shift/additive/multiplicative selection) exists as a demo in `EmbeddingShift.ConsoleSmoke` and is not wired into ConsoleEval workflows.
+- `adaptive` is currently a **demo** (synthetic vectors, local selection) and is not part of the standard ingest→eval→runs→promote verification flow.
+- The “generator” (no-shift/additive/multiplicative selection) exists as a demo in `EmbeddingShift.ConsoleSmoke` and remains outside the ConsoleEval verification workflows.

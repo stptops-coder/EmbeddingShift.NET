@@ -42,8 +42,8 @@ public static class EmbeddingProviderFactory
             EmbeddingBackend.Sim => new SimEmbeddingProvider(),
 
             EmbeddingBackend.OpenAi => throw new NotSupportedException(
-                "OpenAI embedding backend is not wired yet. " +
-                "Once the OpenAI provider is implemented, this branch will construct it."
+                "OpenAI embedding backend is a deferred integration boundary in this repo state. " +
+                "Use the simulated backend for the verified local path."
             ),
 
             _ => throw new ArgumentOutOfRangeException(nameof(backend), backend, "Unsupported embedding backend.")
