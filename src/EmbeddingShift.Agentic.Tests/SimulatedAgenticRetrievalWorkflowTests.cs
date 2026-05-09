@@ -1,8 +1,9 @@
 using EmbeddingShift.Core.Workflows;
 using EmbeddingShift.Workflows;
-using EmbeddingShift.Workflows.Agentic;
+using EmbeddingShift.Agentic;
+using EmbeddingShift.Agentic.EmbeddingShift;
 
-namespace EmbeddingShift.Tests;
+namespace EmbeddingShift.Agentic.Tests;
 
 public class SimulatedAgenticRetrievalWorkflowTests
 {

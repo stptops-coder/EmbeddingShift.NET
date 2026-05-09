@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace EmbeddingShift.Workflows.Agentic;
+namespace EmbeddingShift.Agentic;
 
 /// <summary>
 /// Deterministic model-response simulation. It behaves like a downstream model

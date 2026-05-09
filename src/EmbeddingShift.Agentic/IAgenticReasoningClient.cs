@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace EmbeddingShift.Workflows.Agentic;
+namespace EmbeddingShift.Agentic;
 
 /// <summary>
 /// Replaceable downstream reasoning boundary. The default implementation is local

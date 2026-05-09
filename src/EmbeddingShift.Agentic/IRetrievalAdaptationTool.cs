@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace EmbeddingShift.Workflows.Agentic;
+namespace EmbeddingShift.Agentic;
 
 /// <summary>
 /// Retrieval adaptation boundary that can be called from a RAG pipeline,

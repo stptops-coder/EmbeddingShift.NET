@@ -2,11 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using EmbeddingShift.Agentic;
 using EmbeddingShift.Core.Shifts;
 using EmbeddingShift.Core.Stats;
 using EmbeddingShift.Core.Workflows;
 
-namespace EmbeddingShift.Workflows.Agentic;
+namespace EmbeddingShift.Agentic.EmbeddingShift;
 
 /// <summary>
 /// Deterministic agentic-ready simulation:

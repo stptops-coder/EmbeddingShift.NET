@@ -1,6 +1,6 @@
 using System;
 
-namespace EmbeddingShift.Workflows.Agentic;
+namespace EmbeddingShift.Agentic;
 
 /// <summary>
 /// Small switch point for future model-backed reasoning clients.

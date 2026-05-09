@@ -4,8 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions.Shifts;
+using EmbeddingShift.Agentic;
 
-namespace EmbeddingShift.Workflows.Agentic;
+namespace EmbeddingShift.Agentic.EmbeddingShift;
 
 /// <summary>
 /// Adapter that exposes an IEmbeddingShiftPipeline as a retrieval adaptation tool.

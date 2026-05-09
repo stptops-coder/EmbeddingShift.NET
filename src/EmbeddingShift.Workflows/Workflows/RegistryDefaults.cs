@@ -1,5 +1,5 @@
 ﻿using EmbeddingShift.Core.Workflows;
-using EmbeddingShift.Workflows.Agentic;
+using EmbeddingShift.Agentic.EmbeddingShift;
 
 namespace EmbeddingShift.Workflows
 {
