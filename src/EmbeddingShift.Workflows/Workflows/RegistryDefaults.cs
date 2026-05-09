@@ -1,4 +1,5 @@
 ﻿using EmbeddingShift.Core.Workflows;
+using EmbeddingShift.Workflows.Agentic;
 
 namespace EmbeddingShift.Workflows
 {
@@ -20,6 +21,10 @@ namespace EmbeddingShift.Workflows
 
             // Toy evaluation workflow based on synthetic vectors
             registry.Register("toy-eval", PipelineWorkflows.CreateToyEvalWorkflow);
+
+            // Simulated agentic-ready retrieval workflow. This proves the integration
+            // boundary without requiring an external LLM or agent framework.
+            registry.Register("agentic-sim", () => new SimulatedAgenticRetrievalWorkflow());
 
             return registry;
         }
