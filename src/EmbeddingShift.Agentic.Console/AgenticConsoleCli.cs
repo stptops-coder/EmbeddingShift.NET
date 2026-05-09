@@ -99,21 +99,75 @@ public static class AgenticConsoleCli
     {
         System.Console.WriteLine("[agentic] simulation finished");
         System.Console.WriteLine($"Success: {result.Success}");
+        System.Console.WriteLine();
+
+        PrintReadableSimulationSummary(result);
 
         if (!string.IsNullOrWhiteSpace(result.Notes))
         {
-            System.Console.WriteLine($"Notes: {result.Notes}");
+            System.Console.WriteLine();
+            System.Console.WriteLine("Technical notes:");
+            System.Console.WriteLine($"  {result.Notes}");
         }
 
         if (result.Metrics is { Count: > 0 })
         {
-            System.Console.WriteLine("Metrics:");
+            System.Console.WriteLine();
+            System.Console.WriteLine("Raw metrics:");
             foreach (var metric in result.Metrics.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
             {
                 System.Console.WriteLine($"  {metric.Key} = {metric.Value.ToString("0.###", CultureInfo.InvariantCulture)}");
             }
         }
     }
+
+    private static void PrintReadableSimulationSummary(WorkflowResult result)
+    {
+        var metrics = result.Metrics ?? new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+        var shiftCount = GetMetric(metrics, "agentic.shiftCount");
+        var retrievalCalls = GetMetric(metrics, "agentic.retrievalAdaptation.calls");
+        var reasoningCalls = GetMetric(metrics, "agentic.reasoning.calls");
+        var actualLlmCalls = GetMetric(metrics, "agentic.llmCalls.actual");
+        var simulatedLlmCalls = GetMetric(metrics, "agentic.llmCalls.simulated");
+        var top1Changed = GetMetric(metrics, "agentic.top1.changed") > 0;
+        var top1Corrected = GetMetric(metrics, "agentic.top1.corrected") > 0;
+        var answerGenerated = GetMetric(metrics, "agentic.answer.generated") > 0;
+
+        System.Console.WriteLine("Scenario:");
+        System.Console.WriteLine("  Query: Is water damage from a leaking pipe covered?");
+        System.Console.WriteLine();
+
+        System.Console.WriteLine("Flow:");
+        System.Console.WriteLine("  1. Baseline retrieval runs first and selects the generic liability candidate.");
+        System.Console.WriteLine($"  2. Retrieval adaptation is called {FormatTimes(retrievalCalls)} and applies {FormatUnitCount(shiftCount, "shift", "shifts")} through EmbeddingShift.");
+        System.Console.WriteLine("  3. Adapted retrieval selects the water-damage candidate, which is the expected result.");
+        System.Console.WriteLine($"  4. The reasoning client is called {FormatTimes(reasoningCalls)} after retrieval adaptation.");
+        System.Console.WriteLine($"  5. Real LLM/API calls: {FormatUnitCount(actualLlmCalls, "call", "calls")}. Simulated reasoning calls: {FormatUnitCount(simulatedLlmCalls, "call", "calls")}.");
+        System.Console.WriteLine();
+
+        System.Console.WriteLine("Outcome:");
+        System.Console.WriteLine($"  Top-1 changed after adaptation: {FormatYesNo(top1Changed)}");
+        System.Console.WriteLine($"  Top-1 corrected to the expected candidate: {FormatYesNo(top1Corrected)}");
+        System.Console.WriteLine($"  Simulated answer generated: {FormatYesNo(answerGenerated)}");
+    }
+
+    private static double GetMetric(IReadOnlyDictionary<string, double> metrics, string key)
+        => metrics.TryGetValue(key, out var value) ? value : 0;
+
+    private static string FormatCount(double value)
+        => value.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private static string FormatTimes(double value)
+        => Math.Abs(value - 1d) < 0.0000001
+            ? "once"
+            : $"{FormatCount(value)} times";
+
+    private static string FormatUnitCount(double value, string singular, string plural)
+        => $"{FormatCount(value)} {(Math.Abs(value - 1d) < 0.0000001 ? singular : plural)}";
+
+    private static string FormatYesNo(bool value)
+        => value ? "yes" : "no";
 
     private static bool IsHelp(string value)
         => value.Equals("help", StringComparison.OrdinalIgnoreCase)
