@@ -53,7 +53,6 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- help
 - `--tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...`
 - `--provider=sim|openai-echo|openai-dryrun`
 - `--backend=sim|openai`
-- `--method=A`
 - `--sim-mode=deterministic|noisy`
 - `--sim-noise=<float>`
 - `--sim-algo=sha256|semantic-hash`
@@ -168,6 +167,3 @@ runs-rerun --run-dir=<path-to-a-run-folder>
 ```
 
 Use `--print` to inspect the reconstructed command without executing it.
-## 9) Adaptive (status)
-
-- `adaptive` is currently a **demo** (synthetic vectors) and is **not** integrated into the ingest→eval→promote flow.

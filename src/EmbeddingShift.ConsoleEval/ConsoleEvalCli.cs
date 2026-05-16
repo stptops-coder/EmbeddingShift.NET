@@ -1,5 +1,4 @@
 using System.Reflection;
-using EmbeddingShift.Abstractions;
 using EmbeddingShift.ConsoleEval.Commands;
 using EmbeddingShift.ConsoleEval.Domains;
 using EmbeddingShift.ConsoleEval.Repositories;
@@ -16,8 +15,6 @@ internal static class ConsoleEvalCli
     public static async Task<int> RunAsync(string[] args, ConsoleEvalHost host)
     {
         if (host is null) throw new ArgumentNullException(nameof(host));
-        var services = host.Services;
-
         // Keep CLI runs isolated: some commands set Environment.ExitCode; do not leak across runs.
         Environment.ExitCode = 0;
 
@@ -85,16 +82,6 @@ internal static class ConsoleEvalCli
 
     private static IReadOnlyDictionary<string, CommandSpec> BuildCommands(ConsoleEvalHost host)
     {
-        var services = host.Services;
-
-        var method = services.Method;
-        var ingestEntry = services.IngestEntry;
-        var ingestDatasetEntry = services.IngestDatasetEntry;
-        var evalEntry = services.EvalEntry;
-        var runEntry = services.RunEntry;
-        var txtLineIngestor = services.TxtLineIngestor;
-        var queriesJsonIngestor = services.QueriesJsonIngestor;
-
         var map = new Dictionary<string, CommandSpec>(StringComparer.OrdinalIgnoreCase);
 
         void Add(string name, string summary, Func<string[], Task<int>> handler, params string[] aliases)
@@ -371,7 +358,6 @@ internal static class ConsoleEvalCli
         Console.WriteLine("  --tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...");
         Console.WriteLine("  --provider=sim|openai-echo|openai-dryrun");
         Console.WriteLine("  --backend=sim|openai");
-        Console.WriteLine("  --method=A");
         Console.WriteLine("  --sim-mode=deterministic|noisy");
         Console.WriteLine("  --sim-noise=<float>");
         Console.WriteLine("  --sim-algo=sha256|semantic-hash");

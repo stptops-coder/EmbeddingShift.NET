@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text.Json;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,11 +14,7 @@ namespace EmbeddingShift.Core.Evaluators
     /// a given shift against a NoShift baseline.
     /// </summary>
     /// <remarks>
-    /// Complements <see cref="EmbeddingShift.Adaptive.ShiftEvaluationService"/>:
-    /// <list type="bullet">
-    /// <item><description><see cref="EmbeddingShift.Adaptive.ShiftEvaluationService"/> = local, selects best shift from a generator</description></item>
-    /// <item><description><see cref="EvaluationRunner"/> = global, benchmarks shifts on datasets</description></item>
-    /// </list>
+    /// Dataset-level evaluation: computes metrics for one selected shift.
     /// </remarks>
     public sealed class EvaluationRunner
     {

@@ -1,4 +1,4 @@
-﻿namespace EmbeddingShift.Abstractions;
+namespace EmbeddingShift.Abstractions;
 
 public enum ShiftKind
 {
@@ -29,7 +29,7 @@ public interface IShift
     string Name { get; }
 
     /// <summary>
-    /// Categorization to guide evaluators and adaptive selection (Baseline vs real shifts).
+    /// Categorization to guide evaluators (baseline vs real shifts).
     /// </summary>
     ShiftKind Kind { get; }
 }

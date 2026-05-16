@@ -1,5 +1,3 @@
-﻿using EmbeddingShift.Abstractions;
-
 namespace EmbeddingShift.ConsoleEval;
 
 public sealed record ConsoleEvalGlobalOptions
@@ -14,9 +12,6 @@ public sealed record ConsoleEvalGlobalOptions
     // Optional multi-tenant sandbox key (maps to EMBEDDINGSHIFT_TENANT).
     // When set, Mini-Insurance can write under results/insurance/tenants/<tenantKey>/...
     public string? TenantKey { get; init; } = null;
-
-    // Used mainly by adaptive demo (Shifted vs identity).
-    public ShiftMethod Method { get; init; } = ShiftMethod.Shifted;
 
     // Simulation tuning (maps to EMBEDDING_SIM_* env vars).
     public string? SimMode { get; init; } = null;                     // deterministic|noisy

@@ -23,21 +23,5 @@ Evaluators implement `IShiftEvaluator` and are located under **`EmbeddingShift.C
 
 ## Usage
 
-Evaluators are typically not called directly.  
-They are passed into the **`ShiftEvaluationService`** (in `EmbeddingShift.Adaptive`)  
-which runs candidate shifts through the evaluators and returns an `EvaluationReport`.
-
-Example:
-
-```csharp
-var evals = new IShiftEvaluator[]
-{
-    new CosineSimilarityEvaluator(),
-    new MarginEvaluator(),
-    new MrrEvaluator(0),
-    new NdcgEvaluator(new[]{0, 2}, k:5)
-};
-
-var service = new ShiftEvaluationService(generator, evals);
-var report = service.Evaluate(pairs);
-```
+Evaluators are used by the dataset-level evaluation flow to score retrieval results.
+The standard path is the ConsoleEval run/eval pipeline, not a separate demo service.

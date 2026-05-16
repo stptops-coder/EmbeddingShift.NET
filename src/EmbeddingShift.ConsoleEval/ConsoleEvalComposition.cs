@@ -1,4 +1,4 @@
-﻿using EmbeddingShift.Abstractions;
+using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Workflows;
@@ -48,7 +48,6 @@ public static class ConsoleEvalComposition
         var runEntry = new DatasetRunEntry(ingestDatasetEntry, evalEntry);
 
         return new ConsoleEvalServices(
-            Method: options.Method,
             IngestEntry: ingestEntry,
             IngestDatasetEntry: ingestDatasetEntry,
             EvalEntry: evalEntry,

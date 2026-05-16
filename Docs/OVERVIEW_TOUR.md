@@ -51,7 +51,7 @@ A useful way to read the current repo state:
 - **Implemented / primary path**: deterministic sim backend, file-based artifacts, run comparison/activation flow, Mini-Insurance reference workflows.
 - **Also already general in parts**: persisted runs, per-query evaluation artifacts, compare/decide/promote mechanics; these are not limited to one specific shift algorithm.
 - **Demo / analysis path**: `run-smoke-demo`, First/Delta loops, segment-based comparison from externally produced JSON decisions.
-- **Deferred integration boundaries**: `--backend=openai` and adaptive/generator demos are outside the standard verification path.
+- **Deferred integration boundary**: `--backend=openai` remains outside the standard verification path.
 - **Not packaged in the current baseline**: routing exists conceptually, but is not yet packaged in the same externalized JSON form as the segment experiments.
 
 ## 4) Fastest way to see it working

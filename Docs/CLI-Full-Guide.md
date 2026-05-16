@@ -34,7 +34,6 @@ This guide is a **reference**. All commands assume your current directory is the
 - `--tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...`
 - `--provider=sim|openai-echo|openai-dryrun`
 - `--backend=sim|openai`
-- `--method=A`
 - `--sim-mode=deterministic|noisy`
 - `--sim-noise=<float>`
 - `--sim-algo=sha256|semantic-hash`
@@ -306,7 +305,4 @@ Important clarifications (to avoid “implicitly wrong” documentation):
 **Sync note:** The current Pos/Neg help is aligned around `--hardneg-topk=<N>`. Older notes that mention `--cancel-epsilon` are stale and should not be treated as current CLI behavior.
 
 ---
-## E) Adaptive/Generator (status and positioning)
-
-- `adaptive` is currently a **demo** (synthetic vectors, local selection) and is not part of the standard ingest→eval→runs→promote verification flow.
 - The old standalone generator demo (`EmbeddingShift.ConsoleSmoke`) has been removed. Generator-style shift selection is not part of the standard ConsoleEval verification workflow.

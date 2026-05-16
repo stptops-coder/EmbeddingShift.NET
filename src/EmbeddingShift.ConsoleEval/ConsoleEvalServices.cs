@@ -1,4 +1,4 @@
-﻿using EmbeddingShift.Abstractions;
+using EmbeddingShift.Abstractions;
 using EmbeddingShift.Workflows.Eval;
 using EmbeddingShift.Workflows.Ingest;
 using EmbeddingShift.Workflows.Run;
@@ -10,7 +10,6 @@ namespace EmbeddingShift.ConsoleEval;
 /// can stay decoupled from the composition root.
 /// </summary>
 public sealed record ConsoleEvalServices(
-    ShiftMethod Method,
     DatasetIngestEntry IngestEntry,
     DatasetIngestDatasetEntry IngestDatasetEntry,
     DatasetEvalEntry EvalEntry,

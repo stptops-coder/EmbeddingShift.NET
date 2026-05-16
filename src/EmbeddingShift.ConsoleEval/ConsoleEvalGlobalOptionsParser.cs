@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using EmbeddingShift.Abstractions;
 
 namespace EmbeddingShift.ConsoleEval;
 
@@ -29,13 +28,6 @@ public static class ConsoleEvalGlobalOptionsParser
             if (a.StartsWith("--backend=", StringComparison.OrdinalIgnoreCase))
             {
                 opt = opt with { Backend = a.Split('=', 2)[1].Trim() };
-                continue;
-            }
-
-            // Mode switch: --method=A => identity/no shift
-            if (a.Equals("--method=A", StringComparison.OrdinalIgnoreCase))
-            {
-                opt = opt with { Method = ShiftMethod.NoShiftIngestBased };
                 continue;
             }
 

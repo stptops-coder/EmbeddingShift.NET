@@ -9,7 +9,7 @@ A typical workflow is:
 
 1. **Ingest** documents/queries into a dataset scope (file-based artifacts).
 2. **Embed + evaluate** a **baseline** retrieval run.
-3. **Train/apply a shift** (e.g., Pos/Neg, adaptive, etc.) and **re-evaluate**.
+3. **Train/apply a learned query-side shift** (Pos/Neg) and **re-evaluate**.
 4. **Compare runs** using retrieval metrics (e.g., NDCG/MRR) to decide whether a shift is beneficial.
 
 **Pos/Neg (intuition):** learn a direction from *positive vs. negative* examples and apply it as an embedding-space shift (no model retraining).
@@ -71,7 +71,6 @@ Additional demo/analysis paths:
 
 Deferred integration boundaries in this repo state:
 - live OpenAI embedding calls are a deferred integration boundary, not an active end-to-end path
-- adaptive/generator demos are not part of the standard ingest → eval → promote gate
 - routing is not packaged in the same externalized JSON form as the segment experiments
 - database/SQL persistence is outside the current file-based verification baseline
 
@@ -120,7 +119,6 @@ Tenant scoping:
 - CLI how-to (project-local): [src/EmbeddingShift.ConsoleEval/HowToRun.md](src/EmbeddingShift.ConsoleEval/HowToRun.md)
 - Mini-Insurance reference:
   - [Docs/MiniInsuranceFirstDeltaLoop.md](Docs/MiniInsuranceFirstDeltaLoop.md)
-  - [Docs/MiniInsuranceAdaptiveOverview.md](Docs/MiniInsuranceAdaptiveOverview.md)
 
 ## License
 
