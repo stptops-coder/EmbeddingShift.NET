@@ -1,6 +1,5 @@
 using System.Reflection;
 using EmbeddingShift.Abstractions;
-using EmbeddingShift.Adaptive;
 using EmbeddingShift.ConsoleEval.Commands;
 using EmbeddingShift.ConsoleEval.Domains;
 using EmbeddingShift.ConsoleEval.Repositories;
@@ -196,11 +195,6 @@ internal static class ConsoleEvalCli
         Add("runs-matrix", "run a batch of CLI variants described by a JSON spec (optional post-processing)",
             WrapVoid(a => RunsMatrixCommand.RunAsync(a.Skip(1).ToArray())));
 
-        Add("adaptive", "run adaptive demo (optional args: <workflowName> <domainKey>)",
-            a => RunAdaptiveAsync(a, method),
-            "mini-insurance-adaptive",
-            "mini-insurance-adaptive-demo");
-
         // Legacy mini-insurance commands (kept for compatibility / existing scripts)
         Add("mini-insurance", "legacy mini-insurance demo",
             WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceAsync()));
@@ -388,49 +382,6 @@ internal static class ConsoleEvalCli
         Console.WriteLine("Tip: dotnet run --project src/EmbeddingShift.ConsoleEval -- help");
         Console.WriteLine("Also: --version");
 
-    }
-
-    private static Task<int> RunAdaptiveAsync(string[] args, ShiftMethod method)
-    {
-        var workflowName = "mini-insurance-posneg";
-        var domainKey = "insurance";
-
-        if (args.Length > 1)
-        {
-            var position = 0;
-
-            for (var i = 1; i < args.Length; i++)
-            {
-                var token = args[i];
-                if (string.IsNullOrWhiteSpace(token))
-                    continue;
-
-                if (token.StartsWith("-", StringComparison.Ordinal))
-                    continue;
-
-                if (position == 0)
-                    workflowName = token;
-                else if (position == 1)
-                    domainKey = token;
-
-                position++;
-            }
-        }
-
-        var resultsRoot = DirectoryLayout.ResolveResultsRoot(domainKey);
-        var repository = new FileSystemShiftTrainingResultRepository(resultsRoot);
-
-        IShiftGenerator generator = new TrainingBackedShiftGenerator(
-            repository,
-            workflowName: workflowName);
-
-        var service = new ShiftEvaluationService(generator, EvaluatorCatalog.Defaults);
-        var wf = new AdaptiveWorkflow(generator, service, method);
-
-        Console.WriteLine($"Adaptive ready (method={method}, workflow={workflowName}, domain={domainKey}).");
-        AdaptiveDemo.RunDemo(wf);
-
-        return Task.FromResult(0);
     }
 
     private static async Task<int> RunMiniInsurancePipelineAsync(string[] args)
