@@ -1,4 +1,4 @@
-﻿﻿# Baseline Shift (NoShiftIngestBased)
+﻿# Baseline Shift (NoShiftIngestBased)
 
 This configuration represents the **Baseline mode ("Pretrained Model as is")**.
 
@@ -11,7 +11,7 @@ This baseline allows you to evaluate retrieval and similarity performance in the
 
 - **Goal:** Measure retrieval quality in the original embedding space.
 - **Shift Type:** Identity transformation (input == output)
-- **Use Case:** Control run for comparison with Additive, Multiplicative, or Adaptive shifts.
+- **Use Case:** Control run for comparison with the learned PosNeg/Delta path and other retrieval-adaptation experiments.
 - **Evaluation:** Enables metrics such as cosine similarity, nDCG, and MRR to be computed
   under pure Method-A conditions.
 
@@ -19,9 +19,9 @@ This baseline allows you to evaluate retrieval and similarity performance in the
 
 ### Example (ConsoleEval)
 
-`ash
+```bash
 dotnet run --project EmbeddingShift.ConsoleEval -- --shift NoShiftIngestBased --space Diagnostics
-`$nl
+```
 Output shows baseline scores that serve as the reference for later shifted runs.
 
 ---
