@@ -1,4 +1,4 @@
-## Workflow overview: runs, comparison, and “what is good”
+﻿## Workflow overview: runs, comparison, and “what is good”
 
 Most commands in this CLI boil down to producing **runs** that can be compared:
 
@@ -78,7 +78,7 @@ $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $env:EMBEDDINGSHIFT_DATASET_ROO
 
 ## B) Dataset/Ingest/Eval (usage lines from `DatasetCliCommands`)
 
-- `run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]`
+- `run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]`
   - Purpose: End-to-end command: ingest (if needed) → embed → retrieve → metrics; supports baseline/shift and simple dataset gates.
 - `run-smoke <refsPath> <queriesPath> <dataset> [--force-reset] [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]`
   - Purpose: Fast sanity run with safe defaults (ingest → validate → eval). Good for first checks and repeatability.

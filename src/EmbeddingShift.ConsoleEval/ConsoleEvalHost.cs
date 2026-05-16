@@ -72,12 +72,7 @@ public sealed class ConsoleEvalHost
     /// </summary>
     public static IShift CreateShift(string? shiftId)
     {
-        var id = (shiftId ?? "identity").Trim().ToLowerInvariant();
-
-        return id switch
-        {
-            "zero" => new MultiplicativeShift(0f, EmbeddingDimensions.DIM),
-            _ => new NoShiftIngestBased(), // identity
-        };
+        // Keep the parameter for host/API compatibility; the reduced proof path uses identity only.
+        return new NoShiftIngestBased();
     }
 }

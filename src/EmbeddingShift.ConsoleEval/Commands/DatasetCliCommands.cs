@@ -116,7 +116,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             //   run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]
             if (args.Length < 4)
             {
-                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity|zero] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]");
+                Console.WriteLine("Usage: run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]");
                 Environment.ExitCode = 1;
                 return 1;
             }
@@ -1014,15 +1014,8 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
         private static IShift ParseShift(string[] args)
         {
-            var shiftArg = args.FirstOrDefault(a => a.StartsWith("--shift=", StringComparison.OrdinalIgnoreCase))
-                ?.Substring("--shift=".Length)
-                ?.Trim();
-
-            return (shiftArg ?? "identity").ToLowerInvariant() switch
-            {
-                "zero" => new MultiplicativeShift(0f, EmbeddingDimensions.DIM),
-                _ => new NoShiftIngestBased(),
-            };
+            // Keep the argument for CLI compatibility; the reduced proof path uses identity only.
+            return new NoShiftIngestBased();
         }
 
         private static double ParseGateEps(string[] args, double defaultEps)

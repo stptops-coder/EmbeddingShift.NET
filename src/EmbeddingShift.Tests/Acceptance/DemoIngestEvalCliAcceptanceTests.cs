@@ -139,38 +139,6 @@ namespace EmbeddingShift.Tests.Acceptance
                 Assert.True(evalGate.Passed, "Expected acceptance gate to pass for eval --baseline.");
                 Assert.Equal("rank", evalGate.GateProfile);
 
-                // Negative probe: a pathological shift must be caught by a stricter gate profile.
-                var r2 = await RunDotnetAsync(env, consoleEvalDll,
-                    "eval", dataset, "--baseline", "--shift=zero", "--gate-profile=rank+cosine");
-
-                Assert.Equal(2, r2.ExitCode);
-                Assert.Contains("Acceptance gate: FAIL", r2.StdOut);
-
-                // Failing gates must still persist the manifest.
-                var r2ResultsDir2 = ExtractResultsDir(r2.StdOut);
-                var r2GatePath = Path.Combine(r2ResultsDir2, "acceptance_gate.json");
-                Assert.True(File.Exists(r2GatePath), $"Missing acceptance gate manifest: {r2GatePath}");
-
-                var r2Gate = await ReadAcceptanceGateAsync(r2GatePath);
-                Assert.False(r2Gate.Passed, "Expected acceptance gate to fail for shift=zero with rank+cosine.");
-                Assert.Equal("rank+cosine", r2Gate.GateProfile);
-
-                // Same idea end-to-end: run (ingest+eval) should also fail with the same profile.
-                var r3 = await RunDotnetAsync(env, consoleEvalDll,
-                    "run", rPath, qPath, dataset, "--baseline", "--shift=zero", "--gate-profile=rank+cosine");
-
-                Assert.Equal(2, r3.ExitCode);
-                Assert.Contains("Acceptance gate: FAIL", r3.StdOut);
-
-                // Failing end-to-end run must also persist the manifest.
-                var r3ResultsDir2 = ExtractResultsDir(r3.StdOut);
-                var r3GatePath = Path.Combine(r3ResultsDir2, "acceptance_gate.json");
-                Assert.True(File.Exists(r3GatePath), $"Missing acceptance gate manifest: {r3GatePath}");
-
-                var r3Gate = await ReadAcceptanceGateAsync(r3GatePath);
-                Assert.False(r3Gate.Passed, "Expected acceptance gate to fail for run with shift=zero and rank+cosine.");
-                Assert.Equal("rank+cosine", r3Gate.GateProfile);
-
                 Assert.Contains("Acceptance gate: PASS", evalBaseline.StdOut);
             }
             finally
