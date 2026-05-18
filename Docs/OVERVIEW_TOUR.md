@@ -69,4 +69,4 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
 - Runbook gate (canonical): `scripts/runbook/README.md`
 - CLI onboarding: `Docs/CLI-Onboarding.md`
 - CLI quick guide: `src/EmbeddingShift.ConsoleEval/HowToRun.md`
-- Mini-Insurance reference: `Docs/MiniInsuranceFirstDeltaLoop.md`
+- Historical Mini-Insurance First/Delta notes (legacy): `Docs/MiniInsuranceFirstDeltaLoop.md`

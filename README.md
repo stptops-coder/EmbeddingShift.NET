@@ -117,7 +117,7 @@ Tenant scoping:
 - Repo overview: [Docs/OVERVIEW_TOUR.md](Docs/OVERVIEW_TOUR.md)
 - CLI full reference: [Docs/CLI-Full-Guide.md](Docs/CLI-Full-Guide.md)
 - CLI how-to (project-local): [src/EmbeddingShift.ConsoleEval/HowToRun.md](src/EmbeddingShift.ConsoleEval/HowToRun.md)
-- Mini-Insurance reference:
+- Historical Mini-Insurance First/Delta notes (legacy; not the recommended quickstart):
   - [Docs/MiniInsuranceFirstDeltaLoop.md](Docs/MiniInsuranceFirstDeltaLoop.md)
 
 ## License

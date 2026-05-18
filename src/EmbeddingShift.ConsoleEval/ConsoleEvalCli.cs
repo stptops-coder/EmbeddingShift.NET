@@ -105,7 +105,7 @@ internal static class ConsoleEvalCli
             a => DomainCliCommands.DomainAsync(a));
 
         Add("ingest-legacy", "ingest refs only (plain) - legacy; prefer ingest-dataset / ingest",
-            a => DatasetCliCommands.IngestLegacyAsync(a, host));
+            WithLegacyWarning("ingest-dataset", a => DatasetCliCommands.IngestLegacyAsync(a, host)));
 
         Add("ingest-dataset", "ingest refs+queries into FileStore (canonical)",
             a => DatasetCliCommands.IngestDatasetAsync(a, host),
@@ -184,95 +184,95 @@ internal static class ConsoleEvalCli
 
         // Legacy mini-insurance commands (kept for compatibility / existing scripts)
         Add("mini-insurance", "legacy mini-insurance demo",
-            WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceAsync()));
+            WithLegacyWarning("domain mini-insurance pipeline",
+                WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceAsync())));
 
         Add("mini-insurance-first-delta", "legacy first-delta mini-insurance demo",
-            WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync()));
+            WithLegacyWarning("domain mini-insurance pipeline",
+                WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync())));
 
-        Add("mini-insurance-first-shift", "deprecated alias -> mini-insurance-first-delta",
-            WrapVoid(async _ =>
-            {
-                Console.WriteLine("Deprecated alias. Use: mini-insurance-first-delta");
-                await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync();
-            }),
+        Add("mini-insurance-first-shift", "deprecated alias; prefer domain mini-insurance pipeline",
+            WithLegacyWarning("domain mini-insurance pipeline",
+                WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstDeltaAsync())),
             "mini-insurance-first-shift-and-delta");
 
         Add("mini-insurance-first-learned-delta", "legacy first learned-delta mini-insurance demo",
-            WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstLearnedDeltaAsync()));
+            WithLegacyWarning("domain mini-insurance pipeline",
+                WrapVoid(async _ => await MiniInsuranceLegacyCliCommands.RunMiniInsuranceFirstLearnedDeltaAsync())));
 
         Add("mini-insurance-first-delta-aggregate", "aggregate first-delta candidates (legacy)",
-            _ =>
+            WithLegacyWarning("domain mini-insurance pipeline", _ =>
             {
                 MiniInsuranceLegacyCliCommands.AggregateFirstDelta();
                 return Task.FromResult(0);
-            });
+            }));
 
         Add("mini-insurance-first-delta-train", "train first-delta (legacy)",
-            _ =>
+            WithLegacyWarning("domain mini-insurance pipeline", _ =>
             {
                 MiniInsuranceLegacyCliCommands.TrainFirstDelta();
                 return Task.FromResult(0);
-            });
+            }));
 
         Add("mini-insurance-first-delta-inspect", "inspect first-delta candidate (legacy)",
-            _ =>
+            WithLegacyWarning("domain mini-insurance pipeline", _ =>
             {
                 MiniInsuranceLegacyCliCommands.InspectFirstDeltaCandidate();
                 return Task.FromResult(0);
-            });
+            }));
 
-        Add("mini-insurance-first-delta-pipeline", "domain-pack pipeline entry (mini-insurance)",
-            a => RunMiniInsurancePipelineAsync(a));
+        Add("mini-insurance-first-delta-pipeline", "compatibility alias -> domain mini-insurance pipeline",
+            WithCompatibilityAliasWarning("domain mini-insurance pipeline", a => RunMiniInsurancePipelineAsync(a)));
 
-        Add("mini-insurance-training-inspect", "domain-pack: training-inspect (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-training-inspect", "compatibility alias -> domain mini-insurance training-inspect",
+            WithCompatibilityAliasWarning("domain mini-insurance training-inspect", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "training-inspect" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "training-inspect" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-training-list", "domain-pack: training-list (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-training-list", "compatibility alias -> domain mini-insurance training-list",
+            WithCompatibilityAliasWarning("domain mini-insurance training-list", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "training-list" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "training-list" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-shift-training-inspect", "domain-pack: shift-training-inspect (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-shift-training-inspect", "compatibility alias -> domain mini-insurance shift-training-inspect",
+            WithCompatibilityAliasWarning("domain mini-insurance shift-training-inspect", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "shift-training-inspect" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "shift-training-inspect" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-shift-training-history", "domain-pack: shift-training-history (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-shift-training-history", "compatibility alias -> domain mini-insurance shift-training-history",
+            WithCompatibilityAliasWarning("domain mini-insurance shift-training-history", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "shift-training-history" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "shift-training-history" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-shift-training-best", "domain-pack: shift-training-best (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-shift-training-best", "compatibility alias -> domain mini-insurance shift-training-best",
+            WithCompatibilityAliasWarning("domain mini-insurance shift-training-best", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "shift-training-best" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "shift-training-best" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-posneg-train", "domain-pack: posneg-train (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-posneg-train", "compatibility alias -> domain mini-insurance posneg-train",
+            WithCompatibilityAliasWarning("domain mini-insurance posneg-train", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "posneg-train" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "posneg-train" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-posneg-training-inspect", "domain-pack: posneg-inspect (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-posneg-training-inspect", "compatibility alias -> domain mini-insurance posneg-inspect",
+            WithCompatibilityAliasWarning("domain mini-insurance posneg-inspect", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "posneg-inspect" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "posneg-inspect" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-posneg-training-history", "domain-pack: posneg-history (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-posneg-training-history", "compatibility alias -> domain mini-insurance posneg-history",
+            WithCompatibilityAliasWarning("domain mini-insurance posneg-history", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "posneg-history" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "posneg-history" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-posneg-training-best", "domain-pack: posneg-best (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-posneg-training-best", "compatibility alias -> domain mini-insurance posneg-best",
+            WithCompatibilityAliasWarning("domain mini-insurance posneg-best", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "posneg-best" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "posneg-best" }.Concat(a.Skip(1)).ToArray())));
 
-        Add("mini-insurance-posneg-run", "domain-pack: posneg-run (mini-insurance)",
-            a => DomainCliCommands.ExecuteDomainPackAsync(
+        Add("mini-insurance-posneg-run", "compatibility alias -> domain mini-insurance posneg-run",
+            WithCompatibilityAliasWarning("domain mini-insurance posneg-run", a => DomainCliCommands.ExecuteDomainPackAsync(
                 "mini-insurance",
-                new[] { "posneg-run" }.Concat(a.Skip(1)).ToArray()));
+                new[] { "posneg-run" }.Concat(a.Skip(1)).ToArray())));
 
         // Shift-training commands (generic, not domain-scoped)
         Add("shift-training-inspect", "inspect a shift training runroot",
@@ -329,6 +329,34 @@ internal static class ConsoleEvalCli
         return cmd.Equals("help", StringComparison.OrdinalIgnoreCase) ||
                cmd.Equals("--help", StringComparison.OrdinalIgnoreCase) ||
                cmd.Equals("-h", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Func<string[], Task<int>> WithLegacyWarning(string recommendedPath, Func<string[], Task<int>> handler)
+        => async args =>
+        {
+            PrintLegacyCommandWarning(recommendedPath);
+            return await handler(args);
+        };
+
+    private static Func<string[], Task<int>> WithCompatibilityAliasWarning(string recommendedPath, Func<string[], Task<int>> handler)
+        => async args =>
+        {
+            PrintCompatibilityAliasWarning(recommendedPath);
+            return await handler(args);
+        };
+
+    private static void PrintLegacyCommandWarning(string recommendedPath)
+    {
+        Console.WriteLine("LEGACY COMMAND. Kept for compatibility with earlier development stages.");
+        Console.WriteLine($"Recommended path: {recommendedPath}");
+        Console.WriteLine();
+    }
+
+    private static void PrintCompatibilityAliasWarning(string recommendedPath)
+    {
+        Console.WriteLine("COMPATIBILITY ALIAS. Prefer the current domain-based command.");
+        Console.WriteLine($"Recommended path: {recommendedPath}");
+        Console.WriteLine();
     }
 
     private static void PrintVersion()

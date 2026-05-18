@@ -1,8 +1,12 @@
 # Mini-Insurance First/Delta Loop
 
-This document summarizes the end-to-end mini-insurance workflow around
-FirstShift / DeltaShift and the learned Delta candidate. It is meant as
-a reference implementation and a template that can be ported to other domains.
+> Status: historical / legacy reference. This document describes the older
+> Mini-Insurance First/Delta loop and is kept for context and compatibility.
+> For the current recommended path, start with `Docs/CLI-Onboarding.md` and
+> the `domain mini-insurance ...` commands.
+
+This document summarizes the older end-to-end mini-insurance workflow around
+FirstShift / DeltaShift and the learned Delta candidate.
 
 ---
 

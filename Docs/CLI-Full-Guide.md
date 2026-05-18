@@ -80,6 +80,7 @@ $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $env:EMBEDDINGSHIFT_DATASET_ROO
 
 - `run <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline] [--shift=identity] [--gate-profile=rank|rank+cosine] [--gate-eps=1e-6]`
   - Purpose: End-to-end command: ingest (if needed) → embed → retrieve → metrics; supports baseline/shift and simple dataset gates.
+  - Compatibility note: `--shift=identity` is kept for older command lines; it is not the recommended way to explain the current learned-shift path.
 - `run-smoke <refsPath> <queriesPath> <dataset> [--force-reset] [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive] [--sim] [--baseline]`
   - Purpose: Fast sanity run with safe defaults (ingest → validate → eval). Good for first checks and repeatability.
 - `ingest-dataset <refsPath> <queriesPath> <dataset> [--refs-plain] [--chunk-size=N] [--chunk-overlap=N] [--no-recursive]`
@@ -288,6 +289,8 @@ Important clarifications (to avoid “implicitly wrong” documentation):
 ---
 
 ## D) Mini-Insurance domain pack (key subcommands)
+
+Preferred path: use `domain mini-insurance ...`. Older `mini-insurance-*` commands may still exist as legacy/compatibility commands, but they are not the recommended explanation path.
 
 - `domain mini-insurance dataset-generate <name> [--stages=N] [--policies=N] [--queries=N] [--seed=N] [--overwrite]`
   - Purpose: Generate a deterministic synthetic Mini-Insurance dataset (refs + queries) for demos/tests.
