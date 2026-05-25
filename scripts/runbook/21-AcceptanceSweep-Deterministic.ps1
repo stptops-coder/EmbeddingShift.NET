@@ -46,9 +46,9 @@ param(
   # Optional: allow runs-decide / runs-promote to consider runsRoot\_repo\MiniInsurance-PosNeg as a candidate source
   [switch]$IncludeRepoPosNeg,
 
-  [string]$SimAlgo = "sha256",
+  [string]$SimAlgo = "semantic-hash",
 
-  [int]$SimSemanticCharNGrams = 3
+  [int]$SimSemanticCharNGrams = 1
 )
 
 Set-StrictMode -Version Latest
