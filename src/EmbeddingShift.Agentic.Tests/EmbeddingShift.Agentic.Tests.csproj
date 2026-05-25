@@ -27,7 +27,6 @@
     <ProjectReference Include="..\EmbeddingShift.Agentic.EmbeddingShift\EmbeddingShift.Agentic.EmbeddingShift.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Agentic.Console\EmbeddingShift.Agentic.Console.csproj" />
     <ProjectReference Include="..\EmbeddingShift.Core\EmbeddingShift.Core.csproj" />
-    <ProjectReference Include="..\EmbeddingShift.Workflows\EmbeddingShift.Workflows.csproj" />
   </ItemGroup>
 
 </Project>

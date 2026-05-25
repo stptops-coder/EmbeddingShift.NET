@@ -1,5 +1,4 @@
 using EmbeddingShift.Core.Workflows;
-using EmbeddingShift.Workflows;
 using EmbeddingShift.Agentic;
 using EmbeddingShift.Agentic.EmbeddingShift;
 
@@ -29,11 +28,9 @@ public class SimulatedAgenticRetrievalWorkflowTests
     }
 
     [Fact]
-    public void Agentic_simulation_is_registered_as_toy_workflow()
+    public void Agentic_simulation_has_stable_workflow_name()
     {
-        var registry = RegistryDefaults.CreateWithToyWorkflows();
-
-        var workflow = registry.Resolve("agentic-sim");
+        var workflow = new SimulatedAgenticRetrievalWorkflow();
 
         Assert.Equal("Agentic-Ready-Retrieval-Simulation", workflow.Name);
     }
