@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
   [string]$Tenant = "insurer-a",
-  [int]$Seed = 1006,
+  [int]$Seed = 1337,
   [Alias('All')]
   [switch]$IncludeExperimental
 )
