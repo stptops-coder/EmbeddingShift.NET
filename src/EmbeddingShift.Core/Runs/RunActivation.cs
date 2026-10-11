@@ -67,7 +67,8 @@ namespace EmbeddingShift.Core.Runs
         /// <summary>
         /// Promotes the selected run to be the active pointer for the given metric.
         /// Selection priority:
-        /// - If pickRunId is provided, that exact RunId is used (must exist and contain the metric).
+        /// Only successful runs are eligible.
+        /// - If pickRunId is provided, that exact RunId is used (must be successful and contain the metric).
         /// - Else if pickRank is provided, the N-th run by score (1-based) is used.
         /// - Else the best run by score is used.
         /// </summary>
@@ -87,6 +88,7 @@ namespace EmbeddingShift.Core.Runs
                 throw new InvalidOperationException($"No run.json found under: {runsRoot}");
 
             var candidates = discovered
+                .Where(r => r.Artifact.Success)
                 .Select(r =>
                 {
                     if (!RunArtifactDiscovery.TryGetMetric(r.Artifact, metricKey, out var score))
@@ -102,9 +104,9 @@ namespace EmbeddingShift.Core.Runs
                 .ToList();
 
             if (candidates.Count == 0)
-                throw new InvalidOperationException($"No runs contained metric '{metricKey}' under: {runsRoot}");
+                throw new InvalidOperationException($"No successful runs contained metric '{metricKey}' under: {runsRoot}");
 
-                        var chosen = SelectCandidate(candidates, pickRank, pickRunId);
+            var chosen = SelectCandidate(candidates, pickRank, pickRunId);
 
             var pointer = new ActiveRunPointer(
                 MetricKey: metricKey,
@@ -213,7 +215,7 @@ namespace EmbeddingShift.Core.Runs
                     .FirstOrDefault(x => string.Equals(x.Run.Artifact.RunId, pickRunId, StringComparison.OrdinalIgnoreCase));
 
                 if (match is null)
-                    throw new InvalidOperationException($"No run with RunId '{pickRunId}' contained metric under the runs root.");
+                    throw new InvalidOperationException($"No successful run with RunId '{pickRunId}' contained metric under the runs root.");
 
                 return match;
             }

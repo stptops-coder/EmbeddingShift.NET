@@ -21,6 +21,7 @@ namespace EmbeddingShift.Core.Runs
                 return null;
 
             var best = discovered
+                .Where(r => r.Artifact.Success)
                 .Select(r =>
                 {
                     var has = RunArtifactDiscovery.TryGetMetric(r.Artifact, metricKey, out var score);
