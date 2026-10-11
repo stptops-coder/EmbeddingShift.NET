@@ -16,7 +16,7 @@ The repo is organized around **reproducible runs** that produce inspectable arti
 
 - **Baseline run**: ingest → embed → retrieve → compute metrics.
 - **Shifted run**: use the same dataset/scope, apply one or more **embedding-space shifts**, then re-run retrieval + metrics.
-- **Comparison**: decide “better/worse” by **metric deltas** (e.g., NDCG@K / MRR@K) and simple acceptance gates.
+- **Comparison**: decide “better/worse” by **metric deltas** (e.g., NDCG@K / MRR) and simple acceptance gates.
 
 ### Pos/Neg shift (intuition)
 
@@ -32,7 +32,7 @@ Most CLI commands are just different ways to produce runs (baseline, training, i
 - `data/` — persisted embeddings + ingest manifests (default location)
 - `results/` — run outputs, comparisons, reports (default location)
 
-## 3) Default artifact layout
+## 4) Default artifact layout
 
 By default, runs write into repo-local folders:
 - `data/` for persisted embeddings/manifests
@@ -44,7 +44,7 @@ Override both roots:
 Optional tenant isolation:
 - `EMBEDDINGSHIFT_TENANT=<key>` → tenant-aware layout under `results/`
 
-## 4) Current repo reading
+## 5) Current repo reading
 
 A useful way to read the current repo state:
 
@@ -54,7 +54,7 @@ A useful way to read the current repo state:
 - **Deferred integration boundary**: `--backend=openai` remains outside the standard verification path.
 - **Not packaged in the current baseline**: routing exists conceptually, but is not yet packaged in the same externalized JSON form as the segment experiments.
 
-## 4) Fastest way to see it working
+## 6) Fastest way to see it working
 
 From the repo root:
 
@@ -64,7 +64,7 @@ dotnet test
 dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo
 ```
 
-## 5) Next docs to read
+## 7) Next docs to read
 
 - Runbook gate (canonical): `scripts/runbook/README.md`
 - CLI onboarding: `Docs/CLI-Onboarding.md`

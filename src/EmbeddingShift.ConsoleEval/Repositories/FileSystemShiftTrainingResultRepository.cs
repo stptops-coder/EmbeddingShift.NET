@@ -162,9 +162,9 @@ public sealed class FileSystemShiftTrainingResultRepository : IShiftTrainingResu
             if (result.SelectionMapAt1Baseline.HasValue && result.SelectionMapAt1Shifted.HasValue)
             {
                 var deltaMap = result.SelectionMapAt1Shifted.Value - result.SelectionMapAt1Baseline.Value;
-                sb.AppendLine($"| Selection MAP@1 baseline  | `{result.SelectionMapAt1Baseline.Value:0.000}` |");
-                sb.AppendLine($"| Selection MAP@1 shifted   | `{result.SelectionMapAt1Shifted.Value:0.000}` |");
-                sb.AppendLine($"| Selection MAP@1 delta     | `{deltaMap:+0.000;-0.000;0.000}` |");
+                sb.AppendLine($"| Selection MRR baseline  | `{result.SelectionMapAt1Baseline.Value:0.000}` |");
+                sb.AppendLine($"| Selection MRR shifted   | `{result.SelectionMapAt1Shifted.Value:0.000}` |");
+                sb.AppendLine($"| Selection MRR delta     | `{deltaMap:+0.000;-0.000;0.000}` |");
             }
 
             if (result.SelectionNdcg3Baseline.HasValue && result.SelectionNdcg3Shifted.HasValue)

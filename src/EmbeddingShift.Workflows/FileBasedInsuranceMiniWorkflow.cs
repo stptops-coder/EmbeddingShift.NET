@@ -20,7 +20,7 @@ namespace EmbeddingShift.Workflows
     /// - reads policy texts from samples/insurance/policies
     /// - reads queries + relevance from samples/insurance/queries/queries.json
     /// - builds 1536-dimensional keyword-based embeddings via a local provider
-    /// - computes MAP@1 and nDCG@3 as metrics
+    /// - computes MRR and nDCG@3 as metrics
     /// </summary>
     public sealed class FileBasedInsuranceMiniWorkflow : IWorkflow, IPerQueryEvalProvider
     {

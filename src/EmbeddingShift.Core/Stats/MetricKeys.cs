@@ -23,6 +23,8 @@
 
         public static class Eval
         {
+            // Historical serialized key. Mini-Insurance computes mean reciprocal rank
+            // (1/r per query), not average precision truncated at rank one.
             public const string Map1  = "map@1";
             public const string Ndcg3 = "ndcg@3";
 

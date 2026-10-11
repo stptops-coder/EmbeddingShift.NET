@@ -261,7 +261,7 @@ workflowName = "FileBased-Insurance-Mini-FirstPlusPolicyDelta-Pipeline";
             Log($"  |DeltaVec|  : {norm:0.000000}");
 
             // Evaluate the learned Delta against the current Mini-Insurance setup.
-            // This prints MAP@1 / NDCG@3 deltas to the console.
+            // This prints MRR / NDCG@3 deltas to the console.
             Log("[LearnedDelta] Evaluating best learned Delta (pos-neg run)...");
             await EmbeddingShift.ConsoleEval.MiniInsurancePosNegRunner
                 .RunAsync(EmbeddingShift.ConsoleEval.EmbeddingBackend.Sim, useLatest: false)

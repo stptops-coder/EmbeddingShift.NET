@@ -106,13 +106,13 @@ internal static class MiniInsuranceSegmentCompare
         Console.WriteLine($"  Decision : {(primaryDecision - primaryA):+0.000;-0.000;0.000}");
         Console.WriteLine();
         Console.WriteLine("KPI (avg over used cases)");
-        Console.WriteLine($"  VariantA : MAP@1={mapA:0.000}, NDCG@3={ndcgA:0.000}");
-        Console.WriteLine($"  VariantB : MAP@1={mapB:0.000}, NDCG@3={ndcgB:0.000}");
-        Console.WriteLine($"  Decision : MAP@1={mapDecision:0.000}, NDCG@3={ndcgDecision:0.000}");
+        Console.WriteLine($"  VariantA : MRR={mapA:0.000}, NDCG@3={ndcgA:0.000}");
+        Console.WriteLine($"  VariantB : MRR={mapB:0.000}, NDCG@3={ndcgB:0.000}");
+        Console.WriteLine($"  Decision : MRR={mapDecision:0.000}, NDCG@3={ndcgDecision:0.000}");
         Console.WriteLine();
         Console.WriteLine("Delta vs VariantA");
-        Console.WriteLine($"  VariantB : MAP@1={(mapB - mapA):+0.000;-0.000;0.000}, NDCG@3={(ndcgB - ndcgA):+0.000;-0.000;0.000}");
-        Console.WriteLine($"  Decision : MAP@1={(mapDecision - mapA):+0.000;-0.000;0.000}, NDCG@3={(ndcgDecision - ndcgA):+0.000;-0.000;0.000}");
+        Console.WriteLine($"  VariantB : MRR={(mapB - mapA):+0.000;-0.000;0.000}, NDCG@3={(ndcgB - ndcgA):+0.000;-0.000;0.000}");
+        Console.WriteLine($"  Decision : MRR={(mapDecision - mapA):+0.000;-0.000;0.000}, NDCG@3={(ndcgDecision - ndcgA):+0.000;-0.000;0.000}");
 
         return 0;
     }
@@ -139,7 +139,7 @@ internal static class MiniInsuranceSegmentCompare
     private static string GetMetricLabel(string metric)
         => metric switch
         {
-            "map@1" => "MAP@1",
+            "map@1" => "MRR",
             _ => "NDCG@3"
         };
 

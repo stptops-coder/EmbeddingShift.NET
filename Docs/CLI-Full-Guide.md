@@ -70,7 +70,7 @@ The CLI supports a small set of `EMBEDDINGSHIFT_*` environment variables for lay
 ```powershell
 $env:EMBEDDINGSHIFT_ROOT   = "C:\temp\EmbeddingShift.Sweep\20260131_012048"
 $env:EMBEDDINGSHIFT_TENANT = "insurer-a"
-$env:EMBEDDINGSHIFT_DATASET_ROOT = "results\insurance\tenants\insurer-a\datasets\SweepDS\stage-00"
+$env:EMBEDDINGSHIFT_DATASET_ROOT = Join-Path $env:EMBEDDINGSHIFT_ROOT "results\insurance\tenants\insurer-a\datasets\SweepDS\stage-00"
 $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $env:EMBEDDINGSHIFT_DATASET_ROOT
 ```
 
@@ -297,7 +297,7 @@ Preferred path: use `domain mini-insurance ...`. Older `mini-insurance-*` comman
 - `domain mini-insurance pipeline [--no-learned]`
   - Purpose: Run a default end-to-end workflow for Mini-Insurance (baseline → shifts → eval) as a compact demo.
 - `domain mini-insurance posneg-train --mode=micro|production [--hardneg-topk=N]`
-  - Purpose: Train a Pos/Neg global delta (micro = small debug run, production = fuller run; optional hard-negative top-K).
+  - Purpose: Train a Pos/Neg global delta on the configured dataset, with optional hard-negative top-K. `micro` and `production` currently label the stored result; they do not select different dataset sizes or establish a holdout split.
 - `domain mini-insurance posneg-run [--latest] [--scale=<float>]`
   - Purpose: Run evaluation with a Pos/Neg shift applied (latest/best), with optional scale.
 - `domain mini-insurance posneg-inspect | posneg-history [maxItems] [--include-cancelled] | posneg-best [--include-cancelled]`

@@ -80,13 +80,13 @@ public sealed record ShiftTrainingResult
     public float DeltaNorm { get; init; }
 
     /// <summary>
-    /// Optional MAP@1 baseline value captured for selection of newer training modes
+    /// Optional MRR baseline value captured for selection of newer training modes
     /// (for example PosNeg). This is intentionally generic and does not imply a holdout split.
     /// </summary>
     public double? SelectionMapAt1Baseline { get; init; }
 
     /// <summary>
-    /// Optional MAP@1 shifted value captured for selection of newer training modes
+    /// Optional MRR shifted value captured for selection of newer training modes
     /// (for example PosNeg). This is intentionally generic and does not imply a holdout split.
     /// </summary>
     public double? SelectionMapAt1Shifted { get; init; }

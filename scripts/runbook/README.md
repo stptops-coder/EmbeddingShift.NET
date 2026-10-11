@@ -24,8 +24,9 @@ Run from the repository root:
 Notes:
 - `00-Prep.ps1` clears process-level EmbeddingShift environment variables for a clean local run.
 - `10-Build.ps1` builds the solution.
-- `30-Tests.ps1` is the stable test gate and calls `scripts\runbook-internal\90-Tests-Samples.ps1`.
+- `30-Tests.ps1` runs both test projects in the solution via `scripts\runbook-internal\90-Tests-Samples.ps1`.
 - `21-AcceptanceSweep-Deterministic.ps1` writes isolated artifacts under `results\_scratch\EmbeddingShift.Sweep\...` by default.
+- The sweep stops on a failing `dotnet` command and returns a nonzero exit code.
 
 ## Deterministic acceptance sweep
 

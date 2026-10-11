@@ -15,7 +15,9 @@ A typical workflow is:
 **Pos/Neg (intuition):** learn a direction from *positive vs. negative* examples and apply it as an embedding-space shift (no model retraining).
 
 This targets the *retrieval layer* that is also used in RAG systems; it does not implement prompting/LLM orchestration.
-For metric definitions and interpretation, see `Docs/CLI-Metrics.md`.
+For metric definitions and interpretation, see [Docs/CLI-Metrics.md](Docs/CLI-Metrics.md).
+The historical artifact key `map@1` contains **MRR** (mean reciprocal rank),
+not average precision truncated at rank one; the key is retained for compatibility.
 
 ## Quickstart
 
@@ -77,6 +79,16 @@ Deferred integration boundaries in this repo state:
 Interpretation:
 - the retrieval-evaluation core is broader than one specific shift algorithm
 - some public packaging intentionally remains Mini-Insurance / shift-specific to keep the verified path reproducible
+- PosNeg selection scores currently use the training queries; there is no automatic holdout split
+- deterministic simulations demonstrate the engineering workflow, not validated performance on pharmaceutical data
+
+The separate `EmbeddingShift.Agentic.*` projects contain a small deterministic
+orchestration simulation. They use simulated retrieval/reasoning rather than live
+LLM calls and are not part of the Mini-Insurance acceptance sweep. To run the demo:
+
+```powershell
+dotnet run --project src/EmbeddingShift.Agentic.Console -- run-sim
+```
 
 ## Smoke-all (full end-to-end demo)
 

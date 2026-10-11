@@ -1,6 +1,6 @@
 # EmbeddingShift ConsoleEval CLI – Onboarding (Quickstart)
 
-As of: 2026-02-10
+Reviewed: 2026-10-10
 
 Goal: A **reliable, code-synchronous** starter chain: Generate → Ingest → Validate → Eval → Compare/activate runs.
 
@@ -29,7 +29,7 @@ cd <repo-root>
 
 Notes:
 - The sweep runbook uses an isolated scratch root (`<repo>\results\_scratch\EmbeddingShift.Sweep\...`) so it does not mutate your normal results tree.
-- `30-Tests.ps1` is the stable test gate before the acceptance sweep.
+- `30-Tests.ps1` runs both test projects in the solution before the acceptance sweep.
 - Advanced deterministic Pos/Neg experiments are documented in `scripts/runbook-experimental/README.md`.
 
 ## 1) Standard invocation
@@ -77,13 +77,23 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a run-sm
 ## 4) Mini-Insurance: generate a staged dataset and set the root
 
 ```powershell
+$env:EMBEDDINGSHIFT_TENANT = "insurer-a"
+$env:EMBEDDINGSHIFT_ROOT = Join-Path (Get-Location) ("results/_scratch/Onboarding_" + (Get-Date -Format "yyyyMMdd_HHmmss_fff"))
+$env:EMBEDDING_BACKEND = "sim"
+$env:EMBEDDING_SIM_MODE = "deterministic"
+$env:EMBEDDING_SIM_ALGO = "semantic-hash"
+$env:EMBEDDING_SIM_SEMANTIC_CHAR_NGRAMS = "1"
+
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance dataset-generate MyDS --stages 3 --policies 40 --queries 80 --seed 1337 --overwrite
 
-$env:EMBEDDINGSHIFT_DATASET_ROOT = "results\insurance\tenants\insurer-a\datasets\MyDS\stage-00"
+$env:EMBEDDINGSHIFT_DATASET_ROOT = Join-Path $env:EMBEDDINGSHIFT_ROOT "results\insurance\tenants\insurer-a\datasets\MyDS\stage-00"
 $env:EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT = $env:EMBEDDINGSHIFT_DATASET_ROOT
 ```
 
 Note: keep the dataset root tenant aligned with `--tenant` (or `EMBEDDINGSHIFT_TENANT`) for the run you want to inspect.
+This sequence starts a fresh experiment root. Keep the dataset and embedding
+configuration fixed within it: training-result selection does not automatically
+reject candidates trained with different inputs or embedding algorithms.
 
 ---
 
@@ -93,8 +103,8 @@ Note: keep the dataset root tenant aligned with `--tenant` (or `EMBEDDINGSHIFT_T
 
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-dataset `
-  $env:EMBEDDINGSHIFT_DATASET_ROOT\policies `
-  $env:EMBEDDINGSHIFT_DATASET_ROOT\queries `
+  (Join-Path $env:EMBEDDINGSHIFT_DATASET_ROOT "policies") `
+  (Join-Path $env:EMBEDDINGSHIFT_DATASET_ROOT "queries") `
   MyDataset `
   --chunk-size=1000 --chunk-overlap=100
 ```
@@ -118,8 +128,8 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- eval MyDataset --baseline
 
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke `
-  $env:EMBEDDINGSHIFT_DATASET_ROOT\policies `
-  $env:EMBEDDINGSHIFT_DATASET_ROOT\queries `
+  (Join-Path $env:EMBEDDINGSHIFT_DATASET_ROOT "policies") `
+  (Join-Path $env:EMBEDDINGSHIFT_DATASET_ROOT "queries") `
   MyDataset `
   --force-reset --baseline
 ```
@@ -133,7 +143,7 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance pos
 dotnet run --project src/EmbeddingShift.ConsoleEval -- domain mini-insurance posneg-run --latest
 ```
 
-For a more representative deterministic PosNeg check, keep the same dataset root and use production mode:
+For a deterministic PosNeg check with semantic-hash embeddings, keep the same dataset root:
 
 ```powershell
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --backend=sim --sim-mode=deterministic --sim-algo=semantic-hash --sim-char-ngrams=1 domain mini-insurance posneg-train --mode=production --hardneg-topk=5
@@ -141,11 +151,20 @@ dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a --back
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a domain mini-insurance posneg-inspect
 ```
 
+`micro` and `production` currently record the training mode; they do not automatically
+change dataset size or create a held-out test set. Both use the configured dataset.
+The stored PosNeg selection metrics are evaluated on the training queries.
+
 ---
 
 ## 8) Compare/activate runs (Compare → Decide → Active)
 
+Generate the comparable First/Delta workflow records first. The generic `eval`
+steps above write diagnostic summaries, while PosNeg records live under `_repo`
+and are excluded from normal discovery by default.
+
 ```powershell
+dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a domain mini-insurance pipeline
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-compare --metric ndcg@3 --top 10
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-decide --metric ndcg@3 --eps 1e-6 --apply
 dotnet run --project src/EmbeddingShift.ConsoleEval -- --tenant insurer-a runs-active --metric ndcg@3
@@ -167,3 +186,6 @@ runs-rerun --run-dir=<path-to-a-run-folder>
 ```
 
 Use `--print` to inspect the reconstructed command without executing it.
+Replay requires the original input files to remain available and unchanged.
+The snapshot restores captured settings but does not clear other settings inherited
+from the current shell; use a clean shell for reproducibility.

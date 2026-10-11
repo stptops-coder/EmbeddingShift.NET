@@ -162,7 +162,7 @@ namespace EmbeddingShift.ConsoleEval
                 .ConfigureAwait(false);
 
             Console.WriteLine(
-                $"[PosNeg] Selection metrics: MAP@1 {selection.MapBaseline:0.000} -> {selection.MapShifted:0.000} ({selection.DeltaMap:+0.000;-0.000;0.000}), " +
+                $"[PosNeg] Selection metrics: MRR {selection.MapBaseline:0.000} -> {selection.MapShifted:0.000} ({selection.DeltaMap:+0.000;-0.000;0.000}), " +
                 $"NDCG@3 {selection.Ndcg3Baseline:0.000} -> {selection.Ndcg3Shifted:0.000} ({selection.DeltaNdcg3:+0.000;-0.000;0.000}), " +
                 $"score={selection.SelectionScore:+0.000;-0.000;0.000}");
 

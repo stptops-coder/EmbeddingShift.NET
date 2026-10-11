@@ -1,38 +1,30 @@
-﻿# Baseline Shift (NoShiftIngestBased)
+# Baseline Shift (NoShiftIngestBased)
 
-This configuration represents the **Baseline mode ("Pretrained Model as is")**.
+`NoShiftIngestBased` is the identity transformation: it leaves the query vector
+unchanged. Its scores provide a control for comparison with shifted queries.
+The baseline uses the same embedding provider and reference set as the shifted run.
 
-It uses the shift class `NoShiftIngestBased`, which applies **no transformation** to the embedding vector.
-This baseline allows you to evaluate retrieval and similarity performance in the original embedding space.
+The verified local workflow uses simulated embeddings. This baseline does not,
+by itself, demonstrate retrieval quality from a pretrained language model.
 
----
+## Example
 
-### Concept
+From the repository root:
 
-- **Goal:** Measure retrieval quality in the original embedding space.
-- **Shift Type:** Identity transformation (input == output)
-- **Use Case:** Control run for comparison with the learned PosNeg/Delta path and other retrieval-adaptation experiments.
-- **Evaluation:** Enables metrics such as cosine similarity, nDCG, and MRR to be computed
-  under pure Method-A conditions.
-
----
-
-### Example (ConsoleEval)
-
-```bash
-dotnet run --project EmbeddingShift.ConsoleEval -- --shift NoShiftIngestBased --space Diagnostics
+```powershell
+dotnet run --project src/EmbeddingShift.ConsoleEval -- run-smoke-demo --baseline
 ```
-Output shows baseline scores that serve as the reference for later shifted runs.
 
----
+For an already ingested dataset:
 
-### Summary
+```powershell
+dotnet run --project src/EmbeddingShift.ConsoleEval -- eval MyDataset --baseline
+```
 
-| Layer | Role | Description |
-|-------|------|-------------|
-| Embedding Provider | Simulated (default); OpenAI as deferred integration boundary | Produces original vectors |
-| Shift | NoShiftIngestBased | Applies no transformation |
-| Vector Store | FileStore | Persists embeddings and metrics |
-| Evaluation | Cosine, MRR, nDCG | Quantifies baseline performance |
+The generic evaluators report cosine similarity, margin, nDCG and MRR, with
+baseline/shift/delta values. Their default relevant reference is index zero;
+this is a diagnostic setup, not per-query gold-label evaluation. See
+[metric definitions](../../../Docs/CLI-Metrics.md) for that distinction.
 
-This represents the **pure Method A setup**  using pretrained embeddings "as is".
+Embeddings and ingest manifests are stored under `data/`; evaluation artifacts
+are written under `results/`. `EMBEDDINGSHIFT_ROOT` can relocate both roots.

@@ -161,7 +161,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             Console.WriteLine($"[runs-compare] runs   = {total}");
             Console.WriteLine();
 
-            Console.WriteLine("Rank | Score     | MAP@1     | NDCG@3    | WorkflowName");
+            Console.WriteLine("Rank | Score     | MRR     | NDCG@3    | WorkflowName");
             Console.WriteLine("-----|-----------|----------|----------|------------------------------");
 
             foreach (var r in ranked)
@@ -184,7 +184,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             sb.AppendLine($"- Metric: `{metricKey}`");
             sb.AppendLine($"- Total runs found: `{total}`");
             sb.AppendLine();
-            sb.AppendLine("| Rank | Score | MAP@1 | NDCG@3 | WorkflowName | RunId | RunDirectory |");
+            sb.AppendLine("| Rank | Score | MRR | NDCG@3 | WorkflowName | RunId | RunDirectory |");
             sb.AppendLine("|---:|---:|---:|---:|---|---|---|");
 
             foreach (var r in ranked)

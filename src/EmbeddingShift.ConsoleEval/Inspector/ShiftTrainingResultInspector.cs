@@ -121,7 +121,7 @@ internal static class ShiftTrainingResultInspector
             if (result.SelectionMapAt1Baseline.HasValue && result.SelectionMapAt1Shifted.HasValue)
             {
                 var deltaMap = result.SelectionMapAt1Shifted.Value - result.SelectionMapAt1Baseline.Value;
-                Console.WriteLine($"Selection MAP@1           : {result.SelectionMapAt1Baseline.Value:0.000} -> {result.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000})");
+                Console.WriteLine($"Selection MRR           : {result.SelectionMapAt1Baseline.Value:0.000} -> {result.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000})");
             }
             if (result.SelectionNdcg3Baseline.HasValue && result.SelectionNdcg3Shifted.HasValue)
             {
@@ -371,7 +371,7 @@ internal static class ShiftTrainingResultInspector
             if (bestResult.SelectionMapAt1Baseline.HasValue && bestResult.SelectionMapAt1Shifted.HasValue)
             {
                 var deltaMap = bestResult.SelectionMapAt1Shifted.Value - bestResult.SelectionMapAt1Baseline.Value;
-                Console.WriteLine($"Selection MAP@1           : {bestResult.SelectionMapAt1Baseline.Value:0.000} -> {bestResult.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000})");
+                Console.WriteLine($"Selection MRR           : {bestResult.SelectionMapAt1Baseline.Value:0.000} -> {bestResult.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000})");
             }
             if (bestResult.SelectionNdcg3Baseline.HasValue && bestResult.SelectionNdcg3Shifted.HasValue)
             {

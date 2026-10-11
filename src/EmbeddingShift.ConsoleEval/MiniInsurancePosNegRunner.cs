@@ -20,7 +20,7 @@ namespace EmbeddingShift.ConsoleEval
     /// Runs a simple retrieval experiment using the learned pos-neg Delta vector:
     /// - Baseline: no shift
     /// - Shifted:  query + learned pos-neg vector
-    /// Metrics: MAP@1 and NDCG@3 over the configured mini-insurance dataset.
+    /// Metrics: MRR and NDCG@3 over the configured mini-insurance dataset.
     /// </summary>
     public static class MiniInsurancePosNegRunner
     {
@@ -78,7 +78,7 @@ namespace EmbeddingShift.ConsoleEval
                     var deltaMap = trainingResult.SelectionMapAt1Shifted.Value - trainingResult.SelectionMapAt1Baseline.Value;
                     var deltaNdcg = trainingResult.SelectionNdcg3Shifted.Value - trainingResult.SelectionNdcg3Baseline.Value;
                     Console.WriteLine(
-                        $"[MiniInsurancePosNegRunner] Stored selection metrics: MAP@1 {trainingResult.SelectionMapAt1Baseline.Value:0.000} -> {trainingResult.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000}), " +
+                        $"[MiniInsurancePosNegRunner] Stored selection metrics: MRR {trainingResult.SelectionMapAt1Baseline.Value:0.000} -> {trainingResult.SelectionMapAt1Shifted.Value:0.000} ({deltaMap:+0.000;-0.000;0.000}), " +
                         $"NDCG@3 {trainingResult.SelectionNdcg3Baseline.Value:0.000} -> {trainingResult.SelectionNdcg3Shifted.Value:0.000} ({deltaNdcg:+0.000;-0.000;0.000})");
                 }
             }
@@ -293,10 +293,10 @@ namespace EmbeddingShift.ConsoleEval
 
             Console.WriteLine($"[MiniInsurance] PosNeg run over {docs.Count} policies and {usedCases} effective queries.");
             Console.WriteLine();
-            Console.WriteLine($"  Baseline   MAP@1 = {mapBaseline:0.000},  NDCG@3 = {ndcg3Baseline:0.000}");
-            Console.WriteLine($"  PosNeg     MAP@1 = {mapShifted:0.000},  NDCG@3 = {ndcg3Shifted:0.000}");
+            Console.WriteLine($"  Baseline   MRR = {mapBaseline:0.000},  NDCG@3 = {ndcg3Baseline:0.000}");
+            Console.WriteLine($"  PosNeg     MRR = {mapShifted:0.000},  NDCG@3 = {ndcg3Shifted:0.000}");
             Console.WriteLine();
-            Console.WriteLine($"  Delta      MAP@1 = {mapShifted - mapBaseline:+0.000;-0.000;0.000}");
+            Console.WriteLine($"  Delta      MRR = {mapShifted - mapBaseline:+0.000;-0.000;0.000}");
             Console.WriteLine($"             NDCG@3 = {ndcg3Shifted - ndcg3Baseline:+0.000;-0.000;0.000}");
 
             // Persist metrics for later inspection/aggregation.
@@ -354,7 +354,7 @@ namespace EmbeddingShift.ConsoleEval
             mdBuilder.AppendLine();
             mdBuilder.AppendLine("| Metric | Baseline | PosNeg | Delta |");
             mdBuilder.AppendLine("|--------|----------|--------|-------|");
-            mdBuilder.AppendLine($"| MAP@1  | {metrics.MapBaseline:0.000} | {metrics.MapPosNeg:0.000} | {metrics.DeltaMap:+0.000;-0.000;0.000} |");
+            mdBuilder.AppendLine($"| MRR  | {metrics.MapBaseline:0.000} | {metrics.MapPosNeg:0.000} | {metrics.DeltaMap:+0.000;-0.000;0.000} |");
             mdBuilder.AppendLine($"| NDCG@3 | {metrics.Ndcg3Baseline:0.000} | {metrics.Ndcg3PosNeg:0.000} | {metrics.DeltaNdcg3:+0.000;-0.000;0.000} |");
 
             var mdPath = Path.Combine(runDir, "metrics-posneg.md");

@@ -9,7 +9,11 @@ internal static class RunRequestFactory
     private static readonly string[] SnapshotKeys =
     [
         "EMBEDDINGSHIFT_ROOT",
+        "EMBEDDINGSHIFT_DATA_ROOT",
+        "EMBEDDINGSHIFT_RESULTS_DOMAIN",
+        "EMBEDDINGSHIFT_LAYOUT",
         "EMBEDDINGSHIFT_TENANT",
+        "EMBEDDINGSHIFT_DATASET_ROOT",
         "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT",
         "EMBEDDING_BACKEND",
         "EMBEDDING_SIM_MODE",

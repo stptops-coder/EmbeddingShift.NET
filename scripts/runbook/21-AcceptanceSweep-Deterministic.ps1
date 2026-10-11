@@ -130,6 +130,7 @@ foreach ($p in $Policies) {
       --backend=$backend --sim-mode=$simMode --sim-algo=$SimAlgo --sim-char-ngrams=$SimSemanticCharNGrams `
       domain mini-insurance dataset-generate $DsName `
       --stages $Stages --policies $p --queries $q --seed $Seed --overwrite
+    if ($LASTEXITCODE -ne 0) { throw "Dataset generation failed (dotnet exit code $LASTEXITCODE)." }
 
     # 2) Point dataset root to stage-00 (what the mini-insurance flows expect)
     $datasetRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\{0}\tenants\{1}\datasets\{2}\stage-00" -f $domain, $Tenant, $DsName)
@@ -141,6 +142,7 @@ foreach ($p in $Policies) {
     dotnet run --project $proj -- `
       --tenant $Tenant --backend=$backend --sim-mode=$simMode --sim-algo=$SimAlgo --sim-char-ngrams=$SimSemanticCharNGrams `
       domain mini-insurance pipeline
+    if ($LASTEXITCODE -ne 0) { throw "Mini-Insurance pipeline failed (dotnet exit code $LASTEXITCODE)." }
 
     # 4) Compare + decide (+ optional promote)
     $runsRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\{0}\tenants\{1}\runs" -f $domain, $Tenant)
@@ -169,6 +171,7 @@ foreach ($p in $Policies) {
     dotnet run --project $proj -- `
       --tenant $Tenant `
       runs-compare --runs-root $runsRoot --metric $Metric --top $Top --write --out $compareDir
+    if ($LASTEXITCODE -ne 0) { throw "Run comparison failed (dotnet exit code $LASTEXITCODE)." }
 
     # Optional: compare PosNeg repo runs separately (kept under runs\_repo)
     if ($CompareRepoPosNeg) {
@@ -178,6 +181,7 @@ foreach ($p in $Policies) {
         dotnet run --project $proj -- `
           --tenant $Tenant `
           runs-compare --runs-root $posNegRoot --metric $Metric --top $Top --write --out $compareRepoDir
+        if ($LASTEXITCODE -ne 0) { throw "PosNeg comparison failed (dotnet exit code $LASTEXITCODE)." }
       }
       else {
         Write-Host ("[Sweep] repo-posneg root not found: {0} (skipping repo compare)" -f $posNegRoot)
@@ -187,6 +191,7 @@ foreach ($p in $Policies) {
     dotnet run --project $proj -- `
       --tenant $Tenant `
       runs-decide --runs-root $runsRoot --metric $Metric --profile $profileKey --write $repoPosNegFlag
+    if ($LASTEXITCODE -ne 0) { throw "Run decision failed (dotnet exit code $LASTEXITCODE)." }
 
     $doPromote = $false
     if ($Promote) {
@@ -214,6 +219,7 @@ foreach ($p in $Policies) {
       dotnet run --project $proj -- `
         --tenant $Tenant `
         runs-promote --runs-root $runsRoot --metric $Metric --profile $profileKey $repoPosNegFlag
+      if ($LASTEXITCODE -ne 0) { throw "Run promotion failed (dotnet exit code $LASTEXITCODE)." }
 
       if ($useSharedActive) {
         New-Item -ItemType Directory -Force -Path $sharedActiveDir | Out-Null

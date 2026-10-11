@@ -13,7 +13,7 @@ namespace EmbeddingShift.Workflows
     /// - 3 policies, 3 queries (same as MiniSemanticRetrievalWorkflow)
     /// - baseline embedding: plain keyword counts
     /// - variant embedding: slightly reweighted keyword counts
-    /// - computes MAP@1 and nDCG@3 for both variants and writes them to metrics.
+    /// - computes MRR and nDCG@3 for both variants and writes them to metrics.
     /// </summary>
     public sealed class MiniRetrievalExperimentWorkflow : IWorkflow
     {
@@ -72,7 +72,7 @@ namespace EmbeddingShift.Workflows
 
             var notes =
                 "Mini retrieval experiment comparing a baseline and a slightly reweighted variant " +
-                "using MAP@1 and nDCG@3 on a small synthetic insurance-like scenario.";
+                "using MRR and nDCG@3 on a small synthetic insurance-like scenario.";
 
             return Task.FromResult(new WorkflowResult(
                 Success: true,

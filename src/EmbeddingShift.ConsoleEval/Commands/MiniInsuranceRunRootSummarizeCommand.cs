@@ -203,7 +203,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             sb.AppendLine("Stage Means (over all seeds)");
             sb.AppendLine("------------------------------------------------------------");
-            sb.AppendLine("| Stage   | MAP@1 Base | MAP@1 PosNeg |   ΔMAP | NDCG@3 Base | NDCG@3 PosNeg |  ΔNDCG |");
+            sb.AppendLine("| Stage   | MRR Base | MRR PosNeg |   ΔMRR | NDCG@3 Base | NDCG@3 PosNeg |  ΔNDCG |");
             sb.AppendLine("|---------|------------|-------------|--------|-------------|--------------|--------|");
 
             foreach (var g in rows.GroupBy(r => r.runStage).OrderBy(g => g.Key))
@@ -356,7 +356,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
                     if (mapRow != null)
                     {
-                        sb.AppendLine($"  MAP@1         : base={mapRow.AverageBaseline:0.000}, first={mapRow.AverageFirst:0.000}, first+Δ={mapRow.AverageFirstPlusDelta:0.000}, Δ(first+Δ)={mapRow.AverageDeltaFirstPlusDeltaVsBaseline:+0.000;-0.000;0.000}");
+                        sb.AppendLine($"  MRR         : base={mapRow.AverageBaseline:0.000}, first={mapRow.AverageFirst:0.000}, first+Δ={mapRow.AverageFirstPlusDelta:0.000}, Δ(first+Δ)={mapRow.AverageDeltaFirstPlusDeltaVsBaseline:+0.000;-0.000;0.000}");
                     }
 
                     if (ndcgRow != null)
@@ -365,7 +365,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
                     }
 
                     if (mapRow == null && ndcgRow == null)
-                        sb.AppendLine("  (no MAP@1 / NDCG@3 rows found in metrics-aggregate.json)");
+                        sb.AppendLine("  (no MRR / NDCG@3 rows found in metrics-aggregate.json)");
                 }
                 else
                 {
@@ -386,7 +386,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
                         var mapText = map.HasValue ? map.Value.ToString("0.000", CultureInfo.InvariantCulture) : "-";
                         var ndcgText = ndcg.HasValue ? ndcg.Value.ToString("0.000", CultureInfo.InvariantCulture) : "-";
 
-                        sb.AppendLine($"  - {r.WorkflowName}  (MAP@1={mapText}, NDCG@3={ndcgText}, success={r.Success})");
+                        sb.AppendLine($"  - {r.WorkflowName}  (MRR={mapText}, NDCG@3={ndcgText}, success={r.Success})");
                     }
                 }
                 else
