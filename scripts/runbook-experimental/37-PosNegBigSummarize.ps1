@@ -93,7 +93,7 @@ Write-Host "[PosNegSummary] Tenant       = $Tenant"
 
 # Decision files (we filter by regex because -Filter can behave oddly with '@' in patterns)
 $allDecisionFiles = Get-ChildItem -Path $scenarioRoot -Recurse -File -ErrorAction Stop | Where-Object { $_.Name -match '^decision_.*\.json$' }
-$decisionFiles = $allDecisionFiles | Where-Object { $_.Name -match ('^decision_{0}_.*\.json$' -f [regex]::Escape($Metric)) }
+$decisionFiles = @($allDecisionFiles | Where-Object { $_.Name -match ('^decision_{0}_.*\.json$' -f [regex]::Escape($Metric)) })
 
 if (-not $decisionFiles -or $decisionFiles.Count -eq 0) {
   Write-Host "[PosNegSummary] No decision files found for metric '$Metric'."
@@ -115,8 +115,30 @@ foreach ($f in $decisionFiles) {
   $profile = Get-Prop -Obj $j -Name 'profile'
   if ($null -eq $profile) { $profile = Get-Prop -Obj $j -Name 'Profile' }
 
+  # Current decision JSON omits the profile; the paired Markdown retains it.
+  if ([string]::IsNullOrWhiteSpace([string]$profile)) {
+    $decisionMarkdown = [System.IO.Path]::ChangeExtension($f.FullName, '.md')
+    if (Test-Path -LiteralPath $decisionMarkdown -PathType Leaf) {
+      $profileMatch = [regex]::Match(
+        (Get-Content -LiteralPath $decisionMarkdown -Raw -Encoding UTF8),
+        '(?m)^- profile:\s*`([^`]+)`\s*$')
+      if ($profileMatch.Success) { $profile = $profileMatch.Groups[1].Value }
+    }
+  }
+
   $decision = Get-Prop -Obj $j -Name 'decision'
   if ($null -eq $decision) { $decision = Get-Prop -Obj $j -Name 'Decision' }
+  if ($null -eq $decision) {
+    $action = Get-Prop -Obj $j -Name 'action'
+    if ($null -eq $action) { $action = Get-Prop -Obj $j -Name 'Action' }
+    switch ([string]$action) {
+      '0'          { $decision = 'PROMOTE' }
+      '1'          { $decision = 'KEEP_ACTIVE' }
+      'Promote'    { $decision = 'PROMOTE' }
+      'KeepActive' { $decision = 'KEEP_ACTIVE' }
+      default      { $decision = [string]$action }
+    }
+  }
 
   $reason = Get-Prop -Obj $j -Name 'reason'
   if ($null -eq $reason) { $reason = Get-Prop -Obj $j -Name 'Reason' }
@@ -131,8 +153,8 @@ foreach ($f in $decisionFiles) {
 
   # Derive runroot (the scratch run folder) from the path
   $full = $f.FullName
-  $marker = ("\results\{0}\tenants\{1}\" -f $Domain, $Tenant)
-  $idx = $full.IndexOf($marker, [System.StringComparison]::OrdinalIgnoreCase)
+  $marker = ("/results/{0}/tenants/{1}/" -f $Domain, $Tenant)
+  $idx = $full.Replace('\', '/').IndexOf($marker, [System.StringComparison]::OrdinalIgnoreCase)
   $runRoot = if ($idx -gt 0) { $full.Substring(0, $idx) } else { '' }
 
   $rows.Add([pscustomobject]@{

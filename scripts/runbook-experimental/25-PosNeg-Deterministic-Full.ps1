@@ -71,6 +71,7 @@ dotnet run --project $proj -- `
   --tenant $Tenant `
   domain mini-insurance dataset-generate $DsName `
   --stages $Stages --policies $Policies --queries $Queries --seed $Seed --overwrite
+if ($LASTEXITCODE -ne 0) { throw "Dataset generation failed (exit=$LASTEXITCODE)." }
 
 # Point dataset root to stage-00 (what the mini-insurance flows expect)
 $datasetRoot = Join-Path $env:EMBEDDINGSHIFT_ROOT ("results\insurance\tenants\{0}\datasets\{1}\stage-00" -f $Tenant, $DsName)
@@ -82,24 +83,29 @@ Write-Host "[PosNeg] DATASET_ROOT = $datasetRoot"
 dotnet run --project $proj -- `
   --tenant $Tenant --backend=$backend --sim-mode=$simMode `
   domain mini-insurance posneg-train --mode=$Mode
+if ($LASTEXITCODE -ne 0) { throw "PosNeg training failed (exit=$LASTEXITCODE)." }
 
 # --- 3) PosNeg RUN (baseline vs PosNeg shift) ---
 dotnet run --project $proj -- `
   --tenant $Tenant --backend=$backend --sim-mode=$simMode `
   domain mini-insurance posneg-run --latest
+if ($LASTEXITCODE -ne 0) { throw "PosNeg evaluation failed (exit=$LASTEXITCODE)." }
 
 # --- 4) Inspect training results (latest + best) ---
 dotnet run --project $proj -- `
   --tenant $Tenant `
   domain mini-insurance posneg-inspect
+if ($LASTEXITCODE -ne 0) { throw "PosNeg inspection failed (exit=$LASTEXITCODE)." }
 
 dotnet run --project $proj -- `
   --tenant $Tenant `
   domain mini-insurance posneg-history 10
+if ($LASTEXITCODE -ne 0) { throw "PosNeg history failed (exit=$LASTEXITCODE)." }
 
 dotnet run --project $proj -- `
   --tenant $Tenant `
   domain mini-insurance posneg-best
+if ($LASTEXITCODE -ne 0) { throw "Best PosNeg result inspection failed (exit=$LASTEXITCODE)." }
 
 Write-Host ""
 Write-Host "[PosNeg] DONE. Root: $env:EMBEDDINGSHIFT_ROOT"
