@@ -86,7 +86,7 @@ Write-Host ("[Tests] TEMP=" + $env:TEMP)
 $testsOk = $false
 
 try {
-  dotnet test ".\src\EmbeddingShift.Tests\EmbeddingShift.Tests.csproj"
+  dotnet test ".\EmbeddingShift.sln"
   if ($LASTEXITCODE -ne 0) {
     throw "dotnet test failed with exit code $LASTEXITCODE"
   }
