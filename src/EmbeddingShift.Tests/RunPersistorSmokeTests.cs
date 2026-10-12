@@ -21,7 +21,7 @@ namespace EmbeddingShift.Tests
 
             var artifacts = await runner.ExecuteAsync("Persist-Test", workflow);
 
-            var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "PersistedRuns");
+            var baseDir = TestPathHelper.GetTestOutputDirectory("PersistedRuns");
             var runDir = await RunPersistor.Persist(baseDir, "Persist-Test", artifacts);
 
             Assert.True(Directory.Exists(runDir));

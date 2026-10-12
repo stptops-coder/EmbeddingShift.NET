@@ -53,12 +53,16 @@ $repoResultsRoot = Join-Path $repoRoot 'results'
 $activeRunRoot = $env:EMBEDDINGSHIFT_ROOT
 $activeResults = if (-not [string]::IsNullOrWhiteSpace($activeRunRoot)) {
   Join-Path $activeRunRoot 'results'
-} elseif (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_DATA_ROOT)) {
-  $env:EMBEDDINGSHIFT_DATA_ROOT
-} elseif (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_RESULTS_ROOT)) {
-  $env:EMBEDDINGSHIFT_RESULTS_ROOT
 } else {
   $repoResultsRoot
+}
+
+$activeData = if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_DATA_ROOT)) {
+  $env:EMBEDDINGSHIFT_DATA_ROOT
+} elseif (-not [string]::IsNullOrWhiteSpace($activeRunRoot)) {
+  Join-Path $activeRunRoot 'data'
+} else {
+  Join-Path $repoRoot 'data'
 }
 
 $datasetRoot = if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_DATASET_ROOT)) {
@@ -106,6 +110,10 @@ Write-Host ("RepoRoot        : {0}" -f $repoRoot)
 Write-Host ("RepoResultsRoot : {0}" -f $repoResultsRoot)
 Write-Host ("ActiveRunRoot   : {0}" -f (Format-Empty $activeRunRoot))
 Write-Host ("ActiveResults   : {0}" -f (Format-Empty $activeResults))
+Write-Host ("ActiveData      : {0}" -f (Format-Empty $activeData))
+if (-not [string]::IsNullOrWhiteSpace($env:EMBEDDINGSHIFT_RESULTS_ROOT)) {
+  Write-Warning "EMBEDDINGSHIFT_RESULTS_ROOT is a legacy variable ignored by DirectoryLayout. Use EMBEDDINGSHIFT_ROOT for the run root."
+}
 
 Write-Host ""
 Write-Host "=== Relevant environment variables (Process/User/Machine view) ==="

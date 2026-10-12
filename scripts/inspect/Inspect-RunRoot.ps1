@@ -15,10 +15,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Get-RelPath([string]$base, [string]$path) {
-  $b = (Resolve-Path $base).Path.TrimEnd('\\')
+  $b = (Resolve-Path $base).Path.TrimEnd([char[]]'\/')
   $p = (Resolve-Path $path).Path
   if ($p.StartsWith($b, [System.StringComparison]::OrdinalIgnoreCase)) {
-    return $p.Substring($b.Length).TrimStart('\\')
+    return $p.Substring($b.Length).TrimStart([char[]]'\/')
   }
   return $p
 }
@@ -28,16 +28,17 @@ function Print-Header([string]$title) {
   Write-Host "=== $title ==="
 }
 
-function List-Files([string]$dir, [string[]]$patterns, [int]$max) {
+function List-Files([string]$dir, [string[]]$patterns, [int]$max, [bool]$recursive = $true) {
   if (-not (Test-Path $dir)) { return @() }
 
   $items = New-Object System.Collections.Generic.List[object]
   foreach ($pat in $patterns) {
-    Get-ChildItem -Path $dir -Recurse -File -Filter $pat -ErrorAction SilentlyContinue |
+    Get-ChildItem -LiteralPath $dir -Recurse:$recursive -File -Filter $pat -ErrorAction SilentlyContinue |
       ForEach-Object { $items.Add($_) }
   }
 
   $items |
+    Sort-Object FullName -Unique |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First $max |
     ForEach-Object {
@@ -50,9 +51,9 @@ function List-Files([string]$dir, [string[]]$patterns, [int]$max) {
     }
 }
 
-function Count-Files([string]$dir) {
+function Count-Files([string]$dir, [bool]$recursive = $true) {
   if (-not (Test-Path $dir)) { return 0 }
-  return (Get-ChildItem -Path $dir -Recurse -File | Measure-Object).Count
+  return (Get-ChildItem -LiteralPath $dir -Recurse:$recursive -File | Measure-Object).Count
 }
 
 # --- Normalize inputs
@@ -131,11 +132,13 @@ foreach ($b in $buckets) {
     continue
   }
 
-  $count = Count-Files $dir
+  # Top-level manifests must not count or relist every nested result artifact.
+  $recursive = ($name -ne 'MANIFEST')
+  $count = Count-Files $dir $recursive
   Write-Host ("{0}" -f $dir)
   Write-Host ("files = {0}" -f $count)
 
-  $files = @(List-Files $dir $b.Patterns $MaxFilesPerBucket)
+  $files = @(List-Files $dir $b.Patterns $MaxFilesPerBucket $recursive)
   if ($files.Count -eq 0) {
     Write-Host "(no matching files for patterns: $($b.Patterns -join ', '))"
   } else {

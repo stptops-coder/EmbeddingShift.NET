@@ -63,7 +63,7 @@ namespace EmbeddingShift.Tests
             var markdown = artifacts.ReportMarkdown("Evaluation");
             Assert.StartsWith("# Evaluation", markdown, StringComparison.OrdinalIgnoreCase);
 
-            var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "RegistryPersistedRuns");
+            var baseDir = TestPathHelper.GetTestOutputDirectory("RegistryPersistedRuns");
             var runDir = await RunPersistor.Persist(baseDir, "Registry-Eval-Persist-Test", artifacts);
 
             Assert.True(Directory.Exists(runDir));

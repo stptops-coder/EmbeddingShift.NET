@@ -22,7 +22,7 @@ namespace EmbeddingShift.Tests
 
             Assert.True(artifacts.Success);
 
-            var reportDir = Path.Combine(Directory.GetCurrentDirectory(), "TestRuns");
+            var reportDir = TestPathHelper.GetTestOutputDirectory("TestRuns");
             Directory.CreateDirectory(reportDir);
             var reportPath = Path.Combine(reportDir, "Smoke_RunReport.md");
 

@@ -39,12 +39,12 @@ function Get-SingleChildDirectoryNameOrThrow {
   $names = @(Get-ChildItem -LiteralPath $Parent -Directory | Select-Object -ExpandProperty Name)
 
   if ($names.Count -eq 0) {
-    throw "Cannot auto-detect $Label: no directories found under $Parent"
+    throw "Cannot auto-detect ${Label}: no directories found under $Parent"
   }
 
   if ($names.Count -gt 1) {
     $list = ($names | Sort-Object) -join ', '
-    throw "Cannot auto-detect $Label: multiple directories found under $Parent: $list. Please pass -$Label <name>."
+    throw "Cannot auto-detect ${Label}: multiple directories found under ${Parent}: $list. Please pass -$Label <name>."
   }
 
   return $names[0]

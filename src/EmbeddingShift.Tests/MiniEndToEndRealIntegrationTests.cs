@@ -41,7 +41,7 @@ namespace EmbeddingShift.Tests
             Assert.InRange(ndcg, 0.9, 1.01);
 
             // Persist the run result in a dedicated test folder.
-            var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "MiniEndToEndRuns");
+            var baseDir = TestPathHelper.GetTestOutputDirectory("MiniEndToEndRuns");
             var runDir = await RunPersistor.Persist(baseDir, "Mini-EndToEnd-Persisted", artifacts);
 
             // Verify that the run directory and at least one markdown file exist.

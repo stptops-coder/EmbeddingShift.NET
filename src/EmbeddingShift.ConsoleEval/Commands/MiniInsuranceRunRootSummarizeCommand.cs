@@ -126,7 +126,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
                     var outPath = Path.Combine(reportsDir, "summary.txt");
                     var summary = hasCases
                         ? BuildCasesSummaryText(runRoot, LoadCases(casesPath))
-                        : BuildFallbackSummaryText(runRoot, domainRoot, tenantRoots);
+                        : BuildFallbackSummaryText(runRoot, domainRoot, new List<string> { tenantRoot });
 
                     File.WriteAllText(outPath, summary, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
                     Console.WriteLine("[RunRootSummarize] Wrote:");

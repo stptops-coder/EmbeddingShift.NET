@@ -1,6 +1,3 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
 <#
 Lab session bootstrap for command-by-command debugging.
 
@@ -21,13 +18,17 @@ param(
     [string]$DatasetRoot = ""
 )
 
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
 function Write-Section([string]$Title) {
     Write-Host ""
     Write-Host ("=== {0} ===" -f $Title)
 }
 
 # Resolve repo root and switch to it (safe to run from anywhere)
-$repoRoot = & (Join-Path $PSScriptRoot "..\lib\RepoRoot.ps1")
+. (Join-Path $PSScriptRoot "..\lib\RepoRoot.ps1")
+$repoRoot = Resolve-RepoRoot -StartPath $PSScriptRoot
 Set-Location -LiteralPath $repoRoot
 
 # Default dataset root = samples/insurance (repo-relative)
@@ -127,9 +128,9 @@ Show-LabEnv
 
 Write-Host ""
 Write-Host "Recommended command-by-command sequence:"
-Write-Host "  $S0 = Snap '00_blank'"
+Write-Host "  `$S0 = Snap '00_blank'"
 Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-status MiniInsurance --role=all"
-Write-Host "  $S1 = Snap '01_after_status' ; Diff $S0 $S1"
+Write-Host "  `$S1 = Snap '01_after_status' ; Diff `$S0 `$S1"
 Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- dataset-reset MiniInsurance --role=all --force"
 Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-dataset samples/insurance/policies samples/insurance/queries/queries.json MiniInsurance"
 Write-Host "  dotnet run --project src/EmbeddingShift.ConsoleEval -- ingest-inspect MiniInsurance --role=refs"

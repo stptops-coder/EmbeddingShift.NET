@@ -55,8 +55,8 @@ if ([string]::IsNullOrWhiteSpace($Scenario)) {
     try {
       $resolvedRoot = (Resolve-Path -LiteralPath $Root -ErrorAction Stop).Path
       if ($resolvedRoot.StartsWith($ScratchBase, [System.StringComparison]::OrdinalIgnoreCase)) {
-        $rel = $resolvedRoot.Substring($ScratchBase.Length).TrimStart('\\')
-        $parts = $rel.Split('\\')
+        $rel = $resolvedRoot.Substring($ScratchBase.Length).TrimStart([char[]]'\/')
+        $parts = $rel -split '[\\/]'
         if ($parts.Length -ge 1 -and -not [string]::IsNullOrWhiteSpace($parts[0])) {
           $Scenario = $parts[0]
           Write-Host ("[Inspect] Derived Scenario from -Root = {0}" -f $Scenario)
@@ -111,7 +111,7 @@ Write-Host "Recursive (depth 3) folder map:"
 Get-ChildItem -LiteralPath $Root -Recurse -Depth 3 -Directory -Force |
   Sort-Object FullName |
   ForEach-Object {
-    $rel = $_.FullName.Substring($Root.Length).TrimStart('\')
+    $rel = $_.FullName.Substring($Root.Length).TrimStart([char[]]'\/')
     if ($rel -eq '') { $rel = '.' }
     "[d] $rel"
   } | Select-Object -First $Top

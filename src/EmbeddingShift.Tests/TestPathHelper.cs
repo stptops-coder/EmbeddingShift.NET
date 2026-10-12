@@ -5,6 +5,13 @@ namespace EmbeddingShift.Tests
 {
     internal static class TestPathHelper
     {
+        // Keep persisted test reports inside the root owned by the runbook or
+        // TestEnvironmentBootstrap, so its existing cleanup also removes them.
+        public static string GetTestOutputDirectory(string folderName)
+        {
+            return Path.Combine(DirectoryLayout.ResolveRoot("results"), "tests", folderName);
+        }
+
         public static string GetRepositoryRoot()
         {
             return RepositoryLayout.ResolveRepoRoot();

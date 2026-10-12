@@ -54,6 +54,7 @@ function Remove-DirBestEffort([string]$path) {
   }
 
   # Best-effort only. If it still fails, keep it for inspection.
+  Write-Warning ("[Tests] Cleanup incomplete; artifacts kept at " + $path)
 }
 
 $createdRunRootHere = $false
@@ -104,4 +105,8 @@ $keep = [string]::Equals($env:EMBEDDINGSHIFT_TEST_KEEP_ARTIFACTS, "1", [StringCo
 if ($createdRunRootHere -and $testsOk -and -not $keep) {
   Write-Host ("[Tests] Cleanup: removing " + $testsRunRoot)
   Remove-DirBestEffort $testsRunRoot
+  if (-not (Test-Path -LiteralPath $testsRunRoot)) {
+    # Do not let subsequent CLI commands recreate a deleted test run root.
+    Remove-Item Env:EMBEDDINGSHIFT_ROOT -ErrorAction SilentlyContinue
+  }
 }
