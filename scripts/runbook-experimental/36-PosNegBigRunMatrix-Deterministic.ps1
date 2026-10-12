@@ -183,7 +183,7 @@ if (($RootMode -eq 'scratch') -and (-not $SkipInspect)) {
 # Consolidated summary
 $summaryScript = Join-Path $repoRoot 'scripts\runbook-experimental\37-PosNegBigSummarize.ps1'
 if (Test-Path -LiteralPath $summaryScript -PathType Leaf) {
-  & $summaryScript -Scenario $Scenario -Tenant $Tenant -Metric $Metric
+  & $summaryScript -Scenario $Scenario -Tenant $Tenant -Metric $Metric -RootMode $RootMode
 }
 
 Write-Host ""

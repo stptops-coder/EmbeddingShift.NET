@@ -30,10 +30,16 @@ namespace EmbeddingShift.ConsoleEval.Commands
 
             var rankText = GetOpt(args, "--rank");
             int? pickRank = null;
-            if (!string.IsNullOrWhiteSpace(rankText) &&
-                int.TryParse(rankText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedRank) &&
-                parsedRank > 0)
+            if (rankText is not null || HasSwitch(args, "--rank"))
             {
+                if (!int.TryParse(rankText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedRank) ||
+                    parsedRank <= 0)
+                {
+                    Console.WriteLine($"[runs-promote] Invalid --rank value: {rankText}. Expected a positive integer.");
+                    Environment.ExitCode = 1;
+                    return Task.CompletedTask;
+                }
+
                 pickRank = parsedRank;
             }
 

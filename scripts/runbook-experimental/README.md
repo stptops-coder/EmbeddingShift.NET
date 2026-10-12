@@ -21,6 +21,10 @@ Recommended advanced workflows:
 
 Run from the repository root.
 
+By default, runs and summaries use `results\_scratch\<Scenario>`.
+With `-RootMode temp`, they use `$env:TEMP\EmbeddingShift.PosNegBig\<Scenario>`.
+The matrix runner passes its root mode to the summary collector.
+
 ### Compact advanced PosNeg sanity run
 
 ```powershell

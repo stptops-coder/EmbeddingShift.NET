@@ -33,8 +33,8 @@ namespace EmbeddingShift.Core.Runs
             if (string.IsNullOrWhiteSpace(metricKey))
                 throw new ArgumentException("Metric key must not be null/empty.", nameof(metricKey));
 
-            if (epsilon < 0)
-                throw new ArgumentOutOfRangeException(nameof(epsilon), "Epsilon must be >= 0.");
+            if (!double.IsFinite(epsilon) || epsilon < 0)
+                throw new ArgumentOutOfRangeException(nameof(epsilon), "Epsilon must be finite and >= 0.");
 
             var selection = RunCandidateSelector.SelectBestCandidate(runsRoot, metricKey, includeRepoPosNeg);
 
@@ -68,10 +68,9 @@ namespace EmbeddingShift.Core.Runs
                 RunDirectory: activePointer.RunDirectory,
                 RunJsonPath: activePointer.RunJsonPath);
 
-            // Same run already active
+            // Run IDs may repeat across workflows; identify the persisted artifact by its path.
             if (string.Equals(candidateEntry.RunDirectory, activeEntry.RunDirectory, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(candidateEntry.RunJsonPath, activeEntry.RunJsonPath, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(candidateEntry.RunId, activeEntry.RunId, StringComparison.OrdinalIgnoreCase))
+                string.Equals(candidateEntry.RunJsonPath, activeEntry.RunJsonPath, StringComparison.OrdinalIgnoreCase))
             {
                 return new RunPromotionDecision(
                     MetricKey: metricKey,

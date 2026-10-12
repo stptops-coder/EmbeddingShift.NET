@@ -3,7 +3,7 @@
 # =========================
 # PosNeg BIG – Summary Collector
 # =========================
-# Scans a scratch scenario folder (results\_scratch\<Scenario>) for runs-decide decision JSON files,
+# Scans a scratch or temp scenario folder for runs-decide decision JSON files,
 # extracts key parameters (seed/policies/queries/stage), and writes:
 #   - summary_*.csv
 #   - summary_*.md
@@ -17,7 +17,9 @@ param(
   [string]$Tenant = 'insurer-a',
   [string]$Domain = 'insurance',
   [string]$Metric = 'ndcg@3',
-  [string]$OutDir = ''
+  [string]$OutDir = '',
+  [ValidateSet('scratch','temp')]
+  [string]$RootMode = 'scratch'
 )
 
 Set-StrictMode -Version Latest
@@ -58,12 +60,11 @@ function TryParse-FromProfile {
   $q = $null
   $stage = $null
 
-  if ($Profile -match '__seed(?<seed>\d+)__') { $seed = [int]$Matches['seed'] }
-  if ($Profile -match '__p(?<p>\d+)__q(?<q>\d+)__stage(?<s>\d{2})__') {
-    $p = [int]$Matches['p']
-    $q = [int]$Matches['q']
-    $stage = [int]$Matches['s']
-  }
+  # Profile keys are capped at 120 characters; the final separator may be truncated.
+  if ($Profile -match '__seed(?<seed>-?\d+)(?:__|$)') { $seed = [int]$Matches['seed'] }
+  if ($Profile -match '__p(?<p>\d+)(?:__|$)') { $p = [int]$Matches['p'] }
+  if ($Profile -match '__q(?<q>\d+)(?:__|$)') { $q = [int]$Matches['q'] }
+  if ($Profile -match '__stage(?<s>\d+)(?:_+|$)') { $stage = [int]$Matches['s'] }
 
   return @{
     Seed = $seed
@@ -76,7 +77,11 @@ function TryParse-FromProfile {
 $repoRoot = Resolve-RepoRoot -ScriptRoot $PSScriptRoot
 Set-Location $repoRoot
 
-$scenarioRoot = Join-Path $repoRoot ("results\_scratch\{0}" -f $Scenario)
+$scenarioRoot = if ($RootMode -eq 'temp') {
+  Join-Path (Join-Path $env:TEMP 'EmbeddingShift.PosNegBig') $Scenario
+} else {
+  Join-Path $repoRoot ("results\_scratch\{0}" -f $Scenario)
+}
 if (-not (Test-Path -LiteralPath $scenarioRoot -PathType Container)) {
   throw "Scenario folder not found: $scenarioRoot"
 }
@@ -93,10 +98,14 @@ Write-Host "[PosNegSummary] Tenant       = $Tenant"
 
 # Decision files (we filter by regex because -Filter can behave oddly with '@' in patterns)
 $allDecisionFiles = Get-ChildItem -Path $scenarioRoot -Recurse -File -ErrorAction Stop | Where-Object { $_.Name -match '^decision_.*\.json$' }
-$decisionFiles = @($allDecisionFiles | Where-Object { $_.Name -match ('^decision_{0}_.*\.json$' -f [regex]::Escape($Metric)) })
+$marker = ("/results/{0}/tenants/{1}/" -f $Domain, $Tenant)
+$decisionFiles = @($allDecisionFiles | Where-Object {
+  $_.Name -match ('^decision_{0}_.*\.json$' -f [regex]::Escape($Metric)) -and
+  $_.FullName.Replace('\', '/').IndexOf($marker, [System.StringComparison]::OrdinalIgnoreCase) -ge 0
+})
 
 if (-not $decisionFiles -or $decisionFiles.Count -eq 0) {
-  Write-Host "[PosNegSummary] No decision files found for metric '$Metric'."
+  Write-Host "[PosNegSummary] No decision files found for metric '$Metric', domain '$Domain', tenant '$Tenant'."
   exit 0
 }
 
@@ -153,7 +162,6 @@ foreach ($f in $decisionFiles) {
 
   # Derive runroot (the scratch run folder) from the path
   $full = $f.FullName
-  $marker = ("/results/{0}/tenants/{1}/" -f $Domain, $Tenant)
   $idx = $full.Replace('\', '/').IndexOf($marker, [System.StringComparison]::OrdinalIgnoreCase)
   $runRoot = if ($idx -gt 0) { $full.Substring(0, $idx) } else { '' }
 

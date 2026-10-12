@@ -96,7 +96,7 @@ function New-RunRoot {
 
   $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
   if ($Mode -eq 'temp') {
-    $base = Join-Path $env:TEMP 'EmbeddingShift.PosNegBig'
+    $base = Join-Path (Join-Path $env:TEMP 'EmbeddingShift.PosNegBig') $Scenario
     return (Join-Path $base ("{0}__{1}" -f $stamp, $Suffix))
   }
 

@@ -87,7 +87,8 @@ namespace EmbeddingShift.Core.Training.PosNeg
                     scored.Add((docId, sim));
                 }
 
-                scored.Sort(static (a, b) => b.Score.CompareTo(a.Score));
+                // Preserve document order on ties, as the evaluation rankings do.
+                scored = scored.OrderByDescending(x => x.Score).ToList();
 
                 var posIndex = scored.FindIndex(x => string.Equals(x.DocId, q.RelevantDocId, StringComparison.Ordinal));
                 if (posIndex < 0)
