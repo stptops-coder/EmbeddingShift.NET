@@ -73,6 +73,13 @@ namespace EmbeddingShift.Core.Runs
         /// - Else the best run by score is used.
         /// </summary>
         public static PromoteResult Promote(string runsRoot, string metricKey, string? profileKey, int? pickRank, string? pickRunId)
+            => Promote(runsRoot, metricKey, profileKey, pickRank, pickRunId, includeRepoPosNeg: false);
+
+        /// <summary>
+        /// Applies the same selection rules to normal runs and, when requested,
+        /// the additional MiniInsurance-PosNeg repo candidates.
+        /// </summary>
+        public static PromoteResult Promote(string runsRoot, string metricKey, string? profileKey, int? pickRank, string? pickRunId, bool includeRepoPosNeg)
         {
             if (string.IsNullOrWhiteSpace(runsRoot))
                 throw new ArgumentException("Runs root must not be null/empty.", nameof(runsRoot));
@@ -83,7 +90,12 @@ namespace EmbeddingShift.Core.Runs
             if (string.IsNullOrWhiteSpace(metricKey))
                 throw new ArgumentException("Metric key must not be null/empty.", nameof(metricKey));
 
-            var discovered = RunArtifactDiscovery.Discover(runsRoot);
+            var discovered = RunArtifactDiscovery.Discover(runsRoot).ToList();
+            if (includeRepoPosNeg)
+            {
+                var repoRoot = Path.Combine(runsRoot, "_repo", "MiniInsurance-PosNeg");
+                discovered.AddRange(RunArtifactDiscovery.Discover(repoRoot));
+            }
             if (discovered.Count == 0)
                 throw new InvalidOperationException($"No run.json found under: {runsRoot}");
 

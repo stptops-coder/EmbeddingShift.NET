@@ -44,9 +44,12 @@ namespace EmbeddingShift.ConsoleEval.Commands
             }
 
             var pickRunId = GetOpt(args, "--runid");
-            if (string.IsNullOrWhiteSpace(pickRunId))
+            if ((pickRunId is not null || HasSwitch(args, "--runid")) &&
+                string.IsNullOrWhiteSpace(pickRunId))
             {
-                pickRunId = null;
+                Console.WriteLine("[runs-promote] Invalid --runid value. Expected a nonempty run id.");
+                Environment.ExitCode = 1;
+                return Task.CompletedTask;
             }
 
             var open = HasSwitch(args, "--open");
@@ -72,24 +75,7 @@ namespace EmbeddingShift.ConsoleEval.Commands
             RunActivation.PromoteResult result;
             try
             {
-                if (includeRepoPosNeg && pickRank is null && pickRunId is null)
-                {
-                    var sel = RunCandidateSelector.SelectBestCandidate(runsRoot, metricKey, includeRepoPosNeg: true);
-                    result = RunActivation.PromoteExplicit(
-                        runsRoot,
-                        metricKey,
-                        profileKey,
-                        sel.Run.Artifact.WorkflowName,
-                        sel.Run.Artifact.RunId,
-                        sel.Score,
-                        sel.Run.RunDirectory,
-                        sel.Run.RunJsonPath,
-                        sel.TotalRunsFound);
-                }
-                else
-                {
-                    result = RunActivation.Promote(runsRoot, metricKey, profileKey, pickRank, pickRunId);
-                }
+                result = RunActivation.Promote(runsRoot, metricKey, profileKey, pickRank, pickRunId, includeRepoPosNeg);
             }
             catch (Exception ex)
             {

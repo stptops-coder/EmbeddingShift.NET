@@ -91,6 +91,101 @@ public sealed class RunDecisionRegressionTests
         }
     }
 
+    [Theory]
+    [InlineData("--runid=")]
+    [InlineData("--runid=   ")]
+    [InlineData("--runid")]
+    [InlineData("--runid=\"\"")]
+    public async Task EmptyExplicitRunId_DoesNotReplaceTheActiveRun(string option)
+    {
+        using var runs = new RunFixture();
+        runs.Write("baseline", "active-run", 0.2);
+        var active = RunActivation.Promote(runs.Root, "ndcg@3");
+        var originalPointer = File.ReadAllBytes(active.ActivePath);
+        runs.Write("better", "better-run", 0.8);
+
+        var originalExitCode = Environment.ExitCode;
+        try
+        {
+            await RunsPromoteCommand.RunAsync(new[]
+            {
+                "--runs-root", runs.Root, "--metric", "ndcg@3", option
+            });
+
+            Assert.Equal(1, Environment.ExitCode);
+            Assert.Equal(originalPointer, File.ReadAllBytes(active.ActivePath));
+            Assert.Empty(RunActivation.ListHistory(runs.Root, "ndcg@3"));
+        }
+        finally
+        {
+            Environment.ExitCode = originalExitCode;
+        }
+    }
+
+    [Theory]
+    [InlineData("--rank=1", "repo-run")]
+    [InlineData("--rank=2", "normal-run")]
+    [InlineData("--runid=repo-run", "repo-run")]
+    [InlineData("--runid=normal-run", "normal-run")]
+    public async Task ExplicitSelection_WithRepoInclusion_UsesTheCombinedCandidates(
+        string option, string expectedRunId)
+    {
+        using var runs = new RunFixture();
+        runs.Write("normal", "normal-run", 0.2);
+        runs.Write("posneg", "repo-run", 0.8, inRepo: true);
+        runs.Write("failed", "failed-run", 0.99, success: false, inRepo: true);
+
+        var originalExitCode = Environment.ExitCode;
+        try
+        {
+            await RunsPromoteCommand.RunAsync(new[]
+            {
+                "--runs-root", runs.Root, "--metric", "ndcg@3", "--profile", "combined",
+                "--include-repo-posneg", option
+            });
+
+            Assert.Equal(0, Environment.ExitCode);
+            Assert.True(RunActivation.TryLoadActive(runs.Root, "ndcg@3", "combined", out var active));
+            Assert.Equal(expectedRunId, active!.RunId);
+            Assert.Equal(3, active.TotalRunsFound);
+            Assert.False(RunActivation.TryLoadActive(runs.Root, "ndcg@3", out _));
+        }
+        finally
+        {
+            Environment.ExitCode = originalExitCode;
+        }
+    }
+
+    [Theory]
+    [InlineData("--rank=3")]
+    [InlineData("--runid=failed-run")]
+    public async Task InvalidRepoSelection_DoesNotChangeTheActiveRun(string option)
+    {
+        using var runs = new RunFixture();
+        runs.Write("normal", "normal-run", 0.2);
+        var active = RunActivation.Promote(runs.Root, "ndcg@3");
+        var originalPointer = File.ReadAllBytes(active.ActivePath);
+        runs.Write("posneg", "repo-run", 0.8, inRepo: true);
+        runs.Write("failed", "failed-run", 0.99, success: false, inRepo: true);
+
+        var originalExitCode = Environment.ExitCode;
+        try
+        {
+            await RunsPromoteCommand.RunAsync(new[]
+            {
+                "--runs-root", runs.Root, "--metric", "ndcg@3", "--include-repo-posneg", option
+            });
+
+            Assert.Equal(1, Environment.ExitCode);
+            Assert.Equal(originalPointer, File.ReadAllBytes(active.ActivePath));
+            Assert.Empty(RunActivation.ListHistory(runs.Root, "ndcg@3"));
+        }
+        finally
+        {
+            Environment.ExitCode = originalExitCode;
+        }
+    }
+
     private sealed class RunFixture : IDisposable
     {
         public string Root { get; } = Path.Combine(Path.GetTempPath(),
@@ -98,12 +193,14 @@ public sealed class RunDecisionRegressionTests
 
         public RunFixture() => Directory.CreateDirectory(Root);
 
-        public void Write(string workflow, string runId, double score)
+        public void Write(string workflow, string runId, double score, bool success = true, bool inRepo = false)
         {
-            var directory = Path.Combine(Root, workflow);
+            var directory = inRepo
+                ? Path.Combine(Root, "_repo", "MiniInsurance-PosNeg", workflow)
+                : Path.Combine(Root, workflow);
             Directory.CreateDirectory(directory);
             var artifact = new WorkflowRunArtifact(runId, workflow,
-                DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, true,
+                DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, success,
                 new Dictionary<string, double> { ["ndcg@3"] = score }, "");
             File.WriteAllText(Path.Combine(directory, "run.json"),
                 JsonSerializer.Serialize(artifact, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
