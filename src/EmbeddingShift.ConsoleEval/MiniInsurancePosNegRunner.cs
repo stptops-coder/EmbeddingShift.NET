@@ -11,6 +11,7 @@ using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.ConsoleEval.Repositories;
 using EmbeddingShift.ConsoleEval.MiniInsurance;
 using EmbeddingShift.Core.Infrastructure;
+using EmbeddingShift.Core.Retrieval;
 using EmbeddingShift.Core.Stats;
 using EmbeddingShift.Workflows;
 
@@ -182,6 +183,9 @@ namespace EmbeddingShift.ConsoleEval
 
             var perQueryBaseline = new List<PerQueryEval>(queries.Count);
             var perQueryPosNeg = new List<PerQueryEval>(queries.Count);
+            var documentRows = docEmbeddings.ToArray();
+            var documentVectors = documentRows.Select(d => d.Value).ToArray();
+            using var cosine = CosineScorerFactory.FromEnvironment(CosineSimilarity);
 
             foreach (var q in queries)
             {
@@ -198,11 +202,12 @@ namespace EmbeddingShift.ConsoleEval
 
                 var qEmb = qEmbMaybe!; // non-null for closures / nullable flow
                 // Baseline ranking (no shift).
-                var rankedBaseline = docEmbeddings
-                    .Select(d => new
+                var baselineScores = await cosine.ScoreAsync(qEmb, documentVectors).ConfigureAwait(false);
+                var rankedBaseline = documentRows
+                    .Select((d, i) => new
                     {
                         DocId = d.Key,
-                        Score = CosineSimilarity(qEmb, d.Value)
+                        Score = baselineScores[i]
                     })
                     .OrderByDescending(x => x.Score)
                     .ToList();
@@ -219,11 +224,12 @@ namespace EmbeddingShift.ConsoleEval
                     qShifted[i] = qEmb[i] + shift[i];
                 }
 
-                var rankedShifted = docEmbeddings
-                    .Select(d => new
+                var shiftedScores = await cosine.ScoreAsync(qShifted, documentVectors).ConfigureAwait(false);
+                var rankedShifted = documentRows
+                    .Select((d, i) => new
                     {
                         DocId = d.Key,
-                        Score = CosineSimilarity(qShifted, d.Value)
+                        Score = shiftedScores[i]
                     })
                     .OrderByDescending(x => x.Score)
                     .ToList();

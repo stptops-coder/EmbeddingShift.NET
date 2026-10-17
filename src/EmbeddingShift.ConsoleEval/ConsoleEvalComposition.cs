@@ -1,6 +1,7 @@
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Evaluators;
 using EmbeddingShift.Core.Infrastructure;
+using EmbeddingShift.Core.Retrieval;
 using EmbeddingShift.Workflows;
 using EmbeddingShift.Workflows.Eval;
 using EmbeddingShift.Workflows.Ingest;
@@ -18,6 +19,7 @@ public static class ConsoleEvalComposition
         // Base provider is controlled via environment (EMBEDDING_BACKEND + sim/cache vars).
         IEmbeddingProvider baseProvider = EmbeddingProviderFactory.FromEnvironment();
         EmbeddingConsoleDiagnostics.PrintEmbeddingConfiguration();
+        Console.WriteLine($"[Cosine] Backend={CosineScorerFactory.BackendFromEnvironment()} (Mini-Insurance/PosNeg ranking)");
 
         IEmbeddingProvider provider = (options.Provider ?? "sim").Trim().ToLowerInvariant() switch
         {

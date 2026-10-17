@@ -9,6 +9,10 @@ public sealed record ConsoleEvalGlobalOptions
     // Optional base-backend override (maps to EMBEDDING_BACKEND).
     public string? Backend { get; init; } = null;
 
+    // Document ranking in Mini-Insurance and PosNeg.
+    public string? CosineBackend { get; init; } = null;
+    public string? PythonExecutable { get; init; } = null;
+
     // Optional multi-tenant sandbox key (maps to EMBEDDINGSHIFT_TENANT).
     // When set, Mini-Insurance can write under results/insurance/tenants/<tenantKey>/...
     public string? TenantKey { get; init; } = null;

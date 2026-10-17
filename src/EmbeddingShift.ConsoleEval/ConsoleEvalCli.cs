@@ -386,6 +386,8 @@ internal static class ConsoleEvalCli
         Console.WriteLine("  --tenant=<key>  |  --tenant <key>     (optional) writes Mini-Insurance under results/insurance/tenants/<key>/...");
         Console.WriteLine("  --provider=sim|openai-echo|openai-dryrun");
         Console.WriteLine("  --backend=sim|openai");
+        Console.WriteLine("  --cosine=csharp|python  (Mini-Insurance/PosNeg document ranking)");
+        Console.WriteLine("  --python-exe=<path>     (optional Python executable override)");
         Console.WriteLine("  --sim-mode=deterministic|noisy");
         Console.WriteLine("  --sim-noise=<float>");
         Console.WriteLine("  --sim-algo=sha256|semantic-hash");

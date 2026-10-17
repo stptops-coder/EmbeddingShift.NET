@@ -14,6 +14,12 @@ public static class ConsoleEvalGlobalEnvironment
         if (!string.IsNullOrWhiteSpace(o.Backend))
             Environment.SetEnvironmentVariable("EMBEDDING_BACKEND", o.Backend);
 
+        if (!string.IsNullOrWhiteSpace(o.CosineBackend))
+            Environment.SetEnvironmentVariable("EMBEDDINGSHIFT_COSINE_BACKEND", o.CosineBackend);
+
+        if (!string.IsNullOrWhiteSpace(o.PythonExecutable))
+            Environment.SetEnvironmentVariable("EMBEDDINGSHIFT_PYTHON_EXE", o.PythonExecutable);
+
         if (!string.IsNullOrWhiteSpace(o.SimMode))
             Environment.SetEnvironmentVariable("EMBEDDING_SIM_MODE", o.SimMode);
 

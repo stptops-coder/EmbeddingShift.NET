@@ -123,6 +123,9 @@ Tenant scoping:
 
 ## Documentation
 
+Optional integration spike: [Python cosine in Mini-Insurance / PosNeg](python/README.md).
+Use `--cosine=csharp|python` to select the scorer in those existing workflows.
+
 - Runbook verification gate (canonical): [scripts/runbook/README.md](scripts/runbook/README.md)
 - Experimental runbooks (optional): [scripts/runbook-experimental/README.md](scripts/runbook-experimental/README.md)
 - CLI onboarding (recommended quickstart): [Docs/CLI-Onboarding.md](Docs/CLI-Onboarding.md)

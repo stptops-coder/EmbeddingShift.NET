@@ -11,6 +11,7 @@ using EmbeddingShift.Abstractions;
 using EmbeddingShift.Abstractions.Shifts;
 using EmbeddingShift.Core.Infrastructure;
 using EmbeddingShift.Core.Persistence;
+using EmbeddingShift.Core.Retrieval;
 using EmbeddingShift.Core.Shifts;
 
 namespace EmbeddingShift.Workflows
@@ -150,6 +151,9 @@ namespace EmbeddingShift.Workflows
             var apValues = new List<double>();
             var ndcgValues = new List<double>();
             var perQuery = new List<PerQueryEval>(queries.Count);
+            var documentRows = docEmbeddings.ToArray();
+            var documentVectors = documentRows.Select(d => d.Value).ToArray();
+            using var cosine = CosineScorerFactory.FromEnvironment((q, d) => CosineSimilarity(q, d));
 
             using (stats.TrackStep("FileBased-Insurance-Mini"))
             {
@@ -185,11 +189,12 @@ namespace EmbeddingShift.Workflows
                     {
                         _shiftPipeline.ApplyInPlace(qEmb);
                     }
-                    var ranked = docEmbeddings
-                        .Select(d => new
+                    var scores = await cosine.ScoreAsync(qEmb, documentVectors, ct).ConfigureAwait(false);
+                    var ranked = documentRows
+                        .Select((d, i) => new
                         {
                             DocId = d.Key,
-                            Score = CosineSimilarity(qEmb, d.Value)
+                            Score = (float)scores[i]
                         })
                         .OrderByDescending(x => x.Score)
                         .ToList();

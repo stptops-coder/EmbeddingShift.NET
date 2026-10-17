@@ -31,6 +31,24 @@ public static class ConsoleEvalGlobalOptionsParser
                 continue;
             }
 
+            if (a.StartsWith("--cosine=", StringComparison.OrdinalIgnoreCase))
+            {
+                var value = a.Split('=', 2)[1].Trim().ToLowerInvariant();
+                if (value is not ("csharp" or "python"))
+                    throw new ArgumentException("--cosine must be csharp or python.");
+                opt = opt with { CosineBackend = value };
+                continue;
+            }
+
+            if (a.StartsWith("--python-exe=", StringComparison.OrdinalIgnoreCase))
+            {
+                var value = a.Split('=', 2)[1].Trim();
+                if (value.Length == 0)
+                    throw new ArgumentException("--python-exe must name a Python executable.");
+                opt = opt with { PythonExecutable = value };
+                continue;
+            }
+
             if (a.StartsWith("--sim-mode=", StringComparison.OrdinalIgnoreCase))
             {
                 opt = opt with { SimMode = a.Substring("--sim-mode=".Length).Trim() };

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using EmbeddingShift.Abstractions;
 using EmbeddingShift.Core.Utils;
+using EmbeddingShift.Core.Retrieval;
 
 namespace EmbeddingShift.Core.Training.PosNeg
 {
@@ -69,6 +70,9 @@ namespace EmbeddingShift.Core.Training.PosNeg
             var zeroDirs = 0;
 
             var k = options.HardNegTopK <= 0 ? 1 : options.HardNegTopK;
+            var documentRows = docEmbeddings.ToArray();
+            var documentVectors = documentRows.Select(d => d.Value).ToArray();
+            using var cosine = CosineScorerFactory.FromEnvironment();
 
             for (var i = 0; i < queries.Count; i++)
             {
@@ -80,11 +84,11 @@ namespace EmbeddingShift.Core.Training.PosNeg
                 var qEmb = await provider.GetEmbeddingAsync(q.Text).ConfigureAwait(false);
 
                 // Score all docs
+                var scores = await cosine.ScoreAsync(qEmb, documentVectors).ConfigureAwait(false);
                 var scored = new List<(string DocId, double Score)>(docEmbeddings.Count);
-                foreach (var (docId, docEmb) in docEmbeddings)
+                for (var di = 0; di < documentRows.Length; di++)
                 {
-                    var sim = VectorOps.Cosine(qEmb, docEmb);
-                    scored.Add((docId, sim));
+                    scored.Add((documentRows[di].Key, (float)scores[di]));
                 }
 
                 // Preserve document order on ties, as the evaluation rankings do.

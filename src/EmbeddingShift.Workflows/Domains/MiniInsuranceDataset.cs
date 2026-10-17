@@ -21,8 +21,6 @@ public static class MiniInsuranceDataset
     /// </summary>
     public static string ResolveDatasetRoot()
     {
-        var repoRoot = RepositoryLayout.ResolveRepoRoot();
-
         // Optional override (absolute or repo-relative), e.g.:
         //   results/insurance/datasets/<name>/stage-00
         var overrideValue = Environment.GetEnvironmentVariable(DatasetRootEnvVarPrimary);
@@ -35,10 +33,10 @@ public static class MiniInsuranceDataset
             var trimmed = overrideValue.Trim();
             return Path.IsPathRooted(trimmed)
                 ? Path.GetFullPath(trimmed)
-                : Path.GetFullPath(Path.Combine(repoRoot, trimmed));
+                : Path.GetFullPath(Path.Combine(RepositoryLayout.ResolveRepoRoot(), trimmed));
         }
 
-        return Path.Combine(repoRoot, "samples", "insurance");
+        return Path.Combine(RepositoryLayout.ResolveRepoRoot(), "samples", "insurance");
     }
 
     /// <summary>

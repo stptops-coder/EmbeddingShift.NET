@@ -16,6 +16,8 @@ internal static class RunRequestFactory
         "EMBEDDINGSHIFT_DATASET_ROOT",
         "EMBEDDINGSHIFT_MINIINSURANCE_DATASET_ROOT",
         "EMBEDDING_BACKEND",
+        "EMBEDDINGSHIFT_COSINE_BACKEND",
+        "EMBEDDINGSHIFT_PYTHON_EXE",
         "EMBEDDING_SIM_MODE",
         "EMBEDDING_SIM_NOISE_AMPLITUDE",
         "EMBEDDING_SIM_ALGO",
@@ -45,6 +47,12 @@ internal static class RunRequestFactory
 
         if (env.TryGetValue("EMBEDDING_BACKEND", out var backend) && !string.IsNullOrWhiteSpace(backend))
             global.Add($"--backend={backend}");
+
+        if (env.TryGetValue("EMBEDDINGSHIFT_COSINE_BACKEND", out var cosine) && !string.IsNullOrWhiteSpace(cosine))
+            global.Add($"--cosine={cosine}");
+
+        if (env.TryGetValue("EMBEDDINGSHIFT_PYTHON_EXE", out var python) && !string.IsNullOrWhiteSpace(python))
+            global.Add($"--python-exe={python}");
 
         if (env.TryGetValue("EMBEDDING_SIM_MODE", out var simMode) && !string.IsNullOrWhiteSpace(simMode))
             global.Add($"--sim-mode={simMode}");
